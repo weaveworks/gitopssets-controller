@@ -1,0 +1,16 @@
+domain: weave.works
+layout:
+- go.kubebuilder.io/v3
+projectName: gitopssets-controller
+repo: github.com/weaveworks/gitops-sets-controller
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: weave.works
+  group: templates
+  kind: GitOpsSet
+  path: github.com/weaveworks/gitops-sets-controller/api/v1alpha1
+  version: v1alpha1
+version: "3"

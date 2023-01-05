@@ -1,0 +1,27 @@
+# permissions for end users to view gitopssets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: gitopsset-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: gitopssets-controller
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: gitopsset-viewer-role
+rules:
+- apiGroups:
+  - templates.weave.works
+  resources:
+  - gitopssets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - templates.weave.works
+  resources:
+  - gitopssets/status
+  verbs:
+  - get
