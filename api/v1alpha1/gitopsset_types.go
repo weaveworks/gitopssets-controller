@@ -17,25 +17,70 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// // ©itOpsSetTemplate describes a resource to create
+type GitOpsSetTemplate struct {
+	runtime.RawExtension `json:",inline"`
+}
+
+// ListGenerator generates from a hard-coded list.
+type ListGenerator struct {
+	Elements []apiextensionsv1.JSON `json:"elements"`
+
+	Template *GitOpsSetTemplate `json:"template,omitempty"`
+}
+
+// GitRepositoryGeneratorDirectoryItem defines a path to be parsed (or excluded from) for
+// files.
+type GitRepositoryGeneratorDirectoryItem struct {
+	Path    string `json:"path"`
+	Exclude bool   `json:"exclude,omitempty"`
+}
+
+// GitRepositoryGenerator generates from files in a Flux GitRepository resource.
+type GitRepositoryGenerator struct {
+	// RepositoryRef is the name of a GitRepository resource to be generated from.
+	RepositoryRef string `json:"repositoryRef"`
+
+	// Directories is a set of rules for identifying directories to be parsed.
+	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
+
+	// Template is an optional template that can be merged with generated
+	// Kustomizations.
+	Template *GitOpsSetTemplate `json:"template,omitempty"`
+}
+
+// GitOpsSet describes the configured generators.
+type GitOpsSetGenerator struct {
+	List          *ListGenerator          `json:"list,omitempty"`
+	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+}
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
 type GitOpsSetSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of GitOpsSet. Edit gitopsset_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Generators []GitOpsSet       `json:"generators"`
+	Template   GitOpsSetTemplate `json:"template"`
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet
 type GitOpsSetStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// ObservedGeneration is the last observed generation of the HelmRepository
+	// object.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Conditions holds the conditions for the GitOpsSet
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// Inventory contains the list of Kubernetes resource object references that
+	// have been successfully applied
+	// +optional
+	Inventory *ResourceInventory `json:"inventory,omitempty"`
 }
 
 //+kubebuilder:object:root=true
