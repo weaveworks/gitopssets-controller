@@ -30,8 +30,6 @@ type GitOpsSetTemplate struct {
 // ListGenerator generates from a hard-coded list.
 type ListGenerator struct {
 	Elements []apiextensionsv1.JSON `json:"elements"`
-
-	Template *GitOpsSetTemplate `json:"template,omitempty"`
 }
 
 // GitRepositoryGeneratorDirectoryItem defines a path to be parsed (or excluded from) for
@@ -48,10 +46,6 @@ type GitRepositoryGenerator struct {
 
 	// Directories is a set of rules for identifying directories to be parsed.
 	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
-
-	// Template is an optional template that can be merged with generated
-	// Kustomizations.
-	Template *GitOpsSetTemplate `json:"template,omitempty"`
 }
 
 // GitOpsSet describes the configured generators.
@@ -62,8 +56,8 @@ type GitOpsSetGenerator struct {
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
 type GitOpsSetSpec struct {
-	Generators []GitOpsSet       `json:"generators"`
-	Template   GitOpsSetTemplate `json:"template"`
+	Generators []GitOpsSetGenerator `json:"generators,omit"`
+	Template   GitOpsSetTemplate    `json:"template"`
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet

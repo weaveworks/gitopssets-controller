@@ -31,7 +31,7 @@ func NewGenerator(l logr.Logger) *ListGenerator {
 
 func (g *ListGenerator) Generate(_ context.Context, sg *templatesv1.GitOpsSetGenerator, _ *templatesv1.GitOpsSet) ([]map[string]any, error) {
 	if sg == nil {
-		return nil, generators.EmptyGitOpsSetGeneratorError
+		return nil, generators.ErrEmptyGitOpsSetGenerator
 	}
 
 	if sg.List == nil {
