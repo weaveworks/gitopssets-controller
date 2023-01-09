@@ -6,9 +6,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	templatesv1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitops-sets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/test"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 

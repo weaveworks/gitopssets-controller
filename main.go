@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	templatesv1alpha1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitops-sets-controller/controllers"
+	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers"
 	//+kubebuilder:scaffold:imports
 )
 

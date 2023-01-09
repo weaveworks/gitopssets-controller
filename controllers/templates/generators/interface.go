@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	templatesv1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 )
 
 // GeneratorFactory is a way to create a per-reconciliation generator.

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	templatesv1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
 // ListGenerator is a generic JSON object list.

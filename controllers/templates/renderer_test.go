@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
 
-	templatesv1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators/list"
-	"github.com/weaveworks/gitops-sets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 const (

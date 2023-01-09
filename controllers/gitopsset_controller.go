@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	templatesv1alpha1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
+	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 )
 
 // GitOpsSetReconciler reconciles a GitOpsSet object

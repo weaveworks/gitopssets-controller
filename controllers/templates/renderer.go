@@ -9,13 +9,13 @@ import (
 	"text/template"
 
 	"github.com/gitops-tools/pkg/sanitize"
-	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	templatesv1 "github.com/weaveworks/gitops-sets-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
 var funcMap = template.FuncMap{
