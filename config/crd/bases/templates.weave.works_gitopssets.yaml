@@ -36,6 +36,8 @@ spec:
             description: GitOpsSetSpec defines the desired state of GitOpsSet
             properties:
               generators:
+                description: Generators generate the data to be inserted into the
+                  provided templates.
                 items:
                   description: GitOpsSet describes the configured generators.
                   properties:
@@ -77,13 +79,14 @@ spec:
                       type: object
                   type: object
                 type: array
-              template:
-                description: // ©itOpsSetTemplate describes a resource to create
-                type: object
-                x-kubernetes-preserve-unknown-fields: true
-            required:
-            - generators
-            - template
+              templates:
+                description: Templates are a set of YAML templates that are rendered
+                  into resources from the data supplied by the generators.
+                items:
+                  description: // ©itOpsSetTemplate describes a resource to create
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                type: array
             type: object
           status:
             description: GitOpsSetStatus defines the observed state of GitOpsSet

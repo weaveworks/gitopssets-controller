@@ -56,8 +56,12 @@ type GitOpsSetGenerator struct {
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
 type GitOpsSetSpec struct {
-	Generators []GitOpsSetGenerator `json:"generators,omit"`
-	Template   GitOpsSetTemplate    `json:"template"`
+	// Generators generate the data to be inserted into the provided templates.
+	Generators []GitOpsSetGenerator `json:"generators,omitempty"`
+
+	// Templates are a set of YAML templates that are rendered into resources
+	// from the data supplied by the generators.
+	Templates []GitOpsSetTemplate `json:"templates,omitempty"`
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet

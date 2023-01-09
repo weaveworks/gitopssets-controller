@@ -1,14 +1,15 @@
-package reconciler
+package templates
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"text/template"
 
 	"github.com/gitops-tools/pkg/sanitize"
-	"github.com/weaveworks/gitops-sets-controller/controllers/render/generators"
+	"github.com/weaveworks/gitops-sets-controller/controllers/templates/generators"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -21,26 +22,27 @@ var funcMap = template.FuncMap{
 	"sanitize": sanitize.SanitizeDNSName,
 }
 
-// RenderTemplates parses the GitOpsSet and renders the template resources using
+// Render parses the GitOpsSet and renders the template resources using
 // the configured generators and templates.
-func RenderTemplates(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]runtime.Object, error) {
+func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]runtime.Object, error) {
 	rendered := []runtime.Object{}
 
 	for _, gen := range r.Spec.Generators {
-		transformed, err := transform(ctx, gen, configuredGenerators, r.Spec.Template, r)
+		generated, err := generate(ctx, gen, configuredGenerators, r)
 		if err != nil {
-			return nil, fmt.Errorf("failed to transform template for set %s: %w", r.GetName(), err)
+			return nil, fmt.Errorf("failed to generate template for set %s: %w", r.GetName(), err)
 		}
 
-		for _, result := range transformed {
-			for _, param := range result.Params {
-				// TODO: This should iterate!
-				res, err := renderTemplateParams(r.Spec.Template, param, r.GetNamespace())
-				if err != nil {
-					return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
-				}
+		for _, params := range generated {
+			for _, param := range params {
+				for _, template := range r.Spec.Templates {
+					res, err := renderTemplateParams(template, param, r.GetNamespace())
+					if err != nil {
+						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
+					}
 
-				rendered = append(rendered, res...)
+					rendered = append(rendered, res...)
+				}
 			}
 		}
 	}
@@ -84,6 +86,8 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	return objects, nil
 }
 
+// TODO: pass the `GitOpsSet` through to here so that we can fix the
+// `template.New` to include the name/namespace.
 func render(b []byte, params map[string]any) ([]byte, error) {
 	t, err := template.New("gitopsset-template").Funcs(funcMap).Parse(string(b))
 	if err != nil {
@@ -96,4 +100,35 @@ func render(b []byte, params map[string]any) ([]byte, error) {
 	}
 
 	return out.Bytes(), nil
+}
+
+func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
+	generated := [][]map[string]any{}
+	generators := findRelevantGenerators(&generator, allGenerators)
+	for _, g := range generators {
+		res, err := g.Generate(ctx, &generator, gitopsSet)
+		if err != nil {
+			return nil, err
+		}
+
+		generated = append(generated, res)
+	}
+
+	return generated, nil
+}
+
+func findRelevantGenerators(setGenerator *templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator) []generators.Generator {
+	var res []generators.Generator
+	v := reflect.Indirect(reflect.ValueOf(setGenerator))
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if !field.CanInterface() {
+			continue
+		}
+
+		if !reflect.ValueOf(field.Interface()).IsNil() {
+			res = append(res, allGenerators[v.Type().Field(i).Name])
+		}
+	}
+	return res
 }
