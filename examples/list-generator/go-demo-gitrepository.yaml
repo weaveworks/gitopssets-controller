@@ -1,0 +1,10 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: GitRepository
+metadata:
+  name: go-demo-repo
+  namespace: default
+spec:
+  interval: 15m
+  url: https://github.com/bigkevmcd/go-demo
+  ref:
+    branch: main

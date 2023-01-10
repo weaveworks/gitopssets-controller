@@ -11,13 +11,13 @@ metadata:
 spec:
   generators:
     - list:
-      elements:
-        - env: dev
-          team: dev-team
-        - env: production
-          team: ops-team
-        - env: staging
-          team: ops-team
+        elements:
+          - env: dev
+            team: dev-team
+          - env: production
+            team: ops-team
+          - env: staging
+            team: ops-team
   templates:
     - kind: Kustomization
       apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
