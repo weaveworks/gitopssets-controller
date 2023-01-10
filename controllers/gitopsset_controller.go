@@ -9,12 +9,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	Generators map[string]generators.GeneratorFactory
 }
 
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete

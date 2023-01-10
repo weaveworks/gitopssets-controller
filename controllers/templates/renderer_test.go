@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -45,11 +44,11 @@ func TestRender(t *testing.T) {
 				{Raw: []byte(`{"env": "engineering-preprod","externalIP": "192.168.150.30"}`)},
 			},
 			want: []runtime.Object{
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo"), setClusterIP("192.168.50.50"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo"), setClusterIP("192.168.100.20"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}))),
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-preprod-demo"), setClusterIP("192.168.150.30"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-preprod-demo"), setClusterIP("192.168.150.30"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-preprod")}))),
 			},
 		},
@@ -62,7 +61,7 @@ func TestRender(t *testing.T) {
 				func(s *templatesv1.GitOpsSet) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
-							runtime.RawExtension{
+							RawExtension: runtime.RawExtension{
 								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{sanitize .env}}-demo"})),
 							},
 						},
@@ -70,7 +69,7 @@ func TestRender(t *testing.T) {
 				},
 			},
 			want: []runtime.Object{
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineeringdev-demo"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineeringdev-demo"),
 					setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}))),
 			},
@@ -85,12 +84,12 @@ func TestRender(t *testing.T) {
 				func(s *templatesv1.GitOpsSet) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
-							runtime.RawExtension{
+							RawExtension: runtime.RawExtension{
 								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo1"})),
 							},
 						},
 						{
-							runtime.RawExtension{
+							RawExtension: runtime.RawExtension{
 								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo2"})),
 							},
 						},
@@ -98,13 +97,13 @@ func TestRender(t *testing.T) {
 				},
 			},
 			want: []runtime.Object{
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo2"), setClusterIP("192.168.50.50"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo2"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}))),
-				newTestUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo2"), setClusterIP("192.168.100.20"),
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo2"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}))),
 			},
 		},
@@ -135,7 +134,7 @@ func TestRender_errors(t *testing.T) {
 				func(s *templatesv1.GitOpsSet) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
-							runtime.RawExtension{
+							RawExtension: runtime.RawExtension{
 								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .unknown}}-demo1"})),
 							},
 						},
@@ -183,7 +182,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 		Spec: templatesv1.GitOpsSetSpec{
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
-					runtime.RawExtension{
+					RawExtension: runtime.RawExtension{
 						Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{.env}}-demo"})),
 					},
 				},
@@ -252,15 +251,4 @@ func nsn(namespace, name string) types.NamespacedName {
 		Name:      name,
 		Namespace: namespace,
 	}
-}
-
-func newTestUnstructured(t *testing.T, obj runtime.Object) *unstructured.Unstructured {
-	t.Helper()
-	raw, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		t.Fatal(err)
-	}
-	delete(raw, "status")
-
-	return &unstructured.Unstructured{Object: raw}
 }
