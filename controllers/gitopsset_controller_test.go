@@ -33,7 +33,7 @@ import (
 )
 
 var kustomizationGVK = schema.GroupVersionKind{
-	Group:   "source.toolkit.fluxcd.io",
+	Group:   "kustomize.toolkit.fluxcd.io",
 	Kind:    "Kustomization",
 	Version: "v1beta2",
 }
@@ -43,6 +43,7 @@ func TestReconciliation(t *testing.T) {
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
+			"testdata/crds",
 		},
 	}
 
@@ -389,7 +390,7 @@ func makeTestKustomization(name types.NamespacedName, opts ...func(*kustomizev1.
 	k := &kustomizev1.Kustomization{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Kustomization",
-			APIVersion: "source.toolkit.fluxcd.io/v1beta2",
+			APIVersion: "kustomize.toolkit.fluxcd.io/v1beta2",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.Name,

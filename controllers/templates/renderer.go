@@ -24,8 +24,8 @@ var funcMap = template.FuncMap{
 
 // Render parses the GitOpsSet and renders the template resources using
 // the configured generators and templates.
-func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]runtime.Object, error) {
-	rendered := []runtime.Object{}
+func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]*unstructured.Unstructured, error) {
+	rendered := []*unstructured.Unstructured{}
 
 	for _, gen := range r.Spec.Generators {
 		generated, err := generate(ctx, gen, configuredGenerators, r)
@@ -50,14 +50,14 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return rendered, nil
 }
 
-func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]runtime.Object, error) {
+func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]*unstructured.Unstructured, error) {
 	rendered, err := render(tmpl.Raw, params)
 	if err != nil {
 		return nil, err
 	}
 
 	// Technically multiple objects could be in the YAML...
-	var objects []runtime.Object
+	var objects []*unstructured.Unstructured
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rendered), 100)
 	for {
 		var rawObj runtime.RawExtension

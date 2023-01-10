@@ -17,6 +17,8 @@ import (
 
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -76,6 +78,9 @@ func main() {
 	if err = (&controllers.GitOpsSetReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Generators: map[string]generators.GeneratorFactory{
+			"List": list.GeneratorFactory(),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")
 		os.Exit(1)
