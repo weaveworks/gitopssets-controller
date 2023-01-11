@@ -2,6 +2,7 @@ package templates
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -63,7 +63,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							RawExtension: runtime.RawExtension{
-								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{sanitize .env}}-demo"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{sanitize .env}}-demo"})),
 							},
 						},
 					}
@@ -86,12 +86,12 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							RawExtension: runtime.RawExtension{
-								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo1"})),
 							},
 						},
 						{
 							RawExtension: runtime.RawExtension{
-								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo2"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo2"})),
 							},
 						},
 					}
@@ -137,7 +137,7 @@ func TestRender(t *testing.T) {
 // 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 // 						{
 // 							RawExtension: runtime.RawExtension{
-// 								Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{ .unknown}}-demo1"})),
+// 								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .unknown}}-demo1"})),
 // 							},
 // 						},
 // 					}
@@ -185,7 +185,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					RawExtension: runtime.RawExtension{
-						Raw: mustMarshalYAML(t, makeTestService(types.NamespacedName{Name: "{{.env}}-demo"})),
+						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{.env}}-demo"})),
 					},
 				},
 			},
@@ -235,8 +235,8 @@ func setClusterIP(ip string) func(s *corev1.Service) {
 	}
 }
 
-func mustMarshalYAML(t *testing.T, r runtime.Object) []byte {
-	b, err := yaml.Marshal(r)
+func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {
+	b, err := json.Marshal(r)
 	test.AssertNoError(t, err)
 
 	return b

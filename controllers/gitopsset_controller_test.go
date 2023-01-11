@@ -17,13 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/yaml"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -84,75 +83,58 @@ func TestReconciliation(t *testing.T) {
 		updated := &templatesv1.GitOpsSet{}
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 
-		// want := []runtime.Object{
-		// 	makeTestKustomization(nsn("engineering-dev-demo", "default")),
-		// 	makeTestKustomization(nsn("engineering-prod-demo", "default")),
-		// 	makeTestKustomization(nsn("engineering-preprod-demo", "default")),
-		// }
-		// assertInventoryHasItems(t, updated, want...)
-
-		// assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 kustomizations created")
-		// assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
+		want := []runtime.Object{
+			makeTestKustomization(nsn("default", "engineering-dev-demo")),
+			makeTestKustomization(nsn("default", "engineering-prod-demo")),
+			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+		}
+		assertInventoryHasItems(t, updated, want...)
+		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
+		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
-	// t.Run("reconciling removal of resources", func(t *testing.T) {
-	// 	ctx := context.TODO()
-	// 	devKS := makeTestKustomization(nsn("engineering-dev-demo", "default"))
-	// 	gs := makeTestGitOpsSet(func(gs *templatesv1.GitOpsSet) {
-	// 		gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
-	// 			{
-	// 				List: &templatesv1.ListGenerator{
-	// 					Elements: []apiextensionsv1.JSON{
-	// 						{Raw: []byte(`{"cluster": "engineering-prod"}`)},
-	// 						{Raw: []byte(`{"cluster": "engineering-preprod"}`)},
-	// 					},
-	// 				},
-	// 			},
-	// 		}
-	// 	})
-	// 	// TODO: create and cleanup
-	// 	if err := k8sClient.Create(ctx, gs); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	defer cleanupResource(t, k8sClient, gs)
-	// 	if err := k8sClient.Create(ctx, devKS); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	defer deleteAllKustomizations(t, k8sClient)
+	t.Run("reconciling removal of resources", func(t *testing.T) {
+		ctx := context.TODO()
+		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"))
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "engineering-prod"}`)},
+							{Raw: []byte(`{"cluster": "engineering-preprod"}`)},
+						},
+					},
+				},
+			}
+		})
 
-	// 	objMeta, err := object.RuntimeToObjMeta(devKS)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	gs.Status.Inventory = &templatesv1.ResourceInventory{
-	// 		Entries: []templatesv1.ResourceRef{
-	// 			{
-	// 				ID:      objMeta.String(),
-	// 				Version: devKS.GetObjectKind().GroupVersionKind().GroupVersion().String(),
-	// 			},
-	// 		},
-	// 	}
-	// 	if err := k8sClient.Status().Update(ctx, gs); err != nil {
-	// 		t.Fatal(err)
-	// 	}
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		defer cleanupResource(t, k8sClient, gs)
 
-	// 	_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
+		defer deleteAllKustomizations(t, k8sClient)
 
-	// 	updated := &templatesv1.GitOpsSet{}
-	// 	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-	// 		t.Fatal(err)
-	// 	}
+		ref, err := resourceRefFromObject(devKS)
+		test.AssertNoError(t, err)
 
-	// 	want := []runtime.Object{
-	// 		makeTestKustomization(nsn("engineering-prod-demo", "default")),
-	// 		makeTestKustomization(nsn("engineering-preprod-demo", "default")),
-	// 	}
-	// 	assertInventoryHasItems(t, updated, want...)
-	// 	assertResourceDoesNotExist(t, k8sClient, devKS)
-	// })
+		gs.Status.Inventory = &templatesv1.ResourceInventory{
+			Entries: []templatesv1.ResourceRef{ref},
+		}
+		test.AssertNoError(t, k8sClient.Status().Update(ctx, gs))
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+		want := []runtime.Object{
+			makeTestKustomization(nsn("default", "engineering-prod-demo")),
+			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+		}
+		assertInventoryHasItems(t, updated, want...)
+		assertResourceDoesNotExist(t, k8sClient, devKS)
+	})
 
 	// t.Run("reconciling update of resources", func(t *testing.T) {
 	// 	ctx := context.TODO()
@@ -248,7 +230,9 @@ func deleteAllKustomizations(t *testing.T, cl client.Client) {
 
 func assertResourceDoesNotExist(t *testing.T, cl client.Client, gs *kustomizev1.Kustomization) {
 	t.Helper()
-	check := &kustomizev1.Kustomization{}
+	check := &unstructured.Unstructured{}
+	check.SetGroupVersionKind(kustomizationGVK)
+
 	if err := cl.Get(context.TODO(), client.ObjectKeyFromObject(gs), check); !apierrors.IsNotFound(err) {
 		t.Fatalf("object %v still exists", gs)
 	}
@@ -288,25 +272,23 @@ func assertGitOpsSetCondition(t *testing.T, gs *templatesv1.GitOpsSet, condType,
 func assertInventoryHasItems(t *testing.T, gs *templatesv1.GitOpsSet, objs ...runtime.Object) {
 	t.Helper()
 	if l := len(gs.Status.Inventory.Entries); l != len(objs) {
-		t.Fatalf("expected %d items, got %v", len(objs), l)
+		t.Errorf("expected %d items, got %v", len(objs), l)
 	}
 	entries := []templatesv1.ResourceRef{}
 	for _, obj := range objs {
-		objMeta, err := object.RuntimeToObjMeta(obj)
+		ref, err := resourceRefFromObject(obj)
 		if err != nil {
 			t.Fatal(err)
 		}
-		entries = append(entries, templatesv1.ResourceRef{
-			ID:      objMeta.String(),
-			Version: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),
-		})
+		entries = append(entries, ref)
 	}
+
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].ID < entries[j].ID
 	})
 	want := &templatesv1.ResourceInventory{Entries: entries}
 	if diff := cmp.Diff(want, gs.Status.Inventory); diff != "" {
-		t.Fatalf("failed to get inventory:\n%s", diff)
+		t.Errorf("failed to get inventory:\n%s", diff)
 	}
 }
 
@@ -370,13 +352,6 @@ func objectMetaIgnore() []cmp.Option {
 	return []cmp.Option{
 		cmpopts.IgnoreFields(metav1.ObjectMeta{}, "UID", "ResourceVersion", "Generation", "CreationTimestamp", "ManagedFields"),
 	}
-}
-
-func mustMarshalYAML(t *testing.T, r runtime.Object) []byte {
-	b, err := yaml.Marshal(r)
-	test.AssertNoError(t, err)
-
-	return b
 }
 
 func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {

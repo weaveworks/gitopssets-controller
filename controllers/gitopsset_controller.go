@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -80,33 +81,29 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 
 	entries := sets.New[templatesv1.ResourceRef]()
 	for _, resource := range resources {
-		objMeta, err := object.RuntimeToObjMeta(resource)
+		ref, err := resourceRefFromObject(resource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update inventory: %w", err)
 		}
-		ref := templatesv1.ResourceRef{
-			ID:      objMeta.String(),
-			Version: resource.GetObjectKind().GroupVersionKind().GroupVersion().String(),
-		}
 		entries.Insert(ref)
 
-		// if existingEntries.Has(ref) {
-		// 	existing := &kustomizev1.Kustomization{}
-		// 	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), existing); err != nil {
-		// 		return nil, fmt.Errorf("failed to load existing Kustomization: %w", err)
-		// 	}
-		// 	patchHelper, err := patch.NewHelper(existing, r.Client)
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("failed to create patch helper for Kustomization: %w", err)
-		// 	}
-		// 	existing.ObjectMeta.Annotations = resource.Annotations
-		// 	existing.ObjectMeta.Labels = resource.Labels
-		// 	existing.Spec = resource.Spec
-		// 	if err := patchHelper.Patch(ctx, existing); err != nil {
-		// 		return nil, fmt.Errorf("failed to update Kustomization: %w", err)
-		// 	}
-		// 	continue
-		// }
+		if existingEntries.Has(ref) {
+			// existing := &kustomizev1.Kustomization{}
+			// if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), existing); err != nil {
+			// 	return nil, fmt.Errorf("failed to load existing Kustomization: %w", err)
+			// }
+			// patchHelper, err := patch.NewHelper(existing, r.Client)
+			// if err != nil {
+			// 	return nil, fmt.Errorf("failed to create patch helper for Kustomization: %w", err)
+			// }
+			// existing.ObjectMeta.Annotations = resource.Annotations
+			// existing.ObjectMeta.Labels = resource.Labels
+			// existing.Spec = resource.Spec
+			// if err := patchHelper.Patch(ctx, existing); err != nil {
+			// 	return nil, fmt.Errorf("failed to update Kustomization: %w", err)
+			// }
+			// continue
+		}
 
 		controllerutil.SetOwnerReference(gitOpsSet, resource, r.Scheme)
 
@@ -121,10 +118,10 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 		})}, nil
 
 	}
-	// kustomizationsToRemove := existingEntries.Difference(entries)
-	// if err := r.removeResourceRefs(ctx, kustomizationsToRemove.List()); err != nil {
-	// 	return nil, err
-	// }
+	objectsToRemove := existingEntries.Difference(entries)
+	if err := r.removeResourceRefs(ctx, objectsToRemove.List()); err != nil {
+		return nil, err
+	}
 
 	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 		return x.ID < y.ID
@@ -132,28 +129,47 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 
 }
 
-// func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions []templatesv1.ResourceRef) error {
-// 	for _, v := range deletions {
-// 		objMeta, err := object.ParseObjMetadata(v.ID)
-// 		if err != nil {
-// 			return fmt.Errorf("failed to parse object ID %s for deletion: %w", v.ID, err)
-// 		}
-// 		k := kustomizev1.Kustomization{
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Name:      objMeta.Name,
-// 				Namespace: objMeta.Namespace,
-// 			},
-// 		}
-// 		if err := r.Client.Delete(ctx, &k); err != nil {
-// 			return fmt.Errorf("failed to delete %v: %w", k, err)
-// 		}
-// 	}
-// 	return nil
-// }
+func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions []templatesv1.ResourceRef) error {
+	for _, v := range deletions {
+		u, err := unstructuredFromResourceRef(v)
+		if err != nil {
+			return err
+		}
+		if err := r.Client.Delete(ctx, u); err != nil {
+			return fmt.Errorf("failed to delete %v: %w", u, err)
+		}
+	}
+	return nil
+}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&templatesv1.GitOpsSet{}).
 		Complete(r)
+}
+
+func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Unstructured, error) {
+	objMeta, err := object.ParseObjMetadata(ref.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse object ID %s: %w", ref.ID, err)
+	}
+	u := unstructured.Unstructured{}
+	u.SetGroupVersionKind(objMeta.GroupKind.WithVersion(ref.Version))
+	u.SetName(objMeta.Name)
+	u.SetNamespace(objMeta.Namespace)
+
+	return &u, nil
+}
+
+func resourceRefFromObject(obj runtime.Object) (templatesv1.ResourceRef, error) {
+	objMeta, err := object.RuntimeToObjMeta(obj)
+	if err != nil {
+		return templatesv1.ResourceRef{}, fmt.Errorf("failed to parse object Metadata: %w", err)
+	}
+
+	return templatesv1.ResourceRef{
+		ID:      objMeta.String(),
+		Version: obj.GetObjectKind().GroupVersionKind().Version,
+	}, nil
 }
