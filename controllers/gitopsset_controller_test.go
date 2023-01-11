@@ -48,8 +48,13 @@ func TestReconciliation(t *testing.T) {
 
 	cfg, err := testEnv.Start()
 	test.AssertNoError(t, err)
+	defer testEnv.Stop()
 
 	scheme := runtime.NewScheme()
+	// This deliberately only sets up the scheme for the core scheme + the
+	// GitOpsSets templating scheme.
+	// All other resources must be created via unstructureds, this includes
+	// Kustomizations.
 	test.AssertNoError(t, clientgoscheme.AddToScheme(scheme))
 	test.AssertNoError(t, templatesv1.AddToScheme(scheme))
 
@@ -136,85 +141,90 @@ func TestReconciliation(t *testing.T) {
 		assertResourceDoesNotExist(t, k8sClient, devKS)
 	})
 
-	// t.Run("reconciling update of resources", func(t *testing.T) {
-	// 	ctx := context.TODO()
-	// 	devKS := makeTestKustomization(nsn("engineering-dev-demo", "default"), func(k *kustomizev1.Kustomization) {
-	// 		k.ObjectMeta.Annotations = map[string]string{
-	// 			"testing": "testing",
-	// 		}
-	// 	})
-	// 	gs := makeTestGitOpsSet(func(gs *templatesv1.GitOpsSet) {
-	// 		gs.Spec.Template.KustomizationSetTemplateMeta = templatesv1.GitOpsSetTemplateMeta{
-	// 			Name:      `{{.cluster}}-demo`,
-	// 			Namespace: "default",
-	// 			Annotations: map[string]string{
-	// 				"testing.cluster": "{{.cluster}}",
-	// 			},
-	// 		}
-	// 		gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
-	// 			{
-	// 				List: &templatesv1.ListGenerator{
-	// 					Elements: []apiextensionsv1.JSON{
-	// 						{Raw: []byte(`{"cluster": "engineering-dev"}`)},
-	// 					},
-	// 				},
-	// 			},
-	// 		}
-	// 	})
-	// 	// TODO: create and cleanup
-	// 	if err := k8sClient.Create(ctx, gs); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	defer cleanupResource(t, k8sClient, gs)
-	// 	if err := k8sClient.Create(ctx, devKS); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	defer deleteAllKustomizations(t, k8sClient)
+	t.Run("reconciling update of resources", func(t *testing.T) {
+		ctx := context.TODO()
+		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Annotations = map[string]string{
+				"testing": "existingResource",
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
+		defer deleteAllKustomizations(t, k8sClient)
 
-	// 	objMeta, err := object.RuntimeToObjMeta(devKS)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	gs.Status.Inventory = &templatesv1.ResourceInventory{
-	// 		Entries: []templatesv1.ResourceRef{
-	// 			{
-	// 				ID:      objMeta.String(),
-	// 				Version: devKS.GetObjectKind().GroupVersionKind().GroupVersion().String(),
-	// 			},
-	// 		},
-	// 	}
-	// 	if err := k8sClient.Status().Update(ctx, gs); err != nil {
-	// 		t.Fatal(err)
-	// 	}
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{
+					RawExtension: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{.cluster}}-demo"), func(ks *kustomizev1.Kustomization) {
+							ks.Name = "{{.cluster}}-demo"
+							ks.Namespace = "default"
+							ks.Annotations = map[string]string{
+								"testing.cluster": "{{.cluster}}",
+								"testing":         "newVersion",
+							}
+							ks.Spec.Path = "./templated/clusters/{{ .cluster }}/"
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .cluster }}"}}
+							ks.Spec.Force = true
+						})),
+					},
+				},
+			}
 
-	// 	_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "engineering-dev"}`)},
+						},
+					},
+				},
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		defer cleanupResource(t, k8sClient, gs)
 
-	// 	updated := &templatesv1.GitOpsSet{}
-	// 	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	wantUpdated := makeTestKustomization("engineering-dev-demo", "default", func(k *kustomizev1.Kustomization) {
-	// 		k.ObjectMeta.Annotations = map[string]string{
-	// 			"testing.cluster": "engineering-dev",
-	// 		}
-	// 		k.Spec.Path = "./clusters/engineering-dev/"
-	// 		k.Spec.KubeConfig = &kustomizev1.KubeConfig{SecretRef: meta.SecretKeyReference{Name: "engineering-dev"}}
-	// 	})
-	// 	want := []runtime.Object{
-	// 		wantUpdated,
-	// 	}
-	// 	assertInventoryHasItems(t, updated, want...)
-	// 	var kustomization kustomizev1.Kustomization
-	// 	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantUpdated), &kustomization); err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	if diff := cmp.Diff(wantUpdated, &kustomization, objectMetaIgnore()...); diff != "" {
-	// 		t.Fatalf("failed to update Kustomization:\n%s", diff)
-	// 	}
-	// })
+		ref, err := resourceRefFromObject(devKS)
+		test.AssertNoError(t, err)
+		gs.Status.Inventory = &templatesv1.ResourceInventory{
+			Entries: []templatesv1.ResourceRef{ref},
+		}
+		if err := k8sClient.Status().Update(ctx, gs); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			t.Fatal(err)
+		}
+		wantUpdated := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Annotations = map[string]string{
+				"testing.cluster": "engineering-dev",
+				"testing":         "newVersion",
+			}
+			k.Spec.Path = "./templated/clusters/engineering-dev/"
+			k.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "engineering-dev"}}
+			k.Spec.Force = true
+		})
+
+		want := []runtime.Object{
+			wantUpdated,
+		}
+		assertInventoryHasItems(t, updated, want...)
+
+		kustomization := &unstructured.Unstructured{}
+		kustomization.SetGroupVersionKind(kustomizationGVK)
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantUpdated), kustomization); err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()...); diff != "" {
+			t.Fatalf("failed to update Kustomization:\n%s", diff)
+		}
+	})
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -319,28 +329,28 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					RawExtension: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{.cluster}}-demo"))),
-						// , func(gs *kustomizev1.Kustomization) {
-						// 				gs.Spec = kustomizev1.KustomizationSpec{
-						// 					Interval: metav1.Duration{Duration: 5 * time.Minute},
-						// 					Path:     "./clusters/{{.cluster}}/",
-						// 					Prune:    true,
-						// 					SourceRef: kustomizev1.CrossNamespaceSourceReference{
-						// 						Kind: "GitRepository",
-						// 						Name: "demo-repo",
-						// 					},
-						// 					KubeConfig: &meta.KubeConfigReference{
-						// 						SecretRef: meta.SecretKeyReference{
-						// 							Name: "{{.cluster}}",
-						// 						},
-						// 					},
-						// 				}
-						// })),
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{.cluster}}-demo"), func(k *kustomizev1.Kustomization) {
+							k.Spec = kustomizev1.KustomizationSpec{
+								Interval: metav1.Duration{Duration: 5 * time.Minute},
+								Path:     "./clusters/{{.cluster}}/",
+								Prune:    true,
+								SourceRef: kustomizev1.CrossNamespaceSourceReference{
+									Kind: "GitRepository",
+									Name: "demo-repo",
+								},
+								KubeConfig: &meta.KubeConfigReference{
+									SecretRef: meta.SecretKeyReference{
+										Name: "{{.cluster}}",
+									},
+								},
+							}
+						})),
 					},
 				},
 			},
 		},
 	}
+
 	for _, o := range opts {
 		o(gs)
 	}
@@ -349,8 +359,17 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 }
 
 func objectMetaIgnore() []cmp.Option {
+	metaFields := []string{"uid", "resourceVersion", "generation", "creationTimestamp", "managedFields", "status"}
 	return []cmp.Option{
-		cmpopts.IgnoreFields(metav1.ObjectMeta{}, "UID", "ResourceVersion", "Generation", "CreationTimestamp", "ManagedFields"),
+		cmpopts.IgnoreMapEntries(func(k, v any) bool {
+			for _, key := range metaFields {
+				if key == k {
+					return true
+				}
+			}
+
+			return false
+		}),
 	}
 }
 

@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fluxcd/pkg/runtime/patch"
+	// TODO: v0.26.0 apiserver has support for a generic Set, switch to this
+	// when Flux supports v0.26.0
+	"github.com/gitops-tools/pkg/sets"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/object"
@@ -12,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/gitops-tools/pkg/sets"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -80,34 +83,36 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	}
 
 	entries := sets.New[templatesv1.ResourceRef]()
-	for _, resource := range resources {
-		ref, err := resourceRefFromObject(resource)
+	for _, newResource := range resources {
+		ref, err := resourceRefFromObject(newResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update inventory: %w", err)
 		}
 		entries.Insert(ref)
 
 		if existingEntries.Has(ref) {
-			// existing := &kustomizev1.Kustomization{}
-			// if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), existing); err != nil {
-			// 	return nil, fmt.Errorf("failed to load existing Kustomization: %w", err)
-			// }
-			// patchHelper, err := patch.NewHelper(existing, r.Client)
-			// if err != nil {
-			// 	return nil, fmt.Errorf("failed to create patch helper for Kustomization: %w", err)
-			// }
-			// existing.ObjectMeta.Annotations = resource.Annotations
-			// existing.ObjectMeta.Labels = resource.Labels
-			// existing.Spec = resource.Spec
-			// if err := patchHelper.Patch(ctx, existing); err != nil {
-			// 	return nil, fmt.Errorf("failed to update Kustomization: %w", err)
-			// }
-			// continue
+			existing, err := unstructuredFromResourceRef(ref)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert resource for update: %w", err)
+			}
+			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(newResource), existing); err != nil {
+				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
+			}
+			patchHelper, err := patch.NewHelper(existing, r.Client)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
+			}
+
+			existing = copyUnstructuredContent(existing, newResource)
+			if err := patchHelper.Patch(ctx, existing); err != nil {
+				return nil, fmt.Errorf("failed to update Resource: %w", err)
+			}
+			continue
 		}
 
-		controllerutil.SetOwnerReference(gitOpsSet, resource, r.Scheme)
+		controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme)
 
-		if err := r.Client.Create(ctx, resource); err != nil {
+		if err := r.Client.Create(ctx, newResource); err != nil {
 			return nil, fmt.Errorf("failed to create Resource: %w", err)
 		}
 	}
@@ -172,4 +177,22 @@ func resourceRefFromObject(obj runtime.Object) (templatesv1.ResourceRef, error) 
 		ID:      objMeta.String(),
 		Version: obj.GetObjectKind().GroupVersionKind().Version,
 	}, nil
+}
+
+func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *unstructured.Unstructured {
+	result := unstructured.Unstructured{}
+	existing.DeepCopyInto(&result)
+
+	disallowedKeys := sets.New("status", "metadata", "kind", "apiVersion")
+
+	for k, v := range newValue.Object {
+		if !disallowedKeys.Has(k) {
+			result.Object[k] = v
+		}
+	}
+
+	result.SetAnnotations(newValue.GetAnnotations())
+	result.SetLabels(newValue.GetLabels())
+
+	return &result
 }
