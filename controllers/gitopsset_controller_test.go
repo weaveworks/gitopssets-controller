@@ -98,6 +98,45 @@ func TestReconciliation(t *testing.T) {
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
+	t.Run("error conditions", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{
+					RawExtension: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+							ks.Name = "{{.cluster}}-demo"
+							ks.Annotations = map[string]string{
+								"testing.cluster": "{{.cluster}}",
+								"testing":         "newVersion",
+							}
+							ks.Spec.Path = "./templated/clusters/{{ .cluster }}/"
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .cluster }}"}}
+							ks.Spec.Force = true
+						})),
+					},
+				},
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Annotations = map[string]string{
+				"testing": "existingResource",
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
+		defer deleteAllKustomizations(t, k8sClient)
+		defer cleanupResource(t, k8sClient, gs)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "failed to create Resource: kustomizations.kustomize.toolkit.fluxcd.io \"engineering-dev-demo\" already exists")
+	})
+
 	t.Run("reconciling removal of resources", func(t *testing.T) {
 		ctx := context.TODO()
 		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"))
@@ -155,9 +194,8 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					RawExtension: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{.cluster}}-demo"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{.cluster}}-demo"
-							ks.Namespace = "default"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{.cluster}}",
 								"testing":         "newVersion",

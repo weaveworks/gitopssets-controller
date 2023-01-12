@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/fluxcd/pkg/runtime/patch"
-	// TODO: v0.26.0 apiserver has support for a generic Set, switch to this
+	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/object"
@@ -53,13 +54,19 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	inventory, err := r.reconcileResources(ctx, &gitOpsSet)
 	if err != nil {
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
+		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+			logger.Error(err, "failed to reconcile")
+		}
+
 		return ctrl.Result{}, err
 	}
 
 	if inventory != nil {
-		gitOpsSet = templatesv1.GitOpsSetReady(gitOpsSet, inventory, templatesv1.HealthyCondition, fmt.Sprintf("%d resources created", len(inventory.Entries)))
-		if err := r.Status().Update(ctx, &gitOpsSet); err != nil {
-			return ctrl.Result{}, err
+		templatesv1.SetReadyWithInventory(&gitOpsSet, inventory, templatesv1.ReconciliationSucceededReason,
+			fmt.Sprintf("%d resources created", len(inventory.Entries)))
+		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+			logger.Error(err, "failed to reconcile")
 		}
 	}
 
@@ -132,6 +139,18 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 		return x.ID < y.ID
 	})}, nil
 
+}
+
+func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request, newStatus templatesv1.GitOpsSetStatus) error {
+	var set templatesv1.GitOpsSet
+	if err := r.Get(ctx, req.NamespacedName, &set); err != nil {
+		return err
+	}
+
+	patch := client.MergeFrom(set.DeepCopy())
+	set.Status = newStatus
+
+	return r.Status().Patch(ctx, &set, patch)
 }
 
 func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions []templatesv1.ResourceRef) error {

@@ -7,35 +7,28 @@ import (
 )
 
 const (
-	maxConditionMessageLength = 20000
+	// ReconciliationFailedReason represents the fact that
+	// the reconciliation failed.
+	ReconciliationFailedReason string = "ReconciliationFailed"
 
-	// HealthyCondition indicates that the GitOpsSet has created all its
-	// resources.
-	HealthyCondition string = "Healthy"
+	// ReconciliationSucceededReason represents the fact that
+	// the reconciliation succeeded.
+	ReconciliationSucceededReason string = "ReconciliationSucceeded"
 )
 
-// GitOpsSetReady registers a successful apply attempt of the given GitOps.
-func GitOpsSetReady(k GitOpsSet, inventory *ResourceInventory, reason, message string) GitOpsSet {
-	setGitOpsSetReadiness(&k, metav1.ConditionTrue, reason, message)
-	k.Status.Inventory = inventory
-	return k
-}
-
-func setGitOpsSetReadiness(k *GitOpsSet, status metav1.ConditionStatus, reason, message string) {
+// SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.
+func SetGitOpsSetReadiness(set *GitOpsSet, status metav1.ConditionStatus, reason, message string) {
+	set.Status.ObservedGeneration = set.ObjectMeta.Generation
 	newCondition := metav1.Condition{
 		Type:    meta.ReadyCondition,
 		Status:  status,
 		Reason:  reason,
-		Message: limitMessage(message),
+		Message: message,
 	}
-	apimeta.SetStatusCondition(&k.Status.Conditions, newCondition)
+	apimeta.SetStatusCondition(&set.Status.Conditions, newCondition)
 }
 
-// chop a string and add an ellipsis to indicate that it's been chopped.
-func limitMessage(s string) string {
-	if len(s) <= maxConditionMessageLength {
-		return s
-	}
-
-	return s[0:maxConditionMessageLength-3] + "..."
+func SetReadyWithInventory(set *GitOpsSet, inventory *ResourceInventory, reason, message string) {
+	set.Status.Inventory = inventory
+	SetGitOpsSetReadiness(set, metav1.ConditionTrue, reason, message)
 }
