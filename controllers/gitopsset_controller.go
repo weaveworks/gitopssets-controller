@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	"github.com/fluxcd/pkg/runtime/patch"
+	"github.com/go-logr/logr"
+
 	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +26,8 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
+
+var accessor = meta.NewAccessor()
 
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
@@ -76,6 +81,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, error) {
+	logger := log.FromContext(ctx)
 	generators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
 		generators[k] = factory(log.FromContext(ctx))
@@ -85,6 +91,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("rendered templates", "resourceCount", len(resources))
 
 	existingEntries := sets.New[templatesv1.ResourceRef]()
 	if gitOpsSet.Status.Inventory != nil {
@@ -112,6 +119,9 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 				return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
 			}
 
+			if err := logResourceMessage(logger, "updating existing resource", newResource); err != nil {
+				return nil, err
+			}
 			existing = copyUnstructuredContent(existing, newResource)
 			if err := patchHelper.Patch(ctx, existing); err != nil {
 				return nil, fmt.Errorf("failed to update Resource: %w", err)
@@ -120,6 +130,10 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 		}
 
 		controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme)
+
+		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
+			return nil, err
+		}
 
 		if err := r.Client.Create(ctx, newResource); err != nil {
 			return nil, fmt.Errorf("failed to create Resource: %w", err)
@@ -156,11 +170,16 @@ func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request,
 }
 
 func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions []templatesv1.ResourceRef) error {
+	logger := log.FromContext(ctx)
 	for _, v := range deletions {
 		u, err := unstructuredFromResourceRef(v)
 		if err != nil {
 			return err
 		}
+		if err := logResourceMessage(logger, "deleting resource", u); err != nil {
+			return err
+		}
+
 		if err := r.Client.Delete(ctx, u); err != nil {
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
@@ -216,4 +235,24 @@ func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *uns
 	result.SetLabels(newValue.GetLabels())
 
 	return &result
+}
+
+func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) error {
+	namespace, err := accessor.Namespace(obj)
+	if err != nil {
+		return err
+	}
+	name, err := accessor.Name(obj)
+	if err != nil {
+		return err
+	}
+	kind, err := accessor.Kind(obj)
+	if err != nil {
+		return err
+	}
+
+	logger.Info(msg, "objNamespace", namespace, "objName", name, "kind", kind)
+
+	return nil
+
 }

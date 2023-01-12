@@ -27,5 +27,5 @@ roleRef:
   name: demo-role
 subjects:
 - kind: ServiceAccount
-  name: gitopssets-controller-controller-manager
-  namespace: gitopssets-controller
+  name: gitopssets-controller-manager
+  namespace: gitopssets-system
