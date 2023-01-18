@@ -1,4 +1,3 @@
 resources:
-  - go-demo-gitrepository.yaml
-  - role.yaml
+  - ../base
   - list-generator.yaml
