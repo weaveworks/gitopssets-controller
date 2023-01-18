@@ -15,6 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -30,7 +31,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(sourcev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sourcev1.AddToScheme(scheme))
 
 	utilruntime.Must(templatesv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
