@@ -51,7 +51,7 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 }
 
 func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]*unstructured.Unstructured, error) {
-	rendered, err := render(tmpl.Raw, params)
+	rendered, err := render(tmpl.Content.Raw, params)
 	if err != nil {
 		return nil, err
 	}

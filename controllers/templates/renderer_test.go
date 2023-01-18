@@ -62,7 +62,7 @@ func TestRender(t *testing.T) {
 				func(s *templatesv1.GitOpsSet) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
-							RawExtension: runtime.RawExtension{
+							Content: runtime.RawExtension{
 								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{sanitize .env}}-demo"})),
 							},
 						},
@@ -85,12 +85,12 @@ func TestRender(t *testing.T) {
 				func(s *templatesv1.GitOpsSet) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
-							RawExtension: runtime.RawExtension{
+							Content: runtime.RawExtension{
 								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo1"})),
 							},
 						},
 						{
-							RawExtension: runtime.RawExtension{
+							Content: runtime.RawExtension{
 								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo2"})),
 							},
 						},
@@ -184,7 +184,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 		Spec: templatesv1.GitOpsSetSpec{
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
-					RawExtension: runtime.RawExtension{
+					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{.env}}-demo"})),
 					},
 				},

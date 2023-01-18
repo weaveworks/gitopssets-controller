@@ -19,18 +19,19 @@ spec:
           - env: staging
             team: ops-team
   templates:
-    - kind: Kustomization
-      apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-      metadata:
-        name: "{{ .env }}-demo"
-        labels:
-          app.kubernetes.io/name: go-demo
-          app.kubernetes.io/instance: "{{ .env }}"
-          com.example/team: "{{ .team }}"
-      spec:
-        interval: 5m
-        path: "./examples/kustomize/environments/{{ .env }}"
-        prune: true
-        sourceRef:
-          kind: GitRepository
-          name: go-demo-repo
+    - content:
+      - kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .env }}"
+            com.example/team: "{{ .team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo

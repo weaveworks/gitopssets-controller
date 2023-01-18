@@ -8,7 +8,7 @@ import (
 
 // // ©itOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
-	runtime.RawExtension `json:",inline"`
+	Content runtime.RawExtension `json:"content"`
 }
 
 // ListGenerator generates from a hard-coded list.
