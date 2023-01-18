@@ -103,7 +103,7 @@ func TestReconciliation(t *testing.T) {
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
-					RawExtension: runtime.RawExtension{
+					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{.cluster}}-demo"
 							ks.Annotations = map[string]string{
@@ -193,7 +193,7 @@ func TestReconciliation(t *testing.T) {
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
-					RawExtension: runtime.RawExtension{
+					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{.cluster}}-demo"
 							ks.Annotations = map[string]string{
@@ -366,7 +366,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			},
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
-					RawExtension: runtime.RawExtension{
+					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{.cluster}}-demo"), func(k *kustomizev1.Kustomization) {
 							k.Spec = kustomizev1.KustomizationSpec{
 								Interval: metav1.Duration{Duration: 5 * time.Minute},

@@ -94,8 +94,13 @@ spec:
                   into resources from the data supplied by the generators.
                 items:
                   description: // ©itOpsSetTemplate describes a resource to create
+                  properties:
+                    content:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  required:
+                  - content
                   type: object
-                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
           status:
