@@ -43,9 +43,6 @@ func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 		return nil, nil
 	}
 
-	if sg.GitRepository.Directories != nil {
-		return nil, nil
-	}
 	if sg.GitRepository.Files != nil {
 		return g.generateParamsFromGitFiles(ctx, sg, ks)
 	}

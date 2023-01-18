@@ -16,13 +16,6 @@ type ListGenerator struct {
 	Elements []apiextensionsv1.JSON `json:"elements"`
 }
 
-// GitRepositoryGeneratorDirectoryItem defines a path to be parsed for (or excluded from)
-// directories within a GitRepository.
-type GitRepositoryGeneratorDirectoryItem struct {
-	Path    string `json:"path"`
-	Exclude bool   `json:"exclude,omitempty"`
-}
-
 // GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.
 type GitRepositoryGeneratorFileItem struct {
 	Path string `json:"path"`
@@ -32,9 +25,6 @@ type GitRepositoryGeneratorFileItem struct {
 type GitRepositoryGenerator struct {
 	// RepositoryRef is the name of a GitRepository resource to be generated from.
 	RepositoryRef string `json:"repositoryRef"`
-
-	// Directories is a set of rules for identifying directories to be parsed.
-	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
 
 	// Files is a set of rules for identifying files to be parsed.
 	Files []GitRepositoryGeneratorFileItem `json:"files,omitempty"`
