@@ -3,18 +3,24 @@ module github.com/weaveworks/gitopssets-controller
 go 1.19
 
 require (
+	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/fluxcd/kustomize-controller/api v0.32.0
 	github.com/fluxcd/pkg/apis/meta v0.18.0
+	github.com/fluxcd/pkg/http/fetch v0.3.0
 	github.com/fluxcd/pkg/runtime v0.25.0
+	github.com/fluxcd/pkg/tar v0.2.0
+	github.com/fluxcd/source-controller/api v0.33.0
 	github.com/gitops-tools/pkg v0.1.0
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-cmp v0.5.9
+	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.25.4
 	k8s.io/apiextensions-apiserver v0.25.4
 	k8s.io/apimachinery v0.25.4
 	k8s.io/client-go v0.25.4
 	sigs.k8s.io/cli-utils v0.34.0
 	sigs.k8s.io/controller-runtime v0.13.1
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -31,6 +37,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.10.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
+	github.com/fluxcd/pkg/apis/acl v0.1.0 // indirect
 	github.com/fluxcd/pkg/apis/kustomize v0.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -46,6 +53,8 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -62,7 +71,6 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20221028183056-acb66ad56dd2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
@@ -90,5 +98,4 @@ require (
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )

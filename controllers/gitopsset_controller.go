@@ -84,7 +84,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	logger := log.FromContext(ctx)
 	generators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
-		generators[k] = factory(log.FromContext(ctx))
+		generators[k] = factory(log.FromContext(ctx), r.Client)
 	}
 
 	resources, err := templates.Render(ctx, gitOpsSet, generators)

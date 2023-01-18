@@ -60,10 +60,24 @@ spec:
                             directories to be parsed.
                           items:
                             description: GitRepositoryGeneratorDirectoryItem defines
-                              a path to be parsed (or excluded from) for files.
+                              a path to be parsed for (or excluded from) directories
+                              within a GitRepository.
                             properties:
                               exclude:
                                 type: boolean
+                              path:
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        files:
+                          description: Files is a set of rules for identifying files
+                            to be parsed.
+                          items:
+                            description: GitRepositoryGeneratorFileItemm defines a
+                              path to a file to be parsed when generating.
+                            properties:
                               path:
                                 type: string
                             required:

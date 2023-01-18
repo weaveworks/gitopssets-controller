@@ -7,10 +7,11 @@ import (
 
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GeneratorFactory is a way to create a per-reconciliation generator.
-type GeneratorFactory func(logr.Logger) Generator
+type GeneratorFactory func(logr.Logger, client.Client) Generator
 
 // Generator defines the interface implemented by all GitOpsSet generators.
 type Generator interface {
@@ -29,7 +30,7 @@ type Generator interface {
 
 // ErrEmptyGitOpsSetGenerator is returned when GitOpsSet is
 // empty.
-var ErrEmptyGitOpsSetGenerator = errors.New("GitOpsSet is empty")
+var ErrEmptyGitOpsSet = errors.New("GitOpsSet is empty")
 var NoRequeueInterval time.Duration
 
 // DefaultInterval is used when Interval is not specified, it
