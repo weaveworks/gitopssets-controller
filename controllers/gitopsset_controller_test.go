@@ -48,7 +48,11 @@ func TestReconciliation(t *testing.T) {
 
 	cfg, err := testEnv.Start()
 	test.AssertNoError(t, err)
-	defer testEnv.Stop()
+	defer func() {
+		if err := testEnv.Stop(); err != nil {
+			t.Errorf("failed to stop the test environment: %s", err)
+		}
+	}()
 
 	scheme := runtime.NewScheme()
 	// This deliberately only sets up the scheme for the core scheme + the

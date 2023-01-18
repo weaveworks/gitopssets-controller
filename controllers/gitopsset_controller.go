@@ -9,18 +9,23 @@ import (
 
 	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
@@ -28,6 +33,10 @@ import (
 )
 
 var accessor = meta.NewAccessor()
+
+const (
+	gitRepositoryIndexKey string = ".metadata.gitRepository"
+)
 
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
@@ -130,7 +139,9 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 			continue
 		}
 
-		controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme)
+		if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
+			return nil, fmt.Errorf("failed to set ownership: %w", err)
+		}
 
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
 			return nil, err
@@ -190,9 +201,64 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions 
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Index the GitOpsSets by the GitRepository references they (may) point at.
+	if err := mgr.GetCache().IndexField(
+		context.TODO(), &templatesv1.GitOpsSet{}, gitRepositoryIndexKey, indexGitRepositories); err != nil {
+		return fmt.Errorf("failed setting index fields: %w", err)
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(
+			&source.Kind{Type: &sourcev1.GitRepository{}},
+			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
+		).
 		Complete(r)
+}
+
+func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
+	// TODO: Store the applied version of GitRepositories in the Status, and don't
+	// retrigger if the commit-id isn't different.
+	ctx := context.Background()
+	var list templatesv1.GitOpsSetList
+
+	if err := r.List(ctx, &list, client.MatchingFields{
+		gitRepositoryIndexKey: client.ObjectKeyFromObject(obj).String(),
+	}); err != nil {
+		return nil
+	}
+
+	result := []reconcile.Request{}
+	for _, v := range list.Items {
+		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+	}
+
+	return result
+}
+
+func indexGitRepositories(o client.Object) []string {
+	ks, ok := o.(*templatesv1.GitOpsSet)
+	if !ok {
+		panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+	}
+
+	referencedRepositories := []*templatesv1.GitRepositoryGenerator{}
+	for _, gen := range ks.Spec.Generators {
+		if gen.GitRepository != nil {
+			referencedRepositories = append(referencedRepositories, gen.GitRepository)
+		}
+	}
+
+	if len(referencedRepositories) == 0 {
+		return nil
+	}
+
+	referencedNames := []string{}
+	for _, grg := range referencedRepositories {
+		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
+	}
+
+	return referencedNames
 }
 
 func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Unstructured, error) {
