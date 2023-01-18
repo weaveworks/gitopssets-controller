@@ -58,6 +58,10 @@ func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context,
 	if err := g.Client.Get(ctx, client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}, &gr); err != nil {
 		return nil, fmt.Errorf("could not load GitRepository: %w", err)
 	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
+		"checksum", gr.Status.Artifact.Checksum, "revision", gr.Status.Artifact.Revision)
+
 	parser := git.NewRepositoryParser(g.Logger)
 
 	return parser.GenerateFromFiles(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Checksum, sg.GitRepository.Files)
