@@ -64,16 +64,12 @@ spec:
                             properties:
                               path:
                                 type: string
-                            required:
-                            - path
                             type: object
                           type: array
                         repositoryRef:
                           description: RepositoryRef is the name of a GitRepository
                             resource to be generated from.
                           type: string
-                      required:
-                      - repositoryRef
                       type: object
                     list:
                       description: ListGenerator generates from a hard-coded list.
@@ -82,8 +78,6 @@ spec:
                           items:
                             x-kubernetes-preserve-unknown-fields: true
                           type: array
-                      required:
-                      - elements
                       type: object
                   type: object
                 type: array
@@ -100,6 +94,8 @@ spec:
                     content:
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    repeat:
+                      type: string
                   required:
                   - content
                   type: object

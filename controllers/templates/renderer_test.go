@@ -129,6 +129,36 @@ func TestRender(t *testing.T) {
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
 			},
 		},
+
+		{
+			name: "repeat elements",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50","namespaces":["testing1","testing2"]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env}}-demo1"})),
+							},
+						},
+						{
+							Repeat: "{ $.namespaces }",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .repeat }}-{{ .element.env }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
+				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev")),
+				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev")),
+			},
+		},
 	}
 
 	for _, tt := range generatorTests {
@@ -144,43 +174,50 @@ func TestRender(t *testing.T) {
 	}
 }
 
-// TODO: Write tests for error cases?
-// func TestRender_errors(t *testing.T) {
-// 	templateTests := []struct {
-// 		name       string
-// 		setOptions []func(*templatesv1.GitOpsSet)
-// 		wantErr    string
-// 	}{
-// 		{
-// 			name: "bad template",
-// 			setOptions: []func(*templatesv1.GitOpsSet){
-// 				func(s *templatesv1.GitOpsSet) {
-// 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
-// 						{
-// 							RawExtension: runtime.RawExtension{
-// 								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .unknown}}-demo1"})),
-// 							},
-// 						},
-// 					}
-// 				},
-// 			},
-// 			wantErr: "template is empty",
-// 		},
-// 	}
+func TestRender_errors(t *testing.T) {
+	templateTests := []struct {
+		name       string
+		setOptions []func(*templatesv1.GitOpsSet)
+		wantErr    string
+	}{
+		{
+			name: "bad template",
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(gs *templatesv1.GitOpsSet) {
+					gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50"}`)},
+								},
+							},
+						},
+					}
+					gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: []byte("{{ .test | tested }}"),
+							},
+						},
+					}
+				},
+			},
+			wantErr: `failed to parse template: template: gitopsset-template:1: function "tested" not defined`,
+		},
+	}
+	testGenerators := map[string]generators.Generator{
+		"List": list.NewGenerator(logr.Discard()),
+	}
 
-// 	testGenerators := map[string]generators.Generator{
-// 		"List": list.NewGenerator(logr.Discard()),
-// 	}
+	for _, tt := range templateTests {
+		t.Run(tt.name, func(t *testing.T) {
+			gset := makeTestGitOpsSet(t, tt.setOptions...)
+			_, err := Render(context.TODO(), gset, testGenerators)
 
-// 	for _, tt := range templateTests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			gset := makeTestGitOpsSet(t, tt.setOptions...)
-// 			_, err := Render(context.TODO(), gset, testGenerators)
-
-// 			test.AssertErrorMatch(t, tt.wantErr, err)
-// 		})
-// 	}
-// }
+			test.AssertErrorMatch(t, tt.wantErr, err)
+		})
+	}
+}
 
 func listElements(el []apiextensionsv1.JSON) func(*templatesv1.GitOpsSet) {
 	return func(gs *templatesv1.GitOpsSet) {
@@ -248,6 +285,23 @@ func makeTestService(name types.NamespacedName, opts ...func(*corev1.Service)) *
 	}
 
 	return &s
+}
+
+func makeTestNamespace(name string, opts ...func(*corev1.Namespace)) *corev1.Namespace {
+	n := corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	for _, o := range opts {
+		o(&n)
+	}
+
+	return &n
 }
 
 func setClusterIP(ip string) func(s *corev1.Service) {

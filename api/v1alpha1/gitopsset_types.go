@@ -8,12 +8,13 @@ import (
 
 // // ©itOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
+	Repeat  string               `json:"repeat,omitempty"`
 	Content runtime.RawExtension `json:"content"`
 }
 
 // ListGenerator generates from a hard-coded list.
 type ListGenerator struct {
-	Elements []apiextensionsv1.JSON `json:"elements"`
+	Elements []apiextensionsv1.JSON `json:"elements,omitempty"`
 }
 
 // GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.
@@ -24,7 +25,7 @@ type GitRepositoryGeneratorFileItem struct {
 // GitRepositoryGenerator generates from files in a Flux GitRepository resource.
 type GitRepositoryGenerator struct {
 	// RepositoryRef is the name of a GitRepository resource to be generated from.
-	RepositoryRef string `json:"repositoryRef"`
+	RepositoryRef string `json:"repositoryRef,omitempty"`
 
 	// Files is a set of rules for identifying files to be parsed.
 	Files []GitRepositoryGeneratorFileItem `json:"files,omitempty"`
