@@ -20,7 +20,7 @@ spec:
             team: ops-team
   templates:
     - content:
-      - kind: Kustomization
+        kind: Kustomization
         apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
         metadata:
           name: "{{ .env }}-demo"
