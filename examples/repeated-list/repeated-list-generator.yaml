@@ -1,0 +1,30 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: repeated-gitopsset-sample
+spec:
+  generators:
+    - list:
+        elements:
+          - env: dev
+            team: dev-team
+            teams:
+              - name: "team1"
+              - name: "team2"
+              - name: "team3"
+          - env: staging
+            team: staging-team
+            teams:
+              - name: "team4"
+              - name: "team5"
+              - name: "team6"
+  templates:
+    - repeat: "{ .teams }"
+      content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .repeat.name }}-demo"
+        data:
+          name: "{{ .repeat.name }}-demo"
+          team: "{{ .element.team }}"

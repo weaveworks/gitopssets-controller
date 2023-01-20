@@ -8,7 +8,11 @@ import (
 
 // // ©itOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
-	Repeat  string               `json:"repeat,omitempty"`
+	// Repeat is a JSONPath string defining that the template content should be
+	// repeated for each of the matching elements in the JSONPath expression.
+	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
+	Repeat string `json:"repeat,omitempty"`
+	// Content is the YAML to be templated and generated.
 	Content runtime.RawExtension `json:"content"`
 }
 
@@ -19,6 +23,7 @@ type ListGenerator struct {
 
 // GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.
 type GitRepositoryGeneratorFileItem struct {
+	// Path is the name of a file to read and generate from can be JSON or YAML.
 	Path string `json:"path"`
 }
 

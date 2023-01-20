@@ -63,7 +63,11 @@ spec:
                               path to a file to be parsed when generating.
                             properties:
                               path:
+                                description: Path is the name of a file to read and
+                                  generate from can be JSON or YAML.
                                 type: string
+                            required:
+                            - path
                             type: object
                           type: array
                         repositoryRef:
@@ -92,9 +96,13 @@ spec:
                   description: // ©itOpsSetTemplate describes a resource to create
                   properties:
                     content:
+                      description: Content is the YAML to be templated and generated.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     repeat:
+                      description: Repeat is a JSONPath string defining that the template
+                        content should be repeated for each of the matching elements
+                        in the JSONPath expression. https://kubernetes.io/docs/reference/kubectl/jsonpath/
                       type: string
                   required:
                   - content
