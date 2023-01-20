@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"reflect"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
@@ -158,7 +157,7 @@ func render(b []byte, params any) ([]byte, error) {
 
 func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
 	generated := [][]map[string]any{}
-	generators := findRelevantGenerators(&generator, allGenerators)
+	generators := generators.FindRelevantGenerators(&generator, allGenerators)
 	for _, g := range generators {
 		res, err := g.Generate(ctx, &generator, gitopsSet)
 		if err != nil {
@@ -169,23 +168,6 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 	}
 
 	return generated, nil
-}
-
-func findRelevantGenerators(setGenerator *templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator) []generators.Generator {
-	var res []generators.Generator
-	v := reflect.Indirect(reflect.ValueOf(setGenerator))
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		if !field.CanInterface() {
-			continue
-		}
-
-		if !reflect.ValueOf(field.Interface()).IsNil() {
-			res = append(res, allGenerators[v.Type().Field(i).Name])
-		}
-	}
-
-	return res
 }
 
 func makeTemplateFunctions() template.FuncMap {

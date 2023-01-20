@@ -6,7 +6,7 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// // ©itOpsSetTemplate describes a resource to create
+// GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
 	// Repeat is a JSONPath string defining that the template content should be
 	// repeated for each of the matching elements in the JSONPath expression.
@@ -36,10 +36,25 @@ type GitRepositoryGenerator struct {
 	Files []GitRepositoryGeneratorFileItem `json:"files,omitempty"`
 }
 
-// GitOpsSet describes the configured generators.
+// MatrixGenerator defines a matrix that combines generators.
+// The matrix is a cartesian product of the generators.
+type MatrixGenerator struct {
+	// Generators is a list of generators to be combined.
+	Generators []GitOpsSetNestedGenerator `json:"generators,omitempty"`
+}
+
+// GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
+// This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn't support recursive declarations.
+type GitOpsSetNestedGenerator struct {
+	List          *ListGenerator          `json:"list,omitempty"`
+	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+}
+
+// GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
 type GitOpsSetGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

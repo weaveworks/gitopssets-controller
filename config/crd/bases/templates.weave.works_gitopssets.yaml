@@ -83,6 +83,56 @@ spec:
                             x-kubernetes-preserve-unknown-fields: true
                           type: array
                       type: object
+                    matrix:
+                      description: MatrixGenerator defines a matrix that combines
+                        generators. The matrix is a cartesian product of the generators.
+                      properties:
+                        generators:
+                          description: Generators is a list of generators to be combined.
+                          items:
+                            description: GitOpsSet describes the configured generators.
+                            properties:
+                              gitRepository:
+                                description: GitRepositoryGenerator generates from
+                                  files in a Flux GitRepository resource.
+                                properties:
+                                  directories:
+                                    description: Directories is a set of rules for
+                                      identifying directories to be parsed.
+                                    items:
+                                      description: GitRepositoryGeneratorDirectoryItem
+                                        defines a path to be parsed (or excluded from)
+                                        for files.
+                                      properties:
+                                        exclude:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  repositoryRef:
+                                    description: RepositoryRef is the name of a GitRepository
+                                      resource to be generated from.
+                                    type: string
+                                required:
+                                - repositoryRef
+                                type: object
+                              list:
+                                description: ListGenerator generates from a hard-coded
+                                  list.
+                                properties:
+                                  elements:
+                                    items:
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                required:
+                                - elements
+                                type: object
+                            type: object
+                          type: array
+                      type: object
                   type: object
                 type: array
               suspend:
@@ -93,7 +143,7 @@ spec:
                 description: Templates are a set of YAML templates that are rendered
                   into resources from the data supplied by the generators.
                 items:
-                  description: // ©itOpsSetTemplate describes a resource to create
+                  description: GitOpsSetTemplate describes a resource to create
                   properties:
                     content:
                       description: Content is the YAML to be templated and generated.
