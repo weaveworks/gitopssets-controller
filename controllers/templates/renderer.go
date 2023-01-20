@@ -93,8 +93,12 @@ func render(b []byte, params map[string]any) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
 
+	data := map[string]any{
+		"element": params,
+	}
+
 	var out bytes.Buffer
-	if err := t.Execute(&out, params); err != nil {
+	if err := t.Execute(&out, data); err != nil {
 		return nil, fmt.Errorf("failed to render template: %w", err)
 	}
 

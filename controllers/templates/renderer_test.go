@@ -63,7 +63,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{sanitize .env}}-demo"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ sanitize .element.env }}-demo"})),
 							},
 						},
 					}
@@ -86,12 +86,12 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"})),
 							},
 						},
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env}}-demo2"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo2"})),
 							},
 						},
 					}
@@ -206,7 +206,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{.env}}-demo"})),
+						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo"})),
 					},
 				},
 			},
@@ -229,11 +229,11 @@ func makeTestService(name types.NamespacedName, opts ...func(*corev1.Service)) *
 			Name:      name.Name,
 			Namespace: name.Namespace,
 			Annotations: map[string]string{
-				"app.kubernetes.io/instance": "{{ .env }}",
+				"app.kubernetes.io/instance": "{{ .element.env }}",
 			},
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "{{ .externalIP }}",
+			ClusterIP: "{{ .element.externalIP }}",
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",
