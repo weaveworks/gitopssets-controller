@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,9 +19,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
-var funcMap = template.FuncMap{
-	"sanitize": sanitize.SanitizeDNSName,
-}
+var templateFuncs template.FuncMap = makeTemplateFunctions()
 
 // Render parses the GitOpsSet and renders the template resources using
 // the configured generators and templates.
@@ -89,7 +88,7 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 // TODO: pass the `GitOpsSet` through to here so that we can fix the
 // `template.New` to include the name/namespace.
 func render(b []byte, params map[string]any) ([]byte, error) {
-	t, err := template.New("gitopsset-template").Funcs(funcMap).Parse(string(b))
+	t, err := template.New("gitopsset-template").Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
@@ -130,5 +129,21 @@ func findRelevantGenerators(setGenerator *templatesv1.GitOpsSetGenerator, allGen
 			res = append(res, allGenerators[v.Type().Field(i).Name])
 		}
 	}
+
 	return res
+}
+
+func makeTemplateFunctions() template.FuncMap {
+	f := sprig.TxtFuncMap()
+	unwanted := []string{
+		"env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum",
+		"base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"}
+
+	for _, v := range unwanted {
+		delete(f, v)
+	}
+
+	f["sanitize"] = sanitize.SanitizeDNSName
+
+	return f
 }

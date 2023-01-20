@@ -108,6 +108,27 @@ func TestRender(t *testing.T) {
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}))),
 			},
 		},
+		{
+			name: "sprig functions are available",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","ips":["192.168.0.252","192.168.0.253"]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env }}-demo1"}, setClusterIP("{{ first .ips }}"))),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.0.252"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}))),
+			},
+		},
 	}
 
 	for _, tt := range generatorTests {
