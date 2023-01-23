@@ -55,15 +55,13 @@ spec:
                       description: GitRepositoryGenerator generates from files in
                         a Flux GitRepository resource.
                       properties:
-                        directories:
-                          description: Directories is a set of rules for identifying
-                            directories to be parsed.
+                        files:
+                          description: Files is a set of rules for identifying files
+                            to be parsed.
                           items:
-                            description: GitRepositoryGeneratorDirectoryItem defines
-                              a path to be parsed (or excluded from) for files.
+                            description: GitRepositoryGeneratorFileItemm defines a
+                              path to a file to be parsed when generating.
                             properties:
-                              exclude:
-                                type: boolean
                               path:
                                 type: string
                             required:

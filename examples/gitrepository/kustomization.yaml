@@ -1,0 +1,3 @@
+resources:
+  - ../base
+  - repository-generator.yaml

@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ListGenerator is a generic JSON object list.
@@ -19,7 +20,7 @@ type ListGenerator struct {
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the ListGenerator.
 func GeneratorFactory() generators.GeneratorFactory {
-	return func(l logr.Logger) generators.Generator {
+	return func(l logr.Logger, _ client.Client) generators.Generator {
 		return NewGenerator(l)
 	}
 }
@@ -31,7 +32,7 @@ func NewGenerator(l logr.Logger) *ListGenerator {
 
 func (g *ListGenerator) Generate(_ context.Context, sg *templatesv1.GitOpsSetGenerator, _ *templatesv1.GitOpsSet) ([]map[string]any, error) {
 	if sg == nil {
-		return nil, generators.ErrEmptyGitOpsSetGenerator
+		return nil, generators.ErrEmptyGitOpsSet
 	}
 
 	if sg.List == nil {

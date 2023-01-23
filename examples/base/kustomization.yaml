@@ -1,0 +1,3 @@
+resources:
+  - go-demo-gitrepository.yaml
+  - role.yaml

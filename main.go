@@ -15,9 +15,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	//+kubebuilder:scaffold:imports
 )
@@ -29,6 +31,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(sourcev1.AddToScheme(scheme))
 
 	utilruntime.Must(templatesv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
@@ -77,7 +80,8 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Generators: map[string]generators.GeneratorFactory{
-			"List": list.GeneratorFactory(),
+			"List":          list.GeneratorFactory(),
+			"GitRepository": gitrepository.GeneratorFactory(),
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")
