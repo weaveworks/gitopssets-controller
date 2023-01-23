@@ -118,7 +118,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .env }}-demo1"}, setClusterIP("{{ first .ips }}"))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"}, setClusterIP("{{ first .element.ips }}"))),
 							},
 						},
 					}
