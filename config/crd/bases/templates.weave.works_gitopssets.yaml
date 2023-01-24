@@ -87,6 +87,10 @@ spec:
                       type: object
                   type: object
                 type: array
+              suspend:
+                description: Suspend tells the controller to suspend the reconciliation
+                  of this GitOpsSet.
+                type: boolean
               templates:
                 description: Templates are a set of YAML templates that are rendered
                   into resources from the data supplied by the generators.

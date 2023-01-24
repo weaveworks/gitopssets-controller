@@ -38,6 +38,11 @@ type GitOpsSetGenerator struct {
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
 type GitOpsSetSpec struct {
+	// Suspend tells the controller to suspend the reconciliation of this
+	// GitOpsSet.
+	// +optional
+	Suspend bool `json:"suspend,omitempty"`
+
 	// Generators generate the data to be inserted into the provided templates.
 	Generators []GitOpsSetGenerator `json:"generators,omitempty"`
 
