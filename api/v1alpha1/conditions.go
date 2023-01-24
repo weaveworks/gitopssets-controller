@@ -28,7 +28,14 @@ func SetGitOpsSetReadiness(set *GitOpsSet, status metav1.ConditionStatus, reason
 	apimeta.SetStatusCondition(&set.Status.Conditions, newCondition)
 }
 
+// SetReadyWithInventory updates the GitOpsSet to reflect the new readiness and
+// store the current inventory.
 func SetReadyWithInventory(set *GitOpsSet, inventory *ResourceInventory, reason, message string) {
 	set.Status.Inventory = inventory
+
+	if len(inventory.Entries) == 0 {
+		set.Status.Inventory = nil
+	}
+
 	SetGitOpsSetReadiness(set, metav1.ConditionTrue, reason, message)
 }
