@@ -56,8 +56,9 @@ type GitOpsSetReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
-func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
 	logger := log.FromContext(ctx)
+
 	var gitOpsSet templatesv1.GitOpsSet
 	if err := r.Client.Get(ctx, req.NamespacedName, &gitOpsSet); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -82,8 +83,10 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if inventory != nil {
 		templatesv1.SetReadyWithInventory(&gitOpsSet, inventory, templatesv1.ReconciliationSucceededReason,
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
+
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
+			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
 	}
 

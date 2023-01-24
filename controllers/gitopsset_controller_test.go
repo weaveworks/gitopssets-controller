@@ -267,6 +267,56 @@ func TestReconciliation(t *testing.T) {
 			t.Fatalf("failed to update Kustomization:\n%s", diff)
 		}
 	})
+
+	t.Run("reconciling with no generated resources", func(t *testing.T) {
+		ctx := context.TODO()
+		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Annotations = map[string]string{
+				"testing": "existingResource",
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
+		defer deleteAllKustomizations(t, k8sClient)
+
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			// No templates to generate resources from
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{}
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "engineering-dev"}`)},
+						},
+					},
+				},
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		defer cleanupResource(t, k8sClient, gs)
+
+		ref, err := resourceRefFromObject(devKS)
+		test.AssertNoError(t, err)
+
+		gs.Status.Inventory = &templatesv1.ResourceInventory{
+			Entries: []templatesv1.ResourceRef{ref},
+		}
+		if err := k8sClient.Status().Update(ctx, gs); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			t.Fatal(err)
+		}
+
+		assertInventoryHasNoItems(t, updated)
+	})
+
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -341,6 +391,17 @@ func assertInventoryHasItems(t *testing.T, gs *templatesv1.GitOpsSet, objs ...ru
 	want := &templatesv1.ResourceInventory{Entries: entries}
 	if diff := cmp.Diff(want, gs.Status.Inventory); diff != "" {
 		t.Errorf("failed to get inventory:\n%s", diff)
+	}
+}
+
+func assertInventoryHasNoItems(t *testing.T, gs *templatesv1.GitOpsSet) {
+	t.Helper()
+	if gs.Status.Inventory == nil {
+		return
+	}
+
+	if l := len(gs.Status.Inventory.Entries); l != 0 {
+		t.Errorf("expected inventory to have 0 items, got %v", l)
 	}
 }
 

@@ -196,8 +196,6 @@ spec:
                       - v
                       type: object
                     type: array
-                required:
-                - entries
                 type: object
               observedGeneration:
                 description: ObservedGeneration is the last observed generation of
