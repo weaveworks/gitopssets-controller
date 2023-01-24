@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/util/jsonpath"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -49,37 +50,91 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return rendered, nil
 }
 
+func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, error) {
+	if tmpl.Repeat == "" {
+		return []any{
+			map[string]any{
+				"element": params,
+			},
+		}, nil
+	}
+
+	jp := jsonpath.New("repeat")
+	err := jp.Parse(tmpl.Repeat)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse repeat on template %q: %w", tmpl.Repeat, err)
+	}
+
+	results, err := jp.FindResults(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find results from expression %q: %w", tmpl.Repeat, err)
+	}
+
+	repeated := []any{}
+	for _, result := range results {
+		for _, v := range result {
+			slice, ok := v.Interface().([]any)
+			if ok {
+				repeated = append(repeated, slice...)
+			} else {
+				repeated = append(repeated, v)
+			}
+		}
+	}
+
+	elements := []any{}
+	for _, v := range repeated {
+		elements = append(elements, map[string]any{
+			"element": params,
+			"repeat":  v,
+		})
+	}
+
+	return elements, nil
+}
+
 func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]*unstructured.Unstructured, error) {
-	rendered, err := render(tmpl.Content.Raw, params)
+	var objects []*unstructured.Unstructured
+
+	repeatedParams, err := repeat(tmpl, params)
 	if err != nil {
 		return nil, err
 	}
 
-	// Technically multiple objects could be in the YAML...
-	var objects []*unstructured.Unstructured
-	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rendered), 100)
-	for {
-		var rawObj runtime.RawExtension
-		if err := decoder.Decode(&rawObj); err != nil {
-			if err != io.EOF {
-				return nil, fmt.Errorf("failed to parse rendered template: %w", err)
+	for _, p := range repeatedParams {
+		rendered, err := render(tmpl.Content.Raw, p)
+		if err != nil {
+			return nil, err
+		}
+
+		// Technically multiple objects could be in the YAML...
+		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rendered), 100)
+		for {
+			var rawObj runtime.RawExtension
+			if err := decoder.Decode(&rawObj); err != nil {
+				if err != io.EOF {
+					return nil, fmt.Errorf("failed to parse rendered template: %w", err)
+				}
+				break
 			}
-			break
-		}
 
-		m, _, err := yamlserializer.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode rendered template: %w", err)
-		}
+			m, _, err := yamlserializer.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode rendered template: %w", err)
+			}
 
-		unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
-		if err != nil {
-			return nil, fmt.Errorf("failed convert parsed template: %w", err)
+			unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
+			if err != nil {
+				return nil, fmt.Errorf("failed convert parsed template: %w", err)
+			}
+			delete(unstructuredMap, "status")
+			uns := &unstructured.Unstructured{Object: unstructuredMap}
+
+			if uns.GetKind() != "Namespace" {
+				uns.SetNamespace(ns)
+			}
+			objects = append(objects, uns)
 		}
-		delete(unstructuredMap, "status")
-		uns := &unstructured.Unstructured{Object: unstructuredMap}
-		uns.SetNamespace(ns)
-		objects = append(objects, uns)
 	}
 
 	return objects, nil
@@ -87,18 +142,14 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 
 // TODO: pass the `GitOpsSet` through to here so that we can fix the
 // `template.New` to include the name/namespace.
-func render(b []byte, params map[string]any) ([]byte, error) {
+func render(b []byte, params any) ([]byte, error) {
 	t, err := template.New("gitopsset-template").Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	data := map[string]any{
-		"element": params,
-	}
-
 	var out bytes.Buffer
-	if err := t.Execute(&out, data); err != nil {
+	if err := t.Execute(&out, params); err != nil {
 		return nil, fmt.Errorf("failed to render template: %w", err)
 	}
 
