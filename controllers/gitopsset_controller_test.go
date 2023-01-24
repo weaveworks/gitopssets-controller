@@ -102,6 +102,26 @@ func TestReconciliation(t *testing.T) {
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
+	t.Run("reconciling creation when suspended", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Suspend = true
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+
+		assertInventoryHasNoItems(t, updated)
+		assertNoKustomizationsExistInNamespace(t, k8sClient, "default")
+	})
+
 	t.Run("error conditions", func(t *testing.T) {
 		ctx := context.TODO()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
@@ -316,7 +336,6 @@ func TestReconciliation(t *testing.T) {
 
 		assertInventoryHasNoItems(t, updated)
 	})
-
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -361,7 +380,19 @@ func assertKustomizationsExist(t *testing.T, cl client.Client, ns string, want .
 	}
 }
 
+func assertNoKustomizationsExistInNamespace(t *testing.T, cl client.Client, ns string) {
+	t.Helper()
+	gss := &unstructured.UnstructuredList{}
+	gss.SetGroupVersionKind(kustomizationGVK)
+	test.AssertNoError(t, cl.List(context.TODO(), gss, client.InNamespace(ns)))
+
+	if len(gss.Items) != 0 {
+		t.Fatalf("want no Kustomizations to exist, got %v", len(gss.Items))
+	}
+}
+
 func assertGitOpsSetCondition(t *testing.T, gs *templatesv1.GitOpsSet, condType, msg string) {
+	t.Helper()
 	cond := apimeta.FindStatusCondition(gs.Status.Conditions, condType)
 	if cond == nil {
 		t.Fatalf("failed to find matching status condition for type %s in %#v", condType, gs.Status.Conditions)

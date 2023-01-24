@@ -70,6 +70,12 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	// Skip reconciliation if the GitOpsSet is suspended.
+	if gitOpsSet.Spec.Suspend {
+		logger.Info("Reconciliation is suspended for this GitOpsSet")
+		return ctrl.Result{}, nil
+	}
+
 	inventory, err := r.reconcileResources(ctx, &gitOpsSet)
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
