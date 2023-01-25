@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -19,6 +20,38 @@ type GitOpsSetTemplate struct {
 // ListGenerator generates from a hard-coded list.
 type ListGenerator struct {
 	Elements []apiextensionsv1.JSON `json:"elements,omitempty"`
+}
+
+// PullRequestGenerator defines a generator that queries a Git hosting service
+// for relevant PRs.
+type PullRequestGenerator struct {
+	// The interval at which to check for repository updates.
+	// +required
+	Interval metav1.Duration `json:"interval"`
+	// TODO: Fill this out with the rest of the elements from
+	// https://github.com/jenkins-x/go-scm/blob/main/scm/factory/factory.go
+
+	// Determines which git-api protocol to use.
+	// +kubebuilder:validation:Enum=github;gitlab;bitbucketserver
+	Driver string `json:"driver"`
+	// This is the API endpoint to use.
+	// +kubebuilder:validation:Pattern="^https://"
+	// +optional
+	ServerURL string `json:"serverURL,omitempty"`
+	// This should be the Repo you want to query.
+	// e.g. my-org/my-repo
+	// +required
+	Repo string `json:"repo"`
+	// The secret name containing the Git credentials.
+	// For HTTPS repositories the secret must contain username and password
+	// fields.
+	// +optional
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
+
+	// Labels is used to filter the PRs that you want to target.
+	// This may be applied on the server.
+	// +optional
+	Labels []string `json:"labels,omitempty"`
 }
 
 // GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.
@@ -53,6 +86,7 @@ type GitOpsSetNestedGenerator struct {
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
 type GitOpsSetGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
+	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 }
