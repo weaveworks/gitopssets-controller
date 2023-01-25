@@ -29,3 +29,34 @@ subjects:
 - kind: ServiceAccount
   name: gitopssets-controller-manager
   namespace: gitopssets-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: configmaps-demo-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: configmaps-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: configmaps-demo-role
+subjects:
+- kind: ServiceAccount
+  name: gitopssets-controller-manager
+  namespace: gitopssets-system
