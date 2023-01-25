@@ -20,26 +20,24 @@ spec:
                 - path: examples/generation/staging.yaml
           - list:
               elements:
-                - env: dev
-                  team: dev-team
-                - env: production
-                  team: ops-team
-                - env: staging
-                  team: ops-team
+                - cluster: dev-cluster
+                  version: 1.0.0
   templates:
-    - content:
-      - kind: Kustomization
-        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-        metadata:
-          name: "{{ .env }}-demo"
-          labels:
-            app.kubernetes.io/name: go-demo
-            app.kubernetes.io/instance: "{{ .env }}"
-            com.example/team: "{{ .team }}"
-        spec:
-          interval: 5m
-          path: "./examples/kustomize/environments/{{ .env }}"
-          prune: true
-          sourceRef:
-            kind: GitRepository
-            name: go-demo-repo
+  - content:
+      kind: Kustomization
+      apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+      metadata:
+        name: "{{ .element.env }}-demo"
+        labels:
+          app.kubernetes.io/name: go-demo
+          app.kubernetes.io/instance: "{{ .element.env }}"
+          com.example/team: "{{ .element.team }}"
+        annotations:
+          kubernetes.io/change-cause: "Version {{ .element.version }} deployed in {{ .element.cluster }} by {{ .element.team }}"
+      spec:
+        interval: 5m
+        path: "./examples/kustomize/environments/{{ .element.env }}"
+        prune: true
+        sourceRef:
+          kind: GitRepository
+          name: go-demo-repo

@@ -49,7 +49,8 @@ spec:
                 description: Generators generate the data to be inserted into the
                   provided templates.
                 items:
-                  description: GitOpsSet describes the configured generators.
+                  description: GitOpsSetGenerator is the top-level set of generators
+                    for this GitOpsSet.
                   properties:
                     gitRepository:
                       description: GitRepositoryGenerator generates from files in
@@ -90,23 +91,27 @@ spec:
                         generators:
                           description: Generators is a list of generators to be combined.
                           items:
-                            description: GitOpsSet describes the configured generators.
+                            description: GitOpsSetNestedGenerator describes the generators
+                              usable by the MatrixGenerator. This is a subset of the
+                              generators allowed by the GitOpsSetGenerator because
+                              the CRD format doesn't support recursive declarations.
                             properties:
                               gitRepository:
                                 description: GitRepositoryGenerator generates from
                                   files in a Flux GitRepository resource.
                                 properties:
-                                  directories:
-                                    description: Directories is a set of rules for
-                                      identifying directories to be parsed.
+                                  files:
+                                    description: Files is a set of rules for identifying
+                                      files to be parsed.
                                     items:
-                                      description: GitRepositoryGeneratorDirectoryItem
-                                        defines a path to be parsed (or excluded from)
-                                        for files.
+                                      description: GitRepositoryGeneratorFileItemm
+                                        defines a path to a file to be parsed when
+                                        generating.
                                       properties:
-                                        exclude:
-                                          type: boolean
                                         path:
+                                          description: Path is the name of a file
+                                            to read and generate from can be JSON
+                                            or YAML.
                                           type: string
                                       required:
                                       - path
@@ -116,8 +121,6 @@ spec:
                                     description: RepositoryRef is the name of a GitRepository
                                       resource to be generated from.
                                     type: string
-                                required:
-                                - repositoryRef
                                 type: object
                               list:
                                 description: ListGenerator generates from a hard-coded
@@ -127,8 +130,6 @@ spec:
                                     items:
                                       x-kubernetes-preserve-unknown-fields: true
                                     type: array
-                                required:
-                                - elements
                                 type: object
                             type: object
                           type: array
