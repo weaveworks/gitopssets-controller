@@ -8,6 +8,11 @@ import (
 	"testing"
 	"time"
 
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/apis/meta"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -21,10 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
-	"github.com/fluxcd/pkg/apis/meta"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
@@ -45,6 +46,7 @@ func TestReconciliation(t *testing.T) {
 			"testdata/crds",
 		},
 	}
+	testEnv.ControlPlane.GetAPIServer().Configure().Append("--authorization-mode=RBAC")
 
 	cfg, err := testEnv.Start()
 	test.AssertNoError(t, err)
@@ -69,11 +71,13 @@ func TestReconciliation(t *testing.T) {
 	test.AssertNoError(t, err)
 
 	reconciler := &GitOpsSetReconciler{
-		Client: k8sClient,
-		Scheme: scheme,
+		Client:                k8sClient,
+		Scheme:                scheme,
+		DefaultServiceAccount: "",
 		Generators: map[string]generators.GeneratorFactory{
 			"List": list.GeneratorFactory,
 		},
+		Config: cfg,
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
@@ -621,5 +625,40 @@ func nsn(namespace, name string) types.NamespacedName {
 	return types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
+	}
+}
+
+func writeRBAC(t *testing.T, cl client.Client, obj types.NamespacedName) {
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-role", Namespace: obj.Namespace},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"kustomize.toolkit.fluxcd.io"},
+				Resources: []string{"kustomizations"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+		},
+	}
+	if err := cl.Create(context.TODO(), role); err != nil {
+		t.Fatalf("failed to write role: %s", err)
+	}
+	binding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-role-binding", Namespace: obj.Namespace},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:     "User",
+				Name:     "test-user",
+				APIGroup: "rbac.authorization.k8s.io",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role",
+			Name:     role.Name,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+	if err := cl.Create(context.TODO(), binding); err != nil {
+		t.Fatalf("failed to write role-binding: %s", err)
 	}
 }
