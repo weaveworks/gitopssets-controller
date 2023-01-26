@@ -41,6 +41,11 @@ UnDeploy the controller to the cluster:
 make undeploy
 ```
 
+### Make a release file
+```sh
+IMG=<user/repo>:$(git rev-parse --short HEAD) make manifests generate docker-build docker-push release
+```
+
 ## Contributing
 // TODO(user): Add detailed information on how you would like others to contribute to this project
 
