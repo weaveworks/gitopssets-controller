@@ -72,7 +72,7 @@ func TestReconciliation(t *testing.T) {
 		Client: k8sClient,
 		Scheme: scheme,
 		Generators: map[string]generators.GeneratorFactory{
-			"List": list.GeneratorFactory(),
+			"List": list.GeneratorFactory,
 		},
 	}
 

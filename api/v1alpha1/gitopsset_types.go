@@ -81,6 +81,7 @@ type MatrixGenerator struct {
 type GitOpsSetNestedGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.

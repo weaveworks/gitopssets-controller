@@ -3,6 +3,7 @@ package matrix
 import (
 	"context"
 	"testing"
+	"time"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
@@ -11,6 +12,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
 	"github.com/weaveworks/gitopssets-controller/test"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,8 +136,8 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewGenerator(logr.Discard(), newFakeClient(t, tt.objects...), map[string]generators.GeneratorFactory{
-				"List":          list.GeneratorFactory(),
-				"GitRepository": gitrepository.GeneratorFactory(),
+				"List":          list.GeneratorFactory,
+				"GitRepository": gitrepository.GeneratorFactory,
 			})
 			matrix, err := g.Generate(context.TODO(), tt.sg, tt.ks)
 			test.AssertErrorMatch(t, tt.expectedErrorStr, err)
@@ -144,6 +146,41 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				t.Errorf("matrix mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestInterval(t *testing.T) {
+	gen := NewGenerator(logr.Discard(), nil, map[string]generators.GeneratorFactory{
+		"List":          list.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory,
+		"PullRequests":  pullrequests.GeneratorFactory,
+	})
+
+	interval := time.Minute * 30
+	sg := &templatesv1.GitOpsSetGenerator{
+		Matrix: &templatesv1.MatrixGenerator{
+			Generators: []templatesv1.GitOpsSetNestedGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "cluster","url": "url"}`)},
+						},
+					},
+					PullRequests: &templatesv1.PullRequestGenerator{
+						Driver:    "fake",
+						ServerURL: "https://example.com",
+						Repo:      "test-org/my-repo",
+						Interval:  metav1.Duration{Duration: interval},
+					},
+				},
+			},
+		},
+	}
+
+	d := gen.Interval(sg)
+
+	if d != interval {
+		t.Fatalf("got %#v want %#v", d, interval)
 	}
 }
 

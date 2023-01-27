@@ -82,11 +82,11 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Generators: map[string]generators.GeneratorFactory{
-			"List":          list.GeneratorFactory(),
-			"GitRepository": gitrepository.GeneratorFactory(),
+			"List":          list.GeneratorFactory,
+			"GitRepository": gitrepository.GeneratorFactory,
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
-				"List":          list.GeneratorFactory(),
-				"GitRepository": gitrepository.GeneratorFactory(),
+				"List":          list.GeneratorFactory,
+				"GitRepository": gitrepository.GeneratorFactory,
 				"PullRequests":  pullrequests.GeneratorFactory,
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,

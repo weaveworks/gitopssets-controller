@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
 	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/go-logr/logr"
@@ -77,7 +79,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	inventory, err := r.reconcileResources(ctx, &gitOpsSet)
+	inventory, requeue, err := r.reconcileResources(ctx, &gitOpsSet)
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
@@ -97,19 +99,19 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeue}, nil
 }
 
-func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, error) {
+func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, time.Duration, error) {
 	logger := log.FromContext(ctx)
-	generators := map[string]generators.Generator{}
+	instantiatedGenerators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
-		generators[k] = factory(log.FromContext(ctx), r.Client)
+		instantiatedGenerators[k] = factory(log.FromContext(ctx), r.Client)
 	}
 
-	resources, err := templates.Render(ctx, gitOpsSet, generators)
+	resources, err := templates.Render(ctx, gitOpsSet, instantiatedGenerators)
 	if err != nil {
-		return nil, err
+		return nil, generators.NoRequeueInterval, err
 	}
 	logger.Info("rendered templates", "resourceCount", len(resources))
 
@@ -122,60 +124,62 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	for _, newResource := range resources {
 		ref, err := resourceRefFromObject(newResource)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update inventory: %w", err)
+			return nil, generators.NoRequeueInterval, fmt.Errorf("failed to update inventory: %w", err)
 		}
 		entries.Insert(ref)
 
 		if existingEntries.Has(ref) {
 			existing, err := unstructuredFromResourceRef(ref)
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert resource for update: %w", err)
+				return nil, generators.NoRequeueInterval, fmt.Errorf("failed to convert resource for update: %w", err)
 			}
 			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(newResource), existing); err != nil {
-				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
+				return nil, generators.NoRequeueInterval, fmt.Errorf("failed to load existing Resource: %w", err)
 			}
 			patchHelper, err := patch.NewHelper(existing, r.Client)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
+				return nil, generators.NoRequeueInterval, fmt.Errorf("failed to create patch helper for Resource: %w", err)
 			}
 
 			if err := logResourceMessage(logger, "updating existing resource", newResource); err != nil {
-				return nil, err
+				return nil, generators.NoRequeueInterval, err
 			}
 			existing = copyUnstructuredContent(existing, newResource)
 			if err := patchHelper.Patch(ctx, existing); err != nil {
-				return nil, fmt.Errorf("failed to update Resource: %w", err)
+				return nil, generators.NoRequeueInterval, fmt.Errorf("failed to update Resource: %w", err)
 			}
 			continue
 		}
 
 		if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
-			return nil, fmt.Errorf("failed to set ownership: %w", err)
+			return nil, generators.NoRequeueInterval, fmt.Errorf("failed to set ownership: %w", err)
 		}
 
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
-			return nil, err
+			return nil, generators.NoRequeueInterval, err
 		}
 
 		if err := r.Client.Create(ctx, newResource); err != nil {
-			return nil, fmt.Errorf("failed to create Resource: %w", err)
+			return nil, generators.NoRequeueInterval, fmt.Errorf("failed to create Resource: %w", err)
 		}
 	}
+
+	requeueAfter := calculateInterval(gitOpsSet, instantiatedGenerators)
 
 	if gitOpsSet.Status.Inventory == nil {
 		return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 			return x.ID < y.ID
-		})}, nil
+		})}, requeueAfter, nil
 
 	}
 	objectsToRemove := existingEntries.Difference(entries)
 	if err := r.removeResourceRefs(ctx, objectsToRemove.List()); err != nil {
-		return nil, err
+		return nil, generators.NoRequeueInterval, err
 	}
 
 	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 		return x.ID < y.ID
-	})}, nil
+	})}, requeueAfter, nil
 
 }
 
@@ -332,4 +336,29 @@ func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) erro
 
 	return nil
 
+}
+
+func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) time.Duration {
+	res := []time.Duration{}
+	for _, mg := range gs.Spec.Generators {
+		relevantGenerators := generators.FindRelevantGenerators(mg, configuredGenerators)
+
+		for _, rg := range relevantGenerators {
+			d := rg.Interval(&mg)
+
+			if d > generators.NoRequeueInterval {
+				res = append(res, d)
+			}
+
+		}
+	}
+
+	if len(res) == 0 {
+		return generators.NoRequeueInterval
+	}
+
+	// Find the lowest requeue interval provided by a generator.
+	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
+
+	return res[0]
 }
