@@ -21,14 +21,14 @@ spec:
       - kind: Kustomization
         apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
         metadata:
-          name: "{{ .env }}-demo"
+          name: "{{ .element.env }}-demo"
           labels:
             app.kubernetes.io/name: go-demo
-            app.kubernetes.io/instance: "{{ .env }}"
-            com.example/team: "{{ .team }}"
+            app.kubernetes.io/instance: "{{ .element.env }}"
+            com.example/team: "{{ .element.team }}"
         spec:
           interval: 5m
-          path: "./examples/kustomize/environments/{{ .env }}"
+          path: "./examples/kustomize/environments/{{ .element.env }}"
           prune: true
           sourceRef:
             kind: GitRepository
