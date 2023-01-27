@@ -87,6 +87,7 @@ func main() {
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
 				"List":          list.GeneratorFactory(),
 				"GitRepository": gitrepository.GeneratorFactory(),
+				"PullRequests":  pullrequests.GeneratorFactory,
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,
 		},

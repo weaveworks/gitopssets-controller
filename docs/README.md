@@ -135,6 +135,7 @@ We currently provide three generators:
  * list
  * pullRequests
  * gitRepository
+ * matrix
 
 ## List generator
 
@@ -251,6 +252,49 @@ The fields emitted by the pull-request are as follows:
  * `head_sha` this is the SHA of the commit in the merge branch
  * `clone_url` this is the HTTPS clone URL for this repository
  * `clone_ssh_url` this is the SSH clone URL for this repository
+
+### Matrix generator
+
+The matrix generator doesn't generate by itself, it combines the results of
+generating from other generators e.g.:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  generators:
+    - matrix:
+        generators:
+          - gitRepository:
+              repositoryRef: go-demo-repo
+              files:
+                - path: examples/generation/dev.yaml
+                - path: examples/generation/production.yaml
+                - path: examples/generation/staging.yaml
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+```
+
+This will result in three sets of generated parameters, which are a combination of the maps in the files in the gitRepository, and the elements in the list generator, this can result in a combinatorial explosion of resources being created in your cluster.
+
+```yaml
+- env: dev
+  team: developers
+  cluster: dev-cluster
+  version: 1.0.0
+- env: staging
+  team: staging-team
+  cluster: dev-cluster
+  version: 1.0.0
+- env: production
+  team: production-team
+  cluster: dev-cluster
+  version: 1.0.0
+```
 
 ## Security
 
