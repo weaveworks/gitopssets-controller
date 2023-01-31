@@ -210,6 +210,7 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions 
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
 	}
+
 	return nil
 }
 

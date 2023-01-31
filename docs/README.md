@@ -130,7 +130,7 @@ In this case, six different `ConfigMaps` are generated, three for the "dev-team"
 
 ## Generators
 
-We currently provide three generators:
+We currently provide these generators:
 
  * list
  * pullRequests
@@ -158,7 +158,7 @@ spec:
           - path: examples/generation/staging.yaml
   templates:
     - content:
-      - kind: Kustomization
+        kind: Kustomization
         apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
         metadata:
           name: "{{ .element.env }}-demo"
@@ -253,6 +253,13 @@ The fields emitted by the pull-request are as follows:
  * `clone_url` this is the HTTPS clone URL for this repository
  * `clone_ssh_url` this is the SSH clone URL for this repository
 
+You will need an API key that can query the GitHub API.
+```shell
+$ kubectl create secret generic github-secret \
+  --from-literal password=<insert access token here>
+```
+You can limit the scope of this token to read only access to your repositories.
+
 ### Matrix generator
 
 The matrix generator doesn't generate by itself, it combines the results of
@@ -294,6 +301,48 @@ This will result in three sets of generated parameters, which are a combination 
   team: production-team
   cluster: dev-cluster
   version: 1.0.0
+```
+
+These can be referenced in the templates, note that all keys in the merged generators from the Matrix are contained in the `element` scope.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  generators:
+    - matrix:
+        generators:
+          - gitRepository:
+              repositoryRef: go-demo-repo
+              files:
+                - path: examples/generation/dev.yaml
+                - path: examples/generation/production.yaml
+                - path: examples/generation/staging.yaml
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .element.env }}"
+            com.example/team: "{{ .element.team }}"
+            com.example/cluster: "{{ .element.cluster }}"
+            com.example/version: "{{ .element.version }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .element.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
 ```
 
 ## Security

@@ -46,6 +46,18 @@ make undeploy
 IMG=<user/repo>:$(git rev-parse --short HEAD) make manifests generate docker-build docker-push release
 ```
 
+This release file can be easily applied to a cluster:
+```sh
+kubectl apply -f release.yaml
+```
+
+### For development purposes
+You will need a bare minimum of Flux installed
+```sh
+flux install --components source-controller,kustomize-controller
+make run
+```
+
 ## Contributing
 // TODO(user): Add detailed information on how you would like others to contribute to this project
 
