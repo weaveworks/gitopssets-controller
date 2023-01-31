@@ -242,6 +242,20 @@ func TestGenerate_errors(t *testing.T) {
 			},
 			wantErr: `failed to load repository generator credentials: secrets "test-secret" not found`,
 		},
+		{
+			name:          "generator with missing key in secret",
+			clientFactory: defaultClientFactory,
+			initObjs: []runtime.Object{newSecret(types.NamespacedName{
+				Name:      "test-secret",
+				Namespace: "default",
+			}, func(c *corev1.Secret) {
+				c.Data = map[string][]byte{}
+			})},
+			secretRef: &corev1.LocalObjectReference{
+				Name: "test-secret",
+			},
+			wantErr: `secret default/test-secret does not contain required field 'password'`,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -296,8 +310,8 @@ func TestPullRequestGenerator_GetInterval(t *testing.T) {
 	}
 }
 
-func newSecret(name types.NamespacedName) *corev1.Secret {
-	return &corev1.Secret{
+func newSecret(name types.NamespacedName, opts ...func(*corev1.Secret)) *corev1.Secret {
+	s := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Secret",
@@ -311,6 +325,12 @@ func newSecret(name types.NamespacedName) *corev1.Secret {
 			"password": []byte("top-secret"),
 		},
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 func defaultClientFactory(c *scm.Client) clientFactoryFunc {

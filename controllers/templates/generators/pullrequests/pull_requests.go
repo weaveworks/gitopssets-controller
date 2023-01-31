@@ -65,7 +65,12 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		}
 		// See https://github.com/fluxcd/source-controller/blob/main/pkg/git/options.go#L100
 		// for details of the standard flux Git repository secret.
-		authToken = string(secret.Data["password"])
+		data, ok := secret.Data["password"]
+		if !ok {
+			return nil, fmt.Errorf("secret %s does not contain required field 'password'", secretName)
+		}
+
+		authToken = string(data)
 	}
 
 	g.Logger.Info("querying pull requests", "repo", sg.PullRequests.Repo, "driver", sg.PullRequests.Driver, "serverURL", sg.PullRequests.ServerURL)
