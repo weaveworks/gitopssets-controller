@@ -22,6 +22,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -81,12 +82,14 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Generators: map[string]generators.GeneratorFactory{
-			"List":          list.GeneratorFactory(),
-			"GitRepository": gitrepository.GeneratorFactory(),
+			"List":          list.GeneratorFactory,
+			"GitRepository": gitrepository.GeneratorFactory,
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
-				"List":          list.GeneratorFactory(),
-				"GitRepository": gitrepository.GeneratorFactory(),
+				"List":          list.GeneratorFactory,
+				"GitRepository": gitrepository.GeneratorFactory,
+				"PullRequests":  pullrequests.GeneratorFactory,
 			}),
+			"PullRequests": pullrequests.GeneratorFactory,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")

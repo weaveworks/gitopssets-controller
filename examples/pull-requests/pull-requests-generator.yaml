@@ -1,0 +1,44 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: pull-requests-sample
+spec:
+  generators:
+    - pullRequests:
+        interval: 5m
+        driver: github
+        repo: bigkevmcd/go-demo
+        secretRef:
+          name: github-secret
+  templates:
+    - content:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: GitRepository
+        metadata:
+          name: "pr-{{ .element.number }}-gitrepository"
+          namespace: default
+        spec:
+          interval: 5m0s
+          url: "{{ .element.clone_url }}"
+          ref:
+            branch: "{{ .element.branch }}"
+    - content:
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        kind: Kustomization
+        metadata:
+          name: "pr-{{ .element.number }}-demo"
+          namespace: default
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/dev"
+          prune: true
+          targetNamespace: "{{ .element.branch }}-ns"
+          sourceRef:
+            kind: GitRepository
+            name: "pr-{{ .element.number }}-gitrepository"

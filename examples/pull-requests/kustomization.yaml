@@ -1,0 +1,4 @@
+resources:
+  - ../base
+  - role.yaml
+  - pull-requests-generator.yaml

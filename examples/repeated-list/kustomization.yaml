@@ -1,3 +1,3 @@
 resources:
-  - role.yaml
+  - ../base
   - repeated-list-generator.yaml

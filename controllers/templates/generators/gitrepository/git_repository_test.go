@@ -22,9 +22,7 @@ var _ generators.Generator = (*GitRepositoryGenerator)(nil)
 const testNamespace = "generation"
 
 func TestGenerate_with_no_GitRepository(t *testing.T) {
-	factory := GeneratorFactory()
-
-	gen := factory(logr.Discard(), nil)
+	gen := GeneratorFactory(logr.Discard(), nil)
 	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
@@ -105,7 +103,6 @@ func TestInterval(t *testing.T) {
 }
 
 func TestGenerate_errors(t *testing.T) {
-	factory := GeneratorFactory()
 	testCases := []struct {
 		name      string
 		generator *templatesv1.GitRepositoryGenerator
@@ -133,7 +130,7 @@ func TestGenerate_errors(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := factory(logr.Discard(), newFakeClient(t, tt.objects...))
+			gen := GeneratorFactory(logr.Discard(), newFakeClient(t, tt.objects...))
 			_, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
 				GitRepository: tt.generator,
 			},

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -73,6 +74,45 @@ func (mg *MatrixGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	}
 
 	return cartesianProduct, nil
+}
+
+// Interval is an implementation of the Generator interface.
+func (g *MatrixGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
+	allGenerators := map[string]generators.Generator{}
+
+	for name, factory := range g.generatorsMap {
+		g := factory(g.Logger, g.Client)
+		allGenerators[name] = g
+	}
+
+	res := []time.Duration{}
+	for _, mg := range sg.Matrix.Generators {
+		relevantGenerators := generators.FindRelevantGenerators(mg, allGenerators)
+
+		for _, rg := range relevantGenerators {
+			gs, err := makeGitOpsSetGenerator(&mg)
+			if err != nil {
+				g.Logger.Error(err, "failed to calculate requeue interval, defaulting to no requeue")
+				return generators.NoRequeueInterval
+			}
+
+			d := rg.Interval(gs)
+
+			if d > generators.NoRequeueInterval {
+				res = append(res, d)
+			}
+
+		}
+	}
+
+	if len(res) == 0 {
+		return generators.NoRequeueInterval
+	}
+
+	// Find the lowest requeue interval provided by a generator.
+	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
+
+	return res[0]
 }
 
 // generate generates the parameters for the matrix generator.
@@ -151,9 +191,4 @@ func alreadyExists(newMap map[string]any, result []map[string]any) bool {
 	}
 
 	return false
-}
-
-// Interval is an implementation of the Generator interface.
-func (g *MatrixGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
-	return generators.NoRequeueInterval
 }

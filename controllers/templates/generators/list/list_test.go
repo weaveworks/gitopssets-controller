@@ -15,9 +15,7 @@ import (
 var _ generators.Generator = (*ListGenerator)(nil)
 
 func TestGenerate_with_no_lists(t *testing.T) {
-	factory := GeneratorFactory()
-
-	gen := factory(logr.Discard(), nil)
+	gen := GeneratorFactory(logr.Discard(), nil)
 	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
@@ -29,8 +27,6 @@ func TestGenerate_with_no_lists(t *testing.T) {
 }
 
 func TestGenerate(t *testing.T) {
-	factory := GeneratorFactory()
-
 	testCases := []struct {
 		name     string
 		elements []apiextensionsv1.JSON
@@ -51,7 +47,7 @@ func TestGenerate(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 
-			gen := factory(logr.Discard(), nil)
+			gen := GeneratorFactory(logr.Discard(), nil)
 			got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
 				List: &templatesv1.ListGenerator{
 					Elements: tt.elements,
@@ -67,8 +63,6 @@ func TestGenerate(t *testing.T) {
 }
 
 func TestGenerate_errors(t *testing.T) {
-	factory := GeneratorFactory()
-
 	testCases := []struct {
 		name      string
 		generator *templatesv1.GitOpsSetGenerator
@@ -93,7 +87,7 @@ func TestGenerate_errors(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 
-			gen := factory(logr.Discard(), nil)
+			gen := GeneratorFactory(logr.Discard(), nil)
 			_, err := gen.Generate(context.TODO(), tt.generator, nil)
 
 			test.AssertErrorMatch(t, tt.wantErr, err)

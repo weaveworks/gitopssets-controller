@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
 	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/go-logr/logr"
@@ -11,6 +13,7 @@ import (
 	// when Flux supports v0.26.0
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -50,6 +53,7 @@ type GitOpsSetReconciler struct {
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -76,7 +80,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	inventory, err := r.reconcileResources(ctx, &gitOpsSet)
+	inventory, requeue, err := r.reconcileResources(ctx, &gitOpsSet)
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
@@ -96,17 +100,28 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeue}, nil
 }
 
-func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, error) {
+func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, time.Duration, error) {
 	logger := log.FromContext(ctx)
-	generators := map[string]generators.Generator{}
+	instantiatedGenerators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
-		generators[k] = factory(log.FromContext(ctx), r.Client)
+		instantiatedGenerators[k] = factory(log.FromContext(ctx), r.Client)
 	}
 
-	resources, err := templates.Render(ctx, gitOpsSet, generators)
+	inventory, err := r.renderAndReconcile(ctx, logger, gitOpsSet, instantiatedGenerators)
+	if err != nil {
+		return nil, generators.NoRequeueInterval, err
+	}
+
+	requeueAfter := calculateInterval(gitOpsSet, instantiatedGenerators)
+
+	return inventory, requeueAfter, nil
+}
+
+func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {
+	resources, err := templates.Render(ctx, gitOpsSet, instantiatedGenerators)
 	if err != nil {
 		return nil, err
 	}
@@ -130,22 +145,26 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert resource for update: %w", err)
 			}
-			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(newResource), existing); err != nil {
-				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
-			}
-			patchHelper, err := patch.NewHelper(existing, r.Client)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
+			err = r.Client.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
+			if err == nil {
+				patchHelper, err := patch.NewHelper(existing, r.Client)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
+				}
+
+				if err := logResourceMessage(logger, "updating existing resource if necessary", newResource); err != nil {
+					return nil, err
+				}
+				existing = copyUnstructuredContent(existing, newResource)
+				if err := patchHelper.Patch(ctx, existing); err != nil {
+					return nil, fmt.Errorf("failed to update Resource: %w", err)
+				}
+				continue
 			}
 
-			if err := logResourceMessage(logger, "updating existing resource", newResource); err != nil {
-				return nil, err
+			if !apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
 			}
-			existing = copyUnstructuredContent(existing, newResource)
-			if err := patchHelper.Patch(ctx, existing); err != nil {
-				return nil, fmt.Errorf("failed to update Resource: %w", err)
-			}
-			continue
 		}
 
 		if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
@@ -175,7 +194,6 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 		return x.ID < y.ID
 	})}, nil
-
 }
 
 func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request, newStatus templatesv1.GitOpsSetStatus) error {
@@ -205,6 +223,7 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions 
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
 	}
+
 	return nil
 }
 
@@ -330,5 +349,29 @@ func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) erro
 	logger.Info(msg, "objNamespace", namespace, "objName", name, "kind", kind)
 
 	return nil
+}
 
+func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) time.Duration {
+	res := []time.Duration{}
+	for _, mg := range gs.Spec.Generators {
+		relevantGenerators := generators.FindRelevantGenerators(mg, configuredGenerators)
+
+		for _, rg := range relevantGenerators {
+			d := rg.Interval(&mg)
+
+			if d > generators.NoRequeueInterval {
+				res = append(res, d)
+			}
+
+		}
+	}
+
+	if len(res) == 0 {
+		return generators.NoRequeueInterval
+	}
+
+	// Find the lowest requeue interval provided by a generator.
+	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
+
+	return res[0]
 }
