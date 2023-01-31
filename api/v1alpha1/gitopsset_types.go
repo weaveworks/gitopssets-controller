@@ -42,10 +42,8 @@ type PullRequestGenerator struct {
 	// e.g. my-org/my-repo
 	// +required
 	Repo string `json:"repo"`
-	// The secret name containing the Git credentials.
-	// For HTTPS repositories the secret must contain username and password
-	// fields.
-	// +optional
+	// Reference to Secret in same namespace with a field "password" which is an
+	// auth token that can query the Git Provider API.
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
 
 	// Labels is used to filter the PRs that you want to target.

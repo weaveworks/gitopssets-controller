@@ -160,9 +160,9 @@ spec:
                                       to query. e.g. my-org/my-repo
                                     type: string
                                   secretRef:
-                                    description: The secret name containing the Git
-                                      credentials. For HTTPS repositories the secret
-                                      must contain username and password fields.
+                                    description: Reference to Secret in same namespace
+                                      with a field "password" which is an auth token
+                                      that can query the Git Provider API.
                                     properties:
                                       name:
                                         description: 'Name of the referent. More info:
@@ -210,9 +210,9 @@ spec:
                             e.g. my-org/my-repo
                           type: string
                         secretRef:
-                          description: The secret name containing the Git credentials.
-                            For HTTPS repositories the secret must contain username
-                            and password fields.
+                          description: Reference to Secret in same namespace with
+                            a field "password" which is an auth token that can query
+                            the Git Provider API.
                           properties:
                             name:
                               description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
