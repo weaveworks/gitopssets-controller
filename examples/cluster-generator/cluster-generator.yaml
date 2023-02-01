@@ -1,0 +1,35 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: cluster-sample
+spec:
+  generators:
+    - cluster:
+        selector:
+          matchLabels:
+            env: dev
+            team: dev-team
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.ClusterName }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.ClusterName }}"
+            com.example/team: "{{ .Element.ClusterLabels.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.ClusterLabels.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+
