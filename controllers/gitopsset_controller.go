@@ -6,14 +6,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fluxcd/pkg/runtime/patch"
-	"github.com/go-logr/logr"
-
 	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
 
+	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,7 +83,16 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	inventory, requeue, err := r.reconcileResources(ctx, r.Client, &gitOpsSet)
+	k8sClient := r.Client
+	if gitOpsSet.Spec.ServiceAccountName != "" {
+		c, err := makeImpersonationClient(r.Config, r.Scheme, gitOpsSet.Namespace, gitOpsSet.Spec.ServiceAccountName)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to create client for ServiceAccount %s", gitOpsSet.Spec.ServiceAccountName)
+		}
+		k8sClient = c
+	}
+
+	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
@@ -378,4 +386,14 @@ func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[strin
 	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
 
 	return res[0]
+}
+
+func makeImpersonationClient(cfg *rest.Config, scheme *runtime.Scheme, namespace, serviceAccountName string) (client.Client, error) {
+	copyCfg := rest.CopyConfig(cfg)
+
+	copyCfg.Impersonate = rest.ImpersonationConfig{
+		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName),
+	}
+
+	return client.New(copyCfg, client.Options{Scheme: scheme})
 }
