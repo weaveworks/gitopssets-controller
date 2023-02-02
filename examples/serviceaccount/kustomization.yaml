@@ -1,0 +1,4 @@
+resources:
+  - rbac.yaml
+  - go-demo-gitrepository.yaml
+  - list-generator.yaml
