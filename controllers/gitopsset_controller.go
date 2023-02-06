@@ -45,11 +45,13 @@ const (
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
 	client.Client
-	Scheme                *runtime.Scheme
 	DefaultServiceAccount string
 	Config                *rest.Config
 
 	Generators map[string]generators.GeneratorFactory
+
+	Scheme *runtime.Scheme
+	Mapper meta.RESTMapper
 }
 
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -57,6 +59,7 @@ type GitOpsSetReconciler struct {
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -84,10 +87,14 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	k8sClient := r.Client
-	if gitOpsSet.Spec.ServiceAccountName != "" {
-		c, err := makeImpersonationClient(r.Config, r.Scheme, gitOpsSet.Namespace, gitOpsSet.Spec.ServiceAccountName)
+	if gitOpsSet.Spec.ServiceAccountName != "" || r.DefaultServiceAccount != "" {
+		serviceAccountName := r.DefaultServiceAccount
+		if gitOpsSet.Spec.ServiceAccountName != "" {
+			serviceAccountName = gitOpsSet.Spec.ServiceAccountName
+		}
+		c, err := r.makeImpersonationClient(gitOpsSet.Namespace, serviceAccountName)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to create client for ServiceAccount %s", gitOpsSet.Spec.ServiceAccountName)
+			return ctrl.Result{}, fmt.Errorf("failed to create client for ServiceAccount %s: %w", serviceAccountName, err)
 		}
 		k8sClient = c
 	}
@@ -276,6 +283,16 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	return result
 }
 
+func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
+	copyCfg := rest.CopyConfig(r.Config)
+
+	copyCfg.Impersonate = rest.ImpersonationConfig{
+		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName),
+	}
+
+	return client.New(copyCfg, client.Options{Scheme: r.Scheme, Mapper: r.Mapper})
+}
+
 func indexGitRepositories(o client.Object) []string {
 	ks, ok := o.(*templatesv1.GitOpsSet)
 	if !ok {
@@ -386,14 +403,4 @@ func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[strin
 	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
 
 	return res[0]
-}
-
-func makeImpersonationClient(cfg *rest.Config, scheme *runtime.Scheme, namespace, serviceAccountName string) (client.Client, error) {
-	copyCfg := rest.CopyConfig(cfg)
-
-	copyCfg.Impersonate = rest.ImpersonationConfig{
-		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName),
-	}
-
-	return client.New(copyCfg, client.Options{Scheme: scheme})
 }

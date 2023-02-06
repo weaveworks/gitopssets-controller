@@ -14,6 +14,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -97,11 +98,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	mapper, err := apiutil.NewDynamicRESTMapper(restConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to create REST Mapper")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
 		DefaultServiceAccount: defaultServiceAccount,
 		Config:                mgr.GetConfig(),
 		Scheme:                mgr.GetScheme(),
+		Mapper:                mapper,
 		Generators: map[string]generators.GeneratorFactory{
 			"List":          list.GeneratorFactory,
 			"GitRepository": gitrepository.GeneratorFactory,

@@ -80,6 +80,16 @@ func TestGenerateFromFiles_missing_file(t *testing.T) {
 	}
 }
 
+func TestGenerateFromFiles_missing_url(t *testing.T) {
+	parser := NewRepositoryParser(logr.Discard())
+	srv := test.StartFakeArchiveServer(t, "testdata")
+
+	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
+	if !strings.Contains(err.Error(), "failed to get archive") {
+		t.Fatalf("got error %v", err)
+	}
+}
+
 func mustReadFile(t *testing.T, filename string) string {
 	t.Helper()
 	b, err := os.ReadFile(filename)

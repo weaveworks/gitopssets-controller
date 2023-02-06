@@ -447,6 +447,43 @@ func TestReconciliation(t *testing.T) {
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
+
+	t.Run("default service account impersonation", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t)
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		reconciler.DefaultServiceAccount = "default-test-sa"
+		defer func() {
+			reconciler.DefaultServiceAccount = ""
+		}()
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertErrorMatch(t, `create Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:default-test-sa"`, err)
+
+		// Now create a service account granting the right permissions to create
+		// Kustomizations in the right namespace.
+		createRBACForServiceAccount(t, k8sClient, "default-test-sa", "default")
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+
+		want := []runtime.Object{
+			makeTestKustomization(nsn("default", "engineering-dev-demo")),
+			makeTestKustomization(nsn("default", "engineering-prod-demo")),
+			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+		}
+		assertInventoryHasItems(t, updated, want...)
+		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
+		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
+	})
+
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
