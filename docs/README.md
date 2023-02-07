@@ -233,6 +233,8 @@ For non-public installations, you can configure the `serverURL` field and point 
 
 The `driver` field can be `github` or `gitlab` or `bitbucketserver`, other options can be supported from [go-scm](https://github.com/jenkins-x/go-scm/blob/main/scm/factory/factory.go).
 
+The `forks` flag field can be used to indicate whether to include forks in the target pull requests or not. If set to `true` any pull request from a fork repository will be included, otherwise if `false` or not indicated the pull requests from fork repositories are discarded.
+
 Additionally labels can be provided for querying pull requests with matching labels e.g.
 ```yaml
 - pullRequests:
@@ -241,6 +243,7 @@ Additionally labels can be provided for querying pull requests with matching lab
     repo: bigkevmcd/go-demo
     secretRef:
       name: github-secret
+    forks: false
     labels:
       - deploy
 ```
@@ -252,6 +255,7 @@ The fields emitted by the pull-request are as follows:
  * `head_sha` this is the SHA of the commit in the merge branch
  * `clone_url` this is the HTTPS clone URL for this repository
  * `clone_ssh_url` this is the SSH clone URL for this repository
+ * `fork` this indicates whether the pull request is from a fork (true) or not (false)
 
 You will need an API key that can query the GitHub API.
 ```shell

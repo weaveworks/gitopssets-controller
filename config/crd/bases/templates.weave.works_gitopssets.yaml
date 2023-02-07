@@ -144,6 +144,11 @@ spec:
                                     - gitlab
                                     - bitbucketserver
                                     type: string
+                                  forks:
+                                    description: Fork is used to filter out forks
+                                      from the target PRs if false, or to include
+                                      forks if  true
+                                    type: boolean
                                   interval:
                                     description: The interval at which to check for
                                       repository updates.
@@ -195,6 +200,10 @@ spec:
                           - gitlab
                           - bitbucketserver
                           type: string
+                        forks:
+                          description: Fork is used to filter out forks from the target
+                            PRs if false, or to include forks if  true
+                          type: boolean
                         interval:
                           description: The interval at which to check for repository
                             updates.
