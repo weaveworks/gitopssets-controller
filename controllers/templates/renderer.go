@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
+	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -131,7 +132,23 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 
 			if uns.GetKind() != "Namespace" {
 				uns.SetNamespace(ns)
+
+				// Add source labels
+				labels := map[string]string{}
+				if uns.GetName() != "" {
+					labels["templates.weave.works/name"] = uns.GetName()
+				}
+				if uns.GetNamespace() != "" {
+					labels["templates.weave.works/namespace"] = uns.GetNamespace()
+				}
+				renderedLabels := uns.GetLabels()
+
+				if err := mergo.Merge(&renderedLabels, labels); err != nil {
+					return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
+				}
+				uns.SetLabels(renderedLabels)
 			}
+
 			objects = append(objects, uns)
 		}
 	}
