@@ -50,6 +50,11 @@ type PullRequestGenerator struct {
 	// This may be applied on the server.
 	// +optional
 	Labels []string `json:"labels,omitempty"`
+
+	// Fork is used to filter out forks from the target PRs if false,
+	// or to include forks if  true
+	// +optional
+	Forks bool `json:"forks,omitempty"`
 }
 
 // GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.

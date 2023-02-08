@@ -16,6 +16,7 @@ spec:
         repo: bigkevmcd/go-demo
         secretRef:
           name: github-secret
+        forks: false
   templates:
     - content:
         apiVersion: source.toolkit.fluxcd.io/v1beta2

@@ -92,8 +92,13 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 			continue
 		}
 
+		// if Forks flag is set to false, and repo is a fork, don't include it
+		isFork := sg.PullRequests.Repo != pr.Fork
+		if !sg.PullRequests.Forks && isFork {
+			continue
+		}
 		// TODO: This should provide additional fields, including the
-		// destination branch, whether or not the result is from a fork etc.
+		// destination branch ...etc.
 		// It should also sanitise the branches, for example, a branch can
 		// contain a `/` or do we delegate this to the `sanitize` function in
 		// the template rendering?
@@ -103,6 +108,7 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 			"head_sha":      pr.Head.Sha,
 			"clone_url":     pr.Head.Repo.Clone,
 			"clone_ssh_url": pr.Head.Repo.CloneSSH,
+			"fork":          isFork,
 		})
 	}
 

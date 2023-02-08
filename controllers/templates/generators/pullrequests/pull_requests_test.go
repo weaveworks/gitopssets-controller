@@ -51,6 +51,7 @@ func TestGenerate(t *testing.T) {
 		initObjs      []runtime.Object
 		secretRef     *corev1.LocalObjectReference
 		labels        []string
+		forks         bool
 		clientFactory func(*scm.Client) clientFactoryFunc
 		want          []map[string]any
 	}{
@@ -73,8 +74,10 @@ func TestGenerate(t *testing.T) {
 							Clone:    "https://github.com/test-org/my-repo.git",
 						},
 					},
+					Fork: "test-org/my-repo",
 				}
 			},
+			forks:         false,
 			clientFactory: defaultClientFactory,
 			want: []map[string]any{
 				{
@@ -83,6 +86,7 @@ func TestGenerate(t *testing.T) {
 					"head_sha":      "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"clone_ssh_url": "git@github.com:test-org/my-repo.git",
 					"clone_url":     "https://github.com/test-org/my-repo.git",
+					"fork":          false,
 				},
 			},
 		},
@@ -105,6 +109,7 @@ func TestGenerate(t *testing.T) {
 							CloneSSH: "git@github.com:test-org/my-repo.git",
 						},
 					},
+					Fork: "test-org/my-repo",
 				}
 				d.PullRequests[2] = &scm.PullRequest{
 					Number: 2,
@@ -122,10 +127,12 @@ func TestGenerate(t *testing.T) {
 							CloneSSH: "git@github.com:test-org/my-repo.git",
 						},
 					},
+					Fork:   "test-org/my-repo",
 					Labels: []*scm.Label{{Name: "testing"}},
 				}
 			},
 			labels:        []string{"testing"},
+			forks:         false,
 			clientFactory: defaultClientFactory,
 			want: []map[string]any{
 				{
@@ -134,6 +141,7 @@ func TestGenerate(t *testing.T) {
 					"head_sha":      "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"clone_ssh_url": "git@github.com:test-org/my-repo.git",
 					"clone_url":     "https://github.com/test-org/my-repo.git",
+					"fork":          false,
 				},
 			},
 		},
@@ -145,6 +153,7 @@ func TestGenerate(t *testing.T) {
 					Namespace: "default",
 				}),
 			},
+			forks: false,
 			clientFactory: func(c *scm.Client) clientFactoryFunc {
 				return func(_, _, auth string, opts ...factory.ClientOptionFunc) (*scm.Client, error) {
 					if auth != "top-secret" {
@@ -171,6 +180,7 @@ func TestGenerate(t *testing.T) {
 							Clone:    "https://github.com/test-org/my-repo.git",
 						},
 					},
+					Fork: "test-org/my-repo",
 				}
 			},
 			secretRef: &corev1.LocalObjectReference{
@@ -183,6 +193,96 @@ func TestGenerate(t *testing.T) {
 					"head_sha":      "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"clone_ssh_url": "git@github.com:test-org/my-repo.git",
 					"clone_url":     "https://github.com/test-org/my-repo.git",
+					"fork":          false,
+				},
+			},
+		},
+		{
+			name: "filter to include if pull request is from a fork",
+			dataFunc: func(d *fakescm.Data) {
+				d.PullRequests[1] = &scm.PullRequest{
+					Number: 1,
+					Base: scm.PullRequestBranch{
+						Ref: "main",
+						Repo: scm.Repository{
+							FullName: "test-org/my-repo",
+						},
+					},
+					Head: scm.PullRequestBranch{
+						Ref: "new-topic",
+						Sha: "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+						Repo: scm.Repository{
+							CloneSSH: "git@github.com:test-org/my-repo.git",
+							Clone:    "https://github.com/test-org/my-repo.git",
+						},
+					},
+					Fork: "test-org-2/my-repo-fork",
+				}
+			},
+			forks:         true,
+			clientFactory: defaultClientFactory,
+			want: []map[string]any{
+				{
+					"number":        "1",
+					"branch":        "new-topic",
+					"head_sha":      "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"clone_ssh_url": "git@github.com:test-org/my-repo.git",
+					"clone_url":     "https://github.com/test-org/my-repo.git",
+					"fork":          true,
+				},
+			},
+		},
+		{
+			name: "filter to exclude if pull request is from a fork",
+			dataFunc: func(d *fakescm.Data) {
+				d.PullRequests[1] = &scm.PullRequest{
+					Number: 1,
+					Base: scm.PullRequestBranch{
+						Ref: "main",
+						Repo: scm.Repository{
+							FullName: "test-org/my-repo",
+						},
+					},
+					Head: scm.PullRequestBranch{
+						Ref: "old-topic",
+						Sha: "564254f7170844f40a01315fc571ae45fb8665b7",
+						Repo: scm.Repository{
+							Clone:    "https://github.com/test-org/my-repo.git",
+							CloneSSH: "git@github.com:test-org/my-repo.git",
+						},
+					},
+					Fork: "test-org-2/my-repo-fork",
+				}
+				d.PullRequests[2] = &scm.PullRequest{
+					Number: 2,
+					Base: scm.PullRequestBranch{
+						Ref: "main",
+						Repo: scm.Repository{
+							FullName: "test-org/my-repo",
+						},
+					},
+					Head: scm.PullRequestBranch{
+						Ref: "new-topic",
+						Sha: "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+						Repo: scm.Repository{
+							Clone:    "https://github.com/test-org/my-repo.git",
+							CloneSSH: "git@github.com:test-org/my-repo.git",
+						},
+					},
+					Fork:   "test-org/my-repo",
+					Labels: []*scm.Label{{Name: "testing"}},
+				}
+			},
+			forks:         false,
+			clientFactory: defaultClientFactory,
+			want: []map[string]any{
+				{
+					"number":        "2",
+					"branch":        "new-topic",
+					"head_sha":      "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"clone_ssh_url": "git@github.com:test-org/my-repo.git",
+					"clone_url":     "https://github.com/test-org/my-repo.git",
+					"fork":          false,
 				},
 			},
 		},
@@ -202,6 +302,7 @@ func TestGenerate(t *testing.T) {
 					Repo:      "test-org/my-repo",
 					SecretRef: tt.secretRef,
 					Labels:    tt.labels,
+					Forks:     tt.forks,
 				},
 			}
 
