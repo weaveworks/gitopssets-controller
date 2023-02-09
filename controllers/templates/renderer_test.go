@@ -47,13 +47,13 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-prod-demo"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-preprod-demo"), setClusterIP("192.168.150.30"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-preprod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-preprod-demo"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
 
@@ -77,7 +77,7 @@ func TestRender(t *testing.T) {
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineeringdev-demo"),
 					setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineeringdev-demo"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
 		{
@@ -105,16 +105,16 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo1"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo2"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo2"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-prod-demo1"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo2"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-prod-demo2"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
 		{
@@ -136,7 +136,7 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.0.252"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo1"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
 
@@ -165,7 +165,7 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo1"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev")),
 				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev")),
 			},
@@ -190,10 +190,10 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-dev-demo1"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("engineering-prod-demo1"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
 			},
 		},
 	}

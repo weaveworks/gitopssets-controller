@@ -36,7 +36,7 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
-					res, err := renderTemplateParams(template, param, r.GetNamespace())
+					res, err := renderTemplateParams(template, param, r.GetNamespace(), r.GetName())
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
@@ -93,7 +93,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, e
 	return elements, nil
 }
 
-func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string, name string) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
 	repeatedParams, err := repeat(tmpl, params)
@@ -134,15 +134,12 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 				uns.SetNamespace(ns)
 
 				// Add source labels
-				labels := map[string]string{}
-				if uns.GetName() != "" {
-					labels["templates.weave.works/name"] = uns.GetName()
+				labels := map[string]string{
+					"templates.weave.works/name":      name,
+					"templates.weave.works/namespace": ns,
 				}
-				if uns.GetNamespace() != "" {
-					labels["templates.weave.works/namespace"] = uns.GetNamespace()
-				}
-				renderedLabels := uns.GetLabels()
 
+				renderedLabels := uns.GetLabels()
 				if err := mergo.Merge(&renderedLabels, labels); err != nil {
 					return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
 				}

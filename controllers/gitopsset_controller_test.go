@@ -269,7 +269,7 @@ func TestReconciliation(t *testing.T) {
 				"testing":         "newVersion",
 			}
 			k.ObjectMeta.Labels = map[string]string{
-				"templates.weave.works/name":      "engineering-dev-demo",
+				"templates.weave.works/name":      "demo-set",
 				"templates.weave.works/namespace": "default",
 			}
 			k.Spec.Path = "./templated/clusters/engineering-dev/"
