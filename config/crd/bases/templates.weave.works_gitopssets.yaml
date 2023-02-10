@@ -12,6 +12,8 @@ spec:
     kind: GitOpsSet
     listKind: GitOpsSetList
     plural: gitopssets
+    shortNames:
+    - gs
     singular: gitopsset
   scope: Namespaced
   versions:
