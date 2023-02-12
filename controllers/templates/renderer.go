@@ -142,10 +142,10 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 				}
 
 				renderedLabels := uns.GetLabels()
-				if err := mergo.Merge(&renderedLabels, labels); err != nil {
+				if err := mergo.Merge(&labels, renderedLabels, mergo.WithOverride); err != nil {
 					return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
 				}
-				uns.SetLabels(renderedLabels)
+				uns.SetLabels(labels)
 			}
 
 			objects = append(objects, uns)
