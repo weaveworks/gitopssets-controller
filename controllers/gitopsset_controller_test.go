@@ -484,6 +484,107 @@ func TestReconciliation(t *testing.T) {
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
+	t.Run("reconciling update of resources with service account", func(t *testing.T) {
+		ctx := context.TODO()
+		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Annotations = map[string]string{
+				"testing": "existingResource",
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
+		defer deleteAllKustomizations(t, k8sClient)
+
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.ServiceAccountName = "test-sa"
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+							ks.Name = "{{ .element.cluster }}-demo"
+							ks.Spec.Path = "./templated/clusters/{{ .element.cluster }}/"
+							ks.Spec.Force = true
+						})),
+					},
+				},
+			}
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "engineering-dev"}`)},
+						},
+					},
+				},
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		defer cleanupResource(t, k8sClient, gs)
+		// Note that this sets up the permissions to read only
+		// This asserts that we can read the resource, and update the resource.
+		createRBACForServiceAccount(t, k8sClient, "test-sa", "default", rbacv1.PolicyRule{
+			APIGroups: []string{"kustomize.toolkit.fluxcd.io"},
+			Resources: []string{"kustomizations"},
+			Verbs:     []string{"get", "list", "watch"},
+		})
+
+		ref, err := resourceRefFromObject(devKS)
+		test.AssertNoError(t, err)
+		gs.Status.Inventory = &templatesv1.ResourceInventory{
+			Entries: []templatesv1.ResourceRef{ref},
+		}
+		if err := k8sClient.Status().Update(ctx, gs); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertErrorMatch(t, `update Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
+
+		var role rbacv1.Role
+		if err := k8sClient.Get(ctx, client.ObjectKey{Name: "test-role", Namespace: "default"}, &role); err != nil {
+			t.Fatal(err)
+		}
+		role.Rules = []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"kustomize.toolkit.fluxcd.io"},
+				Resources: []string{"kustomizations"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+		}
+		if err := k8sClient.Update(ctx, &role); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			t.Fatal(err)
+		}
+		wantUpdated := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+			k.ObjectMeta.Labels = map[string]string{
+				"templates.weave.works/name":      "demo-set",
+				"templates.weave.works/namespace": "default",
+			}
+			k.Spec.Path = "./templated/clusters/engineering-dev/"
+			k.Spec.Force = true
+		})
+
+		want := []runtime.Object{
+			wantUpdated,
+		}
+		assertInventoryHasItems(t, updated, want...)
+
+		kustomization := &unstructured.Unstructured{}
+		kustomization.SetGroupVersionKind(kustomizationGVK)
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantUpdated), kustomization); err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()...); diff != "" {
+			t.Fatalf("failed to update Kustomization:\n%s", diff)
+		}
+	})
+
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -698,16 +799,20 @@ func nsn(namespace, name string) types.NamespacedName {
 	}
 }
 
-func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountName, namespace string) {
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-role", Namespace: namespace},
-		Rules: []rbacv1.PolicyRule{
+func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountName, namespace string, rules ...rbacv1.PolicyRule) {
+	if len(rules) == 0 {
+		rules = []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{"kustomize.toolkit.fluxcd.io"},
 				Resources: []string{"kustomizations"},
 				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 			},
-		},
+		}
+
+	}
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-role", Namespace: namespace},
+		Rules:      rules,
 	}
 	if err := cl.Create(context.TODO(), role); err != nil {
 		t.Fatalf("failed to write role: %s", err)

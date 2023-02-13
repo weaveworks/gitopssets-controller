@@ -166,7 +166,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			}
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
 			if err == nil {
-				patchHelper, err := patch.NewHelper(existing, r.Client)
+				patchHelper, err := patch.NewHelper(existing, k8sClient)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
 				}
