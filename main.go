@@ -7,12 +7,14 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	"github.com/fluxcd/pkg/runtime/logger"
 	flag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -40,24 +42,42 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
+	var (
+		metricsAddr           string
+		enableLeaderElection  bool
+		probeAddr             string
+		watchAllNamespaces    bool
+		defaultServiceAccount string
+		clientOptions         runtimeclient.Options
+		logOptions            logger.Options
+	)
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
+		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
+	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
 
-	var logOptions logger.Options
 	logOptions.BindFlags(flag.CommandLine)
+	clientOptions.BindFlags(flag.CommandLine)
+
 	flag.Parse()
 
+	watchNamespace := ""
+	if !watchAllNamespaces {
+		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
+	}
+
 	ctrl.SetLogger(logger.NewLogger(logOptions))
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	restConfig := runtimeclient.GetConfigOrDie(clientOptions)
+	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
+		Namespace:              watchNamespace,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "539e4b66.weave.works",
@@ -78,9 +98,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	mapper, err := apiutil.NewDynamicRESTMapper(restConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to create REST Mapper")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.GitOpsSetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                mgr.GetClient(),
+		DefaultServiceAccount: defaultServiceAccount,
+		Config:                mgr.GetConfig(),
+		Scheme:                mgr.GetScheme(),
+		Mapper:                mapper,
 		Generators: map[string]generators.GeneratorFactory{
 			"List":          list.GeneratorFactory,
 			"GitRepository": gitrepository.GeneratorFactory,

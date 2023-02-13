@@ -108,6 +108,11 @@ type GitOpsSetSpec struct {
 	// Templates are a set of YAML templates that are rendered into resources
 	// from the data supplied by the generators.
 	Templates []GitOpsSetTemplate `json:"templates,omitempty"`
+
+	// The name of the Kubernetes service account to impersonate
+	// when reconciling this Kustomization.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet

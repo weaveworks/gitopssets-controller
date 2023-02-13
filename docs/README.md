@@ -66,7 +66,7 @@ spec:
           labels:
             app.kubernetes.io/name: go-demo
             app.kubernetes.io/instance: "{{ .element.env }}"
-            com.example/team: "{{ .team }}"
+            com.example/team: "{{ .element.team }}"
         spec:
           interval: 5m
           path: "./examples/kustomize/environments/{{ .element.env }}"
@@ -358,6 +358,46 @@ This is especially true for the `GitRepository` generator, where it may not be o
 The default `ServiceAccount` that is used by the gitopssets-controller is extremely limited, and can not create resources, you will need to explicitly grant permissions to create any of the resources you declare in the template, missing permissions will appear in the controller logs.
 
 It is not recommended that you create a role with blanket permissions, under the right circumstances, someone could accidentally _or_ maliciously overwrite the cluster control-plane, which could be very dangerous.
+
+## Limiting via service-accounts
+
+You can configure the service-account that is used to create resources.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  # the controller will impersonate this service account
+  serviceAccountName: test-sa
+  generators:
+    - list:
+        elements:
+          - env: dev
+            team: dev-team
+          - env: production
+            team: ops-team
+          - env: staging
+            team: ops-team
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .element.env }}"
+            com.example/team: "{{ .element.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .element.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+```
 
 [^yaml]: These are written as YAML mappings
 

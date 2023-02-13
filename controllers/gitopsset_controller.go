@@ -6,19 +6,20 @@ import (
 	"sort"
 	"time"
 
-	"github.com/fluxcd/pkg/runtime/patch"
-	"github.com/go-logr/logr"
-
 	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
+
+	"github.com/fluxcd/pkg/runtime/patch"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -44,9 +45,13 @@ const (
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	DefaultServiceAccount string
+	Config                *rest.Config
 
 	Generators map[string]generators.GeneratorFactory
+
+	Scheme *runtime.Scheme
+	Mapper meta.RESTMapper
 }
 
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -54,6 +59,7 @@ type GitOpsSetReconciler struct {
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -80,7 +86,20 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	inventory, requeue, err := r.reconcileResources(ctx, &gitOpsSet)
+	k8sClient := r.Client
+	if gitOpsSet.Spec.ServiceAccountName != "" || r.DefaultServiceAccount != "" {
+		serviceAccountName := r.DefaultServiceAccount
+		if gitOpsSet.Spec.ServiceAccountName != "" {
+			serviceAccountName = gitOpsSet.Spec.ServiceAccountName
+		}
+		c, err := r.makeImpersonationClient(gitOpsSet.Namespace, serviceAccountName)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to create client for ServiceAccount %s: %w", serviceAccountName, err)
+		}
+		k8sClient = c
+	}
+
+	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
@@ -103,14 +122,14 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{RequeueAfter: requeue}, nil
 }
 
-func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, time.Duration, error) {
+func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, time.Duration, error) {
 	logger := log.FromContext(ctx)
 	instantiatedGenerators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
 		instantiatedGenerators[k] = factory(log.FromContext(ctx), r.Client)
 	}
 
-	inventory, err := r.renderAndReconcile(ctx, logger, gitOpsSet, instantiatedGenerators)
+	inventory, err := r.renderAndReconcile(ctx, logger, k8sClient, gitOpsSet, instantiatedGenerators)
 	if err != nil {
 		return nil, generators.NoRequeueInterval, err
 	}
@@ -120,7 +139,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, gitOpsSet 
 	return inventory, requeueAfter, nil
 }
 
-func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {
+func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {
 	resources, err := templates.Render(ctx, gitOpsSet, instantiatedGenerators)
 	if err != nil {
 		return nil, err
@@ -145,9 +164,9 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert resource for update: %w", err)
 			}
-			err = r.Client.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
+			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
 			if err == nil {
-				patchHelper, err := patch.NewHelper(existing, r.Client)
+				patchHelper, err := patch.NewHelper(existing, k8sClient)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
 				}
@@ -175,7 +194,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			return nil, err
 		}
 
-		if err := r.Client.Create(ctx, newResource); err != nil {
+		if err := k8sClient.Create(ctx, newResource); err != nil {
 			return nil, fmt.Errorf("failed to create Resource: %w", err)
 		}
 	}
@@ -187,7 +206,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 	}
 	objectsToRemove := existingEntries.Difference(entries)
-	if err := r.removeResourceRefs(ctx, objectsToRemove.List()); err != nil {
+	if err := r.removeResourceRefs(ctx, k8sClient, objectsToRemove.List()); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +227,7 @@ func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request,
 	return r.Status().Patch(ctx, &set, patch)
 }
 
-func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions []templatesv1.ResourceRef) error {
+func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient client.Client, deletions []templatesv1.ResourceRef) error {
 	logger := log.FromContext(ctx)
 	for _, v := range deletions {
 		u, err := unstructuredFromResourceRef(v)
@@ -219,7 +238,7 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, deletions 
 			return err
 		}
 
-		if err := r.Client.Delete(ctx, u); err != nil {
+		if err := k8sClient.Delete(ctx, u); err != nil {
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
 	}
@@ -262,6 +281,16 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	}
 
 	return result
+}
+
+func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
+	copyCfg := rest.CopyConfig(r.Config)
+
+	copyCfg.Impersonate = rest.ImpersonationConfig{
+		UserName: fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName),
+	}
+
+	return client.New(copyCfg, client.Options{Scheme: r.Scheme, Mapper: r.Mapper})
 }
 
 func indexGitRepositories(o client.Object) []string {

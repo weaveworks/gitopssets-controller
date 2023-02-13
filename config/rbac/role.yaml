@@ -14,6 +14,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - impersonate
+- apiGroups:
   - source.toolkit.fluxcd.io
   resources:
   - gitrepositories

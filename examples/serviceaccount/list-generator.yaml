@@ -1,0 +1,38 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-serviceaccount
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: gitopsset-serviceaccount
+spec:
+  serviceAccountName: demo-sa
+  generators:
+    - list:
+        elements:
+          - env: dev
+            team: dev-team
+          - env: production
+            team: ops-team
+          - env: staging
+            team: ops-team
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .element.env }}"
+            com.example/team: "{{ .element.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .element.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
