@@ -268,6 +268,10 @@ func TestReconciliation(t *testing.T) {
 				"testing.cluster": "engineering-dev",
 				"testing":         "newVersion",
 			}
+			k.ObjectMeta.Labels = map[string]string{
+				"templates.weave.works/name":      "demo-set",
+				"templates.weave.works/namespace": "default",
+			}
 			k.Spec.Path = "./templated/clusters/engineering-dev/"
 			k.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "engineering-dev"}}
 			k.Spec.Force = true

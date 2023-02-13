@@ -9,9 +9,11 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
+	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/util/jsonpath"
 
@@ -35,7 +37,8 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
-					res, err := renderTemplateParams(template, param, r.GetNamespace())
+					namespacedName := types.NamespacedName{Name: r.GetName(), Namespace: r.GetNamespace()}
+					res, err := renderTemplateParams(template, param, namespacedName)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
@@ -92,7 +95,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, e
 	return elements, nil
 }
 
-func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, ns string) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, name types.NamespacedName) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
 	repeatedParams, err := repeat(tmpl, params)
@@ -130,8 +133,21 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
 			if uns.GetKind() != "Namespace" {
-				uns.SetNamespace(ns)
+				uns.SetNamespace(name.Namespace)
+
+				// Add source labels
+				labels := map[string]string{
+					"templates.weave.works/name":      name.Name,
+					"templates.weave.works/namespace": name.Namespace,
+				}
+
+				renderedLabels := uns.GetLabels()
+				if err := mergo.Merge(&labels, renderedLabels, mergo.WithOverride); err != nil {
+					return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
+				}
+				uns.SetLabels(labels)
 			}
+
 			objects = append(objects, uns)
 		}
 	}
