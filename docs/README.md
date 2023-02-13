@@ -137,7 +137,7 @@ We currently provide these generators:
  * gitRepository
  * matrix
 
-## List generator
+### List generator
 
 This is the simplest generator, this is a hard-coded array of JSON objects, described as YAML mappings.
 
