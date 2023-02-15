@@ -103,12 +103,12 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		// contain a `/` or do we delegate this to the `sanitize` function in
 		// the template rendering?
 		res = append(res, map[string]any{
-			"number":        strconv.Itoa(pr.Number),
-			"branch":        pr.Head.Ref,
-			"head_sha":      pr.Head.Sha,
-			"clone_url":     pr.Head.Repo.Clone,
-			"clone_ssh_url": pr.Head.Repo.CloneSSH,
-			"fork":          isFork,
+			"Number":      strconv.Itoa(pr.Number),
+			"Branch":      pr.Head.Ref,
+			"HeadSha":     pr.Head.Sha,
+			"CloneURL":    pr.Head.Repo.Clone,
+			"CloneSSHURL": pr.Head.Repo.CloneSSH,
+			"Fork":        isFork,
 		})
 	}
 

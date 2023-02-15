@@ -203,27 +203,27 @@ spec:
         apiVersion: source.toolkit.fluxcd.io/v1beta2
         kind: GitRepository
         metadata:
-          name: "pr-{{ .Element.number }}-gitrepository"
+          name: "pr-{{ .Element.Number }}-gitrepository"
           namespace: default
         spec:
           interval: 5m0s
-          url: "{{ .Element.clone_url }}"
+          url: "{{ .Element.CloneURL }}"
           ref:
-            branch: "{{ .Element.branch }}"
+            branch: "{{ .Element.Branch }}"
     - content:
         apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
         kind: Kustomization
         metadata:
-          name: "pr-{{ .Element.number }}-demo"
+          name: "pr-{{ .Element.Number }}-demo"
           namespace: default
         spec:
           interval: 5m
           path: "./examples/kustomize/environments/dev"
           prune: true
-          targetNamespace: "{{ .Element.branch }}-ns"
+          targetNamespace: "{{ .Element.Branch }}-ns"
           sourceRef:
             kind: GitRepository
-            name: "pr-{{ .Element.number }}-gitrepository"
+            name: "pr-{{ .Element.Number }}-gitrepository"
 ```
 
 This example will poll "github.com/bigkevmcd/go-demo" for open pull requests and trigger the deployment of these by creating a Flux `GitRepository` and `Kustomization` to deploy.
@@ -252,12 +252,12 @@ Additionally labels can be provided for querying pull requests with matching lab
 
 The fields emitted by the pull-request are as follows:
 
-- `number` this is generated as a string representation
-- `branch` this is the source branch
-- `head_sha` this is the SHA of the commit in the merge branch
-- `clone_url` this is the HTTPS clone URL for this repository
-- `clone_ssh_url` this is the SSH clone URL for this repository
-- `fork` this indicates whether the pull request is from a fork (true) or not (false)
+- `Number` this is generated as a string representation
+- `Branch` this is the source branch
+- `HeadSha` this is the SHA of the commit in the merge branch
+- `CloneURL` this is the HTTPS clone URL for this repository
+- `CloneSSHURL` this is the SSH clone URL for this repository
+- `Fork` this indicates whether the pull request is from a fork (true) or not (false)
 
 You will need an API key that can query the GitHub API.
 
