@@ -67,7 +67,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ sanitize .element.env }}-demo"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ sanitize .Element.env }}-demo"})),
 							},
 						},
 					}
@@ -91,12 +91,12 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"})),
 							},
 						},
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo2"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo2"})),
 							},
 						},
 					}
@@ -127,7 +127,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"}, setClusterIP("{{ first .element.ips }}"))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, setClusterIP("{{ first .Element.ips }}"))),
 							},
 						},
 					}
@@ -150,13 +150,13 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env}}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env}}-demo1"})),
 							},
 						},
 						{
 							Repeat: "{ $.namespaces }",
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .repeat }}-{{ .element.env }}")),
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat }}-{{ .Element.env }}")),
 							},
 						},
 					}
@@ -181,7 +181,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/test": string("test-value")}))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/test": string("test-value")}))),
 							},
 						},
 					}
@@ -207,7 +207,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/namespace": string("new-ns")}))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/namespace": string("new-ns")}))),
 							},
 						},
 					}
@@ -306,7 +306,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo"})),
+						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo"})),
 					},
 				},
 			},
@@ -329,11 +329,11 @@ func makeTestService(name types.NamespacedName, opts ...func(*corev1.Service)) *
 			Name:      name.Name,
 			Namespace: name.Namespace,
 			Annotations: map[string]string{
-				"app.kubernetes.io/instance": "{{ .element.env }}",
+				"app.kubernetes.io/instance": "{{ .Element.env }}",
 			},
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "{{ .element.externalIP }}",
+			ClusterIP: "{{ .Element.externalIP }}",
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",

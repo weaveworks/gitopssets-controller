@@ -133,13 +133,13 @@ func TestReconciliation(t *testing.T) {
 				{
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
-							ks.Name = "{{ .element.cluster }}-demo"
+							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
-								"testing.cluster": "{{ .element.cluster }}",
+								"testing.cluster": "{{ .Element.cluster }}",
 								"testing":         "newVersion",
 							}
-							ks.Spec.Path = "./templated/clusters/{{ .element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .element.cluster }}"}}
+							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -223,13 +223,13 @@ func TestReconciliation(t *testing.T) {
 				{
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
-							ks.Name = "{{ .element.cluster }}-demo"
+							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
-								"testing.cluster": "{{ .element.cluster }}",
+								"testing.cluster": "{{ .Element.cluster }}",
 								"testing":         "newVersion",
 							}
-							ks.Spec.Path = "./templated/clusters/{{ .element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .element.cluster }}"}}
+							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -360,13 +360,13 @@ func TestReconciliation(t *testing.T) {
 				{
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
-							ks.Name = "{{ .element.cluster }}-demo"
+							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
-								"testing.cluster": "{{ .element.cluster }}",
+								"testing.cluster": "{{ .Element.cluster }}",
 								"testing":         "newVersion",
 							}
-							ks.Spec.Path = "./templated/clusters/{{ .element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .element.cluster }}"}}
+							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -500,8 +500,8 @@ func TestReconciliation(t *testing.T) {
 				{
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
-							ks.Name = "{{ .element.cluster }}-demo"
-							ks.Spec.Path = "./templated/clusters/{{ .element.cluster }}/"
+							ks.Name = "{{ .Element.cluster }}-demo"
+							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
 							ks.Spec.Force = true
 						})),
 					},
@@ -713,10 +713,10 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{ .element.cluster }}-demo"), func(k *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{ .Element.cluster }}-demo"), func(k *kustomizev1.Kustomization) {
 							k.Spec = kustomizev1.KustomizationSpec{
 								Interval: metav1.Duration{Duration: 5 * time.Minute},
-								Path:     "./clusters/{{ .element.cluster }}/",
+								Path:     "./clusters/{{ .Element.cluster }}/",
 								Prune:    true,
 								SourceRef: kustomizev1.CrossNamespaceSourceReference{
 									Kind: "GitRepository",
@@ -724,7 +724,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 								},
 								KubeConfig: &meta.KubeConfigReference{
 									SecretRef: meta.SecretKeyReference{
-										Name: "{{ .element.cluster }}",
+										Name: "{{ .Element.cluster }}",
 									},
 								},
 							}
