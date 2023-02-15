@@ -23,21 +23,21 @@ spec:
                 - cluster: dev-cluster
                   version: 1.0.0
   templates:
-  - content:
-      kind: Kustomization
-      apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-      metadata:
-        name: "{{ .element.env }}-demo"
-        labels:
-          app.kubernetes.io/name: go-demo
-          app.kubernetes.io/instance: "{{ .element.env }}"
-          com.example/team: "{{ .element.team }}"
-        annotations:
-          kubernetes.io/change-cause: "Version {{ .element.version }} deployed in {{ .element.cluster }} by {{ .element.team }}"
-      spec:
-        interval: 5m
-        path: "./examples/kustomize/environments/{{ .element.env }}"
-        prune: true
-        sourceRef:
-          kind: GitRepository
-          name: go-demo-repo
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.env }}"
+            com.example/team: "{{ .Element.team }}"
+          annotations:
+            kubernetes.io/change-cause: "Version {{ .Element.version }} deployed in {{ .Element.cluster }} by {{ .Element.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo

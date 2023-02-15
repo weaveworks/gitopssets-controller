@@ -24,7 +24,7 @@ spec:
         kind: ConfigMap
         apiVersion: v1
         metadata:
-          name: "{{ .repeat.name }}-demo"
+          name: "{{ .Repeat.name }}-demo"
         data:
-          name: "{{ .repeat.name }}-demo"
-          team: "{{ .element.team }}"
+          name: "{{ .Repeat.name }}-demo"
+          team: "{{ .Element.team }}"

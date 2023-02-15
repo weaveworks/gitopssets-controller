@@ -18,18 +18,18 @@ spec:
           - path: examples/generation/staging.yaml
   templates:
     - content:
-      - kind: Kustomization
-        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
-        metadata:
-          name: "{{ .element.env }}-demo"
-          labels:
-            app.kubernetes.io/name: go-demo
-            app.kubernetes.io/instance: "{{ .element.env }}"
-            com.example/team: "{{ .element.team }}"
-        spec:
-          interval: 5m
-          path: "./examples/kustomize/environments/{{ .element.env }}"
-          prune: true
-          sourceRef:
-            kind: GitRepository
-            name: go-demo-repo
+        - kind: Kustomization
+          apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+          metadata:
+            name: "{{ .Element.env }}-demo"
+            labels:
+              app.kubernetes.io/name: go-demo
+              app.kubernetes.io/instance: "{{ .Element.env }}"
+              com.example/team: "{{ .Element.team }}"
+          spec:
+            interval: 5m
+            path: "./examples/kustomize/environments/{{ .Element.env }}"
+            prune: true
+            sourceRef:
+              kind: GitRepository
+              name: go-demo-repo

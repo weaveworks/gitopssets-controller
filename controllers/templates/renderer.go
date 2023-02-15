@@ -56,7 +56,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, e
 	if tmpl.Repeat == "" {
 		return []any{
 			map[string]any{
-				"element": params,
+				"Element": params,
 			},
 		}, nil
 	}
@@ -87,8 +87,8 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, e
 	elements := []any{}
 	for _, v := range repeated {
 		elements = append(elements, map[string]any{
-			"element": params,
-			"repeat":  v,
+			"Element": params,
+			"Repeat":  v,
 		})
 	}
 
