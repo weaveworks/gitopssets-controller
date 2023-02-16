@@ -83,7 +83,7 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
-					"HeadSha":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        false,
@@ -138,7 +138,7 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "2",
 					"Branch":      "new-topic",
-					"HeadSha":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        false,
@@ -190,7 +190,7 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
-					"HeadSha":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        false,
@@ -225,7 +225,7 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
-					"HeadSha":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        true,
@@ -279,7 +279,7 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "2",
 					"Branch":      "new-topic",
-					"HeadSha":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        false,

@@ -105,7 +105,7 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		res = append(res, map[string]any{
 			"Number":      strconv.Itoa(pr.Number),
 			"Branch":      pr.Head.Ref,
-			"HeadSha":     pr.Head.Sha,
+			"HeadSHA":     pr.Head.Sha,
 			"CloneURL":    pr.Head.Repo.Clone,
 			"CloneSSHURL": pr.Head.Repo.CloneSSH,
 			"Fork":        isFork,

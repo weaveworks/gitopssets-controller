@@ -254,7 +254,7 @@ The fields emitted by the pull-request are as follows:
 
 - `Number` this is generated as a string representation
 - `Branch` this is the source branch
-- `HeadSha` this is the SHA of the commit in the merge branch
+- `HeadSHA` this is the SHA of the commit in the merge branch
 - `CloneURL` this is the HTTPS clone URL for this repository
 - `CloneSSHURL` this is the SSH clone URL for this repository
 - `Fork` this indicates whether the pull request is from a fork (true) or not (false)
