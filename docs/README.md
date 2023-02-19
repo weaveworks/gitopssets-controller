@@ -185,6 +185,12 @@ For security reasons, you need to explicitly list out the files that the generat
 
 ### PullRequests generator
 
+This will require to make authenticated requests to your Git hosting provider e.g. GitHub, GitLab, Bitbucket etc.
+
+It does only require read-only access, but all API tokens should be guarded as carefully as possible, what is a "read-only" token today, might become a token with higher-privilege in the future.
+
+_There have been many security compromises using API access tokens, do not let this happen to you!_
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -259,14 +265,12 @@ The fields emitted by the pull-request are as follows:
 - `CloneSSHURL` this is the SSH clone URL for this repository
 - `Fork` this indicates whether the pull request is from a fork (true) or not (false)
 
-You will need an API key that can query the GitHub API.
+Create a read-only token that can list Pull Requests, and store it in a secret:
 
 ```shell
 $ kubectl create secret generic github-secret \
   --from-literal password=<insert access token here>
 ```
-
-You can limit the scope of this token to read only access to your repositories.
 
 ### Matrix generator
 
