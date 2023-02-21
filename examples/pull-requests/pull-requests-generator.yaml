@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/created-by: gitopssets-controller
   name: pull-requests-sample
 spec:
+  serviceAccountName: pull-request-generator-sa
   generators:
     - pullRequests:
         interval: 5m
