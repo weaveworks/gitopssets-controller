@@ -986,6 +986,11 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 				},
 			},
 		},
+		Status: templatesv1.GitOpsSetStatus{
+			ReconcileRequestStatus: meta.ReconcileRequestStatus{
+				LastHandledReconcileAt: time.Now().Format(time.RFC3339Nano),
+			},
+		},
 	}
 
 	for _, o := range opts {
