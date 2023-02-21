@@ -139,7 +139,6 @@ func TestRender(t *testing.T) {
 					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
-
 		{
 			name: "repeat elements",
 			elements: []apiextensionsv1.JSON{
@@ -265,7 +264,32 @@ func TestRender_errors(t *testing.T) {
 					}
 				},
 			},
-			wantErr: `failed to parse template: template: gitopsset-template:1: function "tested" not defined`,
+			wantErr: `failed to parse template: template: demo/test-gitops-set:1: function "tested" not defined`,
+		},
+		{
+			name: "missing key in template",
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(gs *templatesv1.GitOpsSet) {
+					gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50"}`)},
+								},
+							},
+						},
+					}
+
+					gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .element.env }}-demo"})),
+							},
+						},
+					}
+				},
+			},
+			wantErr: `failed to render template.*at <.element.env>: map has no entry for key "element"`,
 		},
 	}
 	testGenerators := map[string]generators.Generator{

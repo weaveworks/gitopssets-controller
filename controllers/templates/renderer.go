@@ -104,7 +104,7 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	}
 
 	for _, p := range repeatedParams {
-		rendered, err := render(tmpl.Content.Raw, p)
+		rendered, err := render(name, tmpl.Content.Raw, p)
 		if err != nil {
 			return nil, err
 		}
@@ -155,10 +155,10 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	return objects, nil
 }
 
-// TODO: pass the `GitOpsSet` through to here so that we can fix the
-// `template.New` to include the name/namespace.
-func render(b []byte, params any) ([]byte, error) {
-	t, err := template.New("gitopsset-template").Funcs(templateFuncs).Parse(string(b))
+func render(name types.NamespacedName, b []byte, params any) ([]byte, error) {
+	t, err := template.New(fmt.Sprintf("%s", name)).
+		Option("missingkey=error").
+		Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
