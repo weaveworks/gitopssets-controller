@@ -42,6 +42,19 @@ func TestGenerate(t *testing.T) {
 		want      []map[string]any
 	}{
 		{
+			"no artifact in GitRepository",
+			&templatesv1.GitRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Files: []templatesv1.GitRepositoryGeneratorFileItem{
+					{Path: "files/dev.yaml"},
+					{Path: "files/production.yaml"},
+					{Path: "files/staging.yaml"},
+				},
+			},
+			[]runtime.Object{newGitRepository()},
+			[]map[string]any{},
+		},
+		{
 			"simple case",
 			&templatesv1.GitRepositoryGenerator{
 				RepositoryRef: "test-repository",
@@ -51,8 +64,9 @@ func TestGenerate(t *testing.T) {
 					{Path: "files/staging.yaml"},
 				},
 			},
-			[]runtime.Object{newGitRepository(srv.URL+"/files.tar.gz",
-				"f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")},
+			[]runtime.Object{newGitRepository(
+				withArchiveURLAndChecksum(srv.URL+"/files.tar.gz",
+					"f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
 			[]map[string]any{
 				{"environment": "dev", "instances": 2.0},
 				{"environment": "production", "instances": 10.0},
@@ -153,19 +167,28 @@ func TestGenerate_errors(t *testing.T) {
 	}
 }
 
-func newGitRepository(archiveURL, xsum string) *sourcev1.GitRepository {
-	return &sourcev1.GitRepository{
+func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1.GitRepository) {
+	return func(gr *sourcev1.GitRepository) {
+		gr.Status.Artifact = &sourcev1.Artifact{
+			URL:      archiveURL,
+			Checksum: xsum,
+		}
+	}
+}
+
+func newGitRepository(opts ...func(*sourcev1.GitRepository)) *sourcev1.GitRepository {
+	gr := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-repository",
 			Namespace: testNamespace,
 		},
-		Status: sourcev1.GitRepositoryStatus{
-			Artifact: &sourcev1.Artifact{
-				URL:      archiveURL,
-				Checksum: xsum,
-			},
-		},
 	}
+
+	for _, opt := range opts {
+		opt(gr)
+	}
+
+	return gr
 }
 
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {

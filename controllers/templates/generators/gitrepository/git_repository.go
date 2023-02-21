@@ -33,6 +33,10 @@ func NewGenerator(l logr.Logger, c client.Client) *GitRepositoryGenerator {
 	}
 }
 
+// Generate is an implementation of the Generator interface.
+//
+// If the GitRepository generator generates from a list of files, each file is
+// parsed and returned as a generated element.
 func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
 	if sg == nil {
 		return nil, generators.ErrEmptyGitOpsSet
@@ -50,8 +54,15 @@ func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 
 func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
 	var gr sourcev1.GitRepository
-	if err := g.Client.Get(ctx, client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}, &gr); err != nil {
+	repoName := client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}
+	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
 		return nil, fmt.Errorf("could not load GitRepository: %w", err)
+	}
+
+	// No artifact? nothing to generate...
+	if gr.Status.Artifact == nil {
+		g.Logger.Info("GitRepository does not have an artifact", "repository", repoName)
+		return []map[string]any{}, nil
 	}
 
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
