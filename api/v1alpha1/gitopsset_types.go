@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"github.com/fluxcd/pkg/apis/meta"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -192,6 +193,8 @@ type GitOpsSetSpec struct {
 
 // GitOpsSetStatus defines the observed state of GitOpsSet
 type GitOpsSetStatus struct {
+	meta.ReconcileRequestStatus `json:",inline"`
+	
 	// ObservedGeneration is the last observed generation of the HelmRepository
 	// object.
 	// +optional
