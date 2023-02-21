@@ -1,0 +1,80 @@
+package cluster
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/go-logr/logr"
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type ClusterGenerator struct {
+	client.Client
+	logr.Logger
+}
+
+// GeneratorFactory is a function for creating per-reconciliation generators for
+// the ClusterGenerator.
+func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
+	return NewGenerator(l, c)
+}
+
+// NewGenerator creates and returns a new cluster generator.
+func NewGenerator(l logr.Logger, c client.Client) *ClusterGenerator {
+	return &ClusterGenerator{
+		Client: c,
+		Logger: l,
+	}
+}
+
+func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
+	if sg == nil {
+		return nil, generators.ErrEmptyGitOpsSet
+	}
+
+	if sg.Cluster == nil {
+		return nil, nil
+	}
+
+	var paramsList []map[string]any
+
+	selector, err := metav1.LabelSelectorAsSelector(&sg.Cluster.Selector)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert selector: %w", err)
+	}
+
+	if selector.Empty() {
+		g.Logger.Info("empty GitOpsSetGenerator cluster selector: no clusters are selected")
+		return nil, nil
+	}
+
+	clusterList := clustersv1.GitopsClusterList{}
+	listOptions := client.ListOptions{LabelSelector: selector}
+
+	err = g.Client.List(ctx, &clusterList, &listOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cluster := range clusterList.Items {
+		params := map[string]any{
+			"ClusterName":        cluster.Name,
+			"ClusterNamespace":   cluster.Namespace,
+			"ClusterLabels":      cluster.Labels,
+			"ClusterAnnotations": cluster.Annotations,
+		}
+		paramsList = append(paramsList, params)
+	}
+
+	return paramsList, nil
+}
+
+// Interval is an implementation of the Generator interface.
+func (g *ClusterGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
+	return generators.NoRequeueInterval
+}

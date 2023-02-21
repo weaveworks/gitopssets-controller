@@ -20,6 +20,14 @@ rules:
   verbs:
   - impersonate
 - apiGroups:
+  - gitops.weave.works
+  resources:
+  - gitopsclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - source.toolkit.fluxcd.io
   resources:
   - gitrepositories

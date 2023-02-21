@@ -17,6 +17,16 @@ type GitOpsSetTemplate struct {
 	Content runtime.RawExtension `json:"content"`
 }
 
+// ClusterGenerator defines a generator that queries the cluster API for
+// relevant clusters.
+type ClusterGenerator struct {
+	// Selector is used to filter the clusters that you want to target.
+	//
+	// If no selector is provided, no clusters will be matched.
+	// +optional
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
+}
+
 // ListGenerator generates from a hard-coded list.
 type ListGenerator struct {
 	Elements []apiextensionsv1.JSON `json:"elements,omitempty"`
@@ -85,6 +95,7 @@ type GitOpsSetNestedGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
+	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
@@ -93,6 +104,7 @@ type GitOpsSetGenerator struct {
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
+	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

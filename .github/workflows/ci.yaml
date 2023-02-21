@@ -16,6 +16,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GOPRIVATE: github.com/weaveworks/cluster-controller
 
 jobs:
   test:
@@ -23,13 +24,21 @@ jobs:
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
+      - name: Configure git for private modules
+        env:
+          GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
+          GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
+
       - name: Checkout
         uses: actions/checkout@v3
+
       - name: Setup
         uses: actions/setup-go@v3
         with:
           go-version: 1.19.x
           cache: true
+
       - name: Test
         run: make test
 
@@ -57,6 +66,15 @@ jobs:
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Configure git for private modules
+        env:
+          GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
+          GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
+        
+      - name: go mod vendor
+        run: go mod vendor
 
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc

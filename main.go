@@ -18,9 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
@@ -36,7 +38,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
-
+	utilruntime.Must(clustersv1.AddToScheme(scheme))
 	utilruntime.Must(templatesv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -117,8 +119,10 @@ func main() {
 				"List":          list.GeneratorFactory,
 				"GitRepository": gitrepository.GeneratorFactory,
 				"PullRequests":  pullrequests.GeneratorFactory,
+				"Cluster":       cluster.GeneratorFactory,
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,
+			"Cluster":      cluster.GeneratorFactory,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")

@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -60,6 +62,7 @@ type GitOpsSetReconciler struct {
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
+//+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -260,7 +263,85 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
 		).
+		Watches(
+			&source.Kind{Type: &clustersv1.GitopsCluster{}},
+			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
+		).
 		Complete(r)
+}
+
+// gitOpsClusterToGitOpsSet maps a GitopsCluster object to its related GitOpsSet objects
+// and returns a list of reconcile requests for the GitOpsSets.
+func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconcile.Request {
+	gitOpsCluster, ok := o.(*clustersv1.GitopsCluster)
+	if !ok {
+		return nil
+	}
+
+	ctx := context.Background()
+	list := &templatesv1.GitOpsSetList{}
+
+	err := r.List(ctx, list, &client.ListOptions{})
+	if err != nil {
+		return nil
+	}
+
+	var result []reconcile.Request
+	for _, v := range list.Items {
+		if matchCluster(gitOpsCluster, &v) {
+			result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+		}
+	}
+
+	return result
+}
+
+func matchCluster(gitOpsCluster *clustersv1.GitopsCluster, gitOpsSet *templatesv1.GitOpsSet) bool {
+	for _, generator := range gitOpsSet.Spec.Generators {
+		for _, selector := range getClusterSelectors(generator) {
+			if selectorMatchesCluster(selector, gitOpsCluster) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func getClusterSelectors(generator templatesv1.GitOpsSetGenerator) []metav1.LabelSelector {
+	selectors := []metav1.LabelSelector{}
+
+	if generator.Cluster != nil {
+		selectors = append(selectors, generator.Cluster.Selector)
+	}
+
+	if generator.Matrix != nil && generator.Matrix.Generators != nil {
+		for _, matrixGenerator := range generator.Matrix.Generators {
+			if matrixGenerator.Cluster != nil {
+				selectors = append(selectors, matrixGenerator.Cluster.Selector)
+			}
+		}
+	}
+
+	return selectors
+}
+
+func selectorMatchesCluster(labelSelector metav1.LabelSelector, cluster *clustersv1.GitopsCluster) bool {
+	selector, err := metav1.LabelSelectorAsSelector(&labelSelector)
+	if err != nil {
+		return false
+	}
+
+	// If the selector is empty, then we don't match anything.
+	// We want to be cautious here, so we don't accidentally match
+	// all clusters.
+	if selector.Empty() {
+		return false
+	}
+
+	labelSet := labels.Set(cluster.GetLabels())
+
+	return selector.Matches(labelSet)
 }
 
 func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {

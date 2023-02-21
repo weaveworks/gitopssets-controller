@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
@@ -97,9 +98,9 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 
 		want := []runtime.Object{
-			makeTestKustomization(nsn("default", "engineering-dev-demo")),
-			makeTestKustomization(nsn("default", "engineering-prod-demo")),
-			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-dev-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
 		assertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
@@ -132,7 +133,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -148,7 +149,7 @@ func TestReconciliation(t *testing.T) {
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
 
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
@@ -167,7 +168,7 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling removal of resources", func(t *testing.T) {
 		ctx := context.TODO()
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"))
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"))
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
 				{
@@ -201,8 +202,8 @@ func TestReconciliation(t *testing.T) {
 		updated := &templatesv1.GitOpsSet{}
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 		want := []runtime.Object{
-			makeTestKustomization(nsn("default", "engineering-prod-demo")),
-			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
 		assertInventoryHasItems(t, updated, want...)
 		assertResourceDoesNotExist(t, k8sClient, devKS)
@@ -210,7 +211,7 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling update of resources", func(t *testing.T) {
 		ctx := context.TODO()
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
@@ -222,7 +223,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -267,7 +268,7 @@ func TestReconciliation(t *testing.T) {
 		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
 			t.Fatal(err)
 		}
-		wantUpdated := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		wantUpdated := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing.cluster": "engineering-dev",
 				"testing":         "newVersion",
@@ -298,7 +299,7 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling with no generated resources", func(t *testing.T) {
 		ctx := context.TODO()
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
@@ -347,7 +348,7 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling update of deleted resource", func(t *testing.T) {
 		ctx := context.TODO()
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
@@ -359,7 +360,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -408,7 +409,7 @@ func TestReconciliation(t *testing.T) {
 		}
 
 		want := []runtime.Object{
-			makeTestKustomization(nsn("default", "engineering-dev-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-dev-demo")),
 		}
 		assertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "1 resources created")
@@ -439,9 +440,9 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 
 		want := []runtime.Object{
-			makeTestKustomization(nsn("default", "engineering-dev-demo")),
-			makeTestKustomization(nsn("default", "engineering-prod-demo")),
-			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-dev-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
 		assertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
@@ -475,9 +476,9 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 
 		want := []runtime.Object{
-			makeTestKustomization(nsn("default", "engineering-dev-demo")),
-			makeTestKustomization(nsn("default", "engineering-prod-demo")),
-			makeTestKustomization(nsn("default", "engineering-preprod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-dev-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
+			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
 		assertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
@@ -486,7 +487,7 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling update of resources with service account", func(t *testing.T) {
 		ctx := context.TODO()
-		devKS := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
@@ -499,7 +500,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
 							ks.Spec.Force = true
@@ -561,7 +562,7 @@ func TestReconciliation(t *testing.T) {
 		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
 			t.Fatal(err)
 		}
-		wantUpdated := makeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
+		wantUpdated := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Labels = map[string]string{
 				"templates.weave.works/name":      "demo-set",
 				"templates.weave.works/namespace": "default",
@@ -585,6 +586,258 @@ func TestReconciliation(t *testing.T) {
 		}
 	})
 
+}
+
+func TestGetClusterSelectors(t *testing.T) {
+	testCases := []struct {
+		name      string
+		generator templatesv1.GitOpsSetGenerator
+		want      []metav1.LabelSelector
+	}{
+		{
+			name: "with cluster",
+			generator: templatesv1.GitOpsSetGenerator{
+				Cluster: &templatesv1.ClusterGenerator{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "myapp",
+						},
+					},
+				},
+			},
+			want: []metav1.LabelSelector{
+				{
+					MatchLabels: map[string]string{
+						"app": "myapp",
+					},
+				},
+			},
+		},
+		{
+			name: "with matrix",
+			generator: templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							Cluster: &templatesv1.ClusterGenerator{
+								Selector: metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"env": "prod",
+									},
+								},
+							},
+						},
+						{
+							Cluster: &templatesv1.ClusterGenerator{
+								Selector: metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"env": "staging",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []metav1.LabelSelector{
+				{
+					MatchLabels: map[string]string{
+						"env": "prod",
+					},
+				},
+				{
+					MatchLabels: map[string]string{
+						"env": "staging",
+					},
+				},
+			},
+		},
+		{
+			name:      "without cluster or matrix",
+			generator: templatesv1.GitOpsSetGenerator{},
+			want:      []metav1.LabelSelector{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := getClusterSelectors(tc.generator)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Fatalf("failed to get selectors:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestMatchCluster(t *testing.T) {
+	gitopsCluster := &clustersv1.GitopsCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"app": "myapp",
+				"env": "prod",
+			},
+		},
+	}
+
+	clusterGen := &templatesv1.ClusterGenerator{
+		Selector: metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app": "myapp",
+			},
+		},
+	}
+
+	testCases := []struct {
+		name      string
+		cluster   *clustersv1.GitopsCluster
+		gitopsSet *templatesv1.GitOpsSet
+		want      bool
+	}{
+		{
+			name:    "matching cluster",
+			cluster: gitopsCluster,
+			gitopsSet: &templatesv1.GitOpsSet{
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{
+						{
+							Cluster: clusterGen,
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name:    "non-matching cluster",
+			cluster: gitopsCluster,
+			gitopsSet: &templatesv1.GitOpsSet{
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{
+						{
+							Cluster: &templatesv1.ClusterGenerator{
+								Selector: metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"app": "myapp",
+										"env": "staging",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name:    "matching cluster in matrix generator",
+			cluster: gitopsCluster,
+			gitopsSet: &templatesv1.GitOpsSet{
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{
+						{
+							Matrix: &templatesv1.MatrixGenerator{
+								Generators: []templatesv1.GitOpsSetNestedGenerator{
+									{
+										Cluster: clusterGen,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name:    "list generator should not match",
+			cluster: gitopsCluster,
+			gitopsSet: &templatesv1.GitOpsSet{
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{
+						{
+							List: &templatesv1.ListGenerator{},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := matchCluster(tc.cluster, tc.gitopsSet)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Fatalf("failed to match cluster:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestSelectorMatchesCluster(t *testing.T) {
+	testCases := []struct {
+		name          string
+		cluster       *clustersv1.GitopsCluster
+		labelSelector metav1.LabelSelector
+		want          bool
+	}{
+		{
+			name: "matching selector",
+			cluster: &clustersv1.GitopsCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "myapp",
+						"env": "prod",
+					},
+				},
+			},
+			labelSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "myapp",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "non-matching selector",
+			cluster: &clustersv1.GitopsCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "myapp",
+						"env": "prod",
+					},
+				},
+			},
+			labelSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "otherapp",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "empty selector",
+			cluster: &clustersv1.GitopsCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "myapp",
+						"env": "prod",
+					},
+				},
+			},
+			labelSelector: metav1.LabelSelector{},
+			want:          false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := selectorMatchesCluster(tc.labelSelector, tc.cluster)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("selectorMatchesCluster(%v, %v) mismatch (-want +got):\n%s", tc.labelSelector, tc.cluster, diff)
+			}
+		})
+	}
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -713,7 +966,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestKustomization(nsn("default", "{{ .Element.cluster }}-demo"), func(k *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("default", "{{ .Element.cluster }}-demo"), func(k *kustomizev1.Kustomization) {
 							k.Spec = kustomizev1.KustomizationSpec{
 								Interval: metav1.Duration{Duration: 5 * time.Minute},
 								Path:     "./clusters/{{ .Element.cluster }}/",
@@ -762,34 +1015,6 @@ func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {
 	test.AssertNoError(t, err)
 
 	return b
-}
-
-func makeTestKustomization(name types.NamespacedName, opts ...func(*kustomizev1.Kustomization)) *kustomizev1.Kustomization {
-	k := &kustomizev1.Kustomization{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Kustomization",
-			APIVersion: "kustomize.toolkit.fluxcd.io/v1beta2",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-		},
-		Spec: kustomizev1.KustomizationSpec{
-			Interval: metav1.Duration{Duration: 5 * time.Minute},
-			Path:     "./examples/kustomize/environments/dev",
-			Prune:    true,
-			SourceRef: kustomizev1.CrossNamespaceSourceReference{
-				Kind: "GitRepository",
-				Name: "demo-repo",
-			},
-		},
-	}
-
-	for _, opt := range opts {
-		opt(k)
-	}
-
-	return k
 }
 
 func nsn(namespace, name string) types.NamespacedName {
