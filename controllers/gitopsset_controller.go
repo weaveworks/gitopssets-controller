@@ -10,6 +10,7 @@ import (
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
 
+	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -90,6 +91,11 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if gitOpsSet.Spec.Suspend {
 		logger.Info("Reconciliation is suspended for this GitOpsSet")
 		return ctrl.Result{}, nil
+	}
+
+	// Set the value of the reconciliation request in status.
+	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
+		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
 
 	k8sClient := r.Client
