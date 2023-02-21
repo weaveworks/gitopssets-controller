@@ -357,6 +357,56 @@ spec:
             name: go-demo-repo
 ```
 
+## Templating functions
+
+Currently, the [Sprig](http://masterminds.github.io/sprig/) functions are available in the templating, with some functions removed[^sprig] for security reasons.
+
+In addition, we also provide two additional functions:
+
+ * sanitize - sanitises strings to be compatible with [Kubernetes DNS](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) name requirements
+ * getordefault - gets a key from the `.Element` or defaults to another value.
+
+The examples below assume an element that looks like this:
+```json
+{
+  "team": "engineering dev"
+}
+```
+
+### sanitize template function
+
+And a template that looks like this:
+```yaml
+kind: Service
+metadata:
+  name: {{ sanitize .Element.team }}-demo
+```
+
+This would output:
+```yaml
+kind: Service
+metadata:
+  name: engineeringdev-demo
+```
+
+### getordefault
+
+For template that looks like this:
+```yaml
+kind: Service
+metadata:
+  name: {{ getordefault .Element "name" "defaulted" }}-demo
+```
+
+This would output:
+```yaml
+kind: Service
+metadata:
+  name: defaulted-demo
+```
+
+If the _key_ to get does exist in the `.Element` it will be inserted, the "default" is only inserted if it doesn't exist.
+
 ## Security
 
 **WARNING** generating resources and applying them directly into your cluster can be dangerous to the health of your cluster.
@@ -408,3 +458,4 @@ spec:
 ```
 
 [^yaml]: These are written as YAML mappings
+[^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"

@@ -52,9 +52,9 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return rendered, nil
 }
 
-func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, error) {
+func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {
 	if tmpl.Repeat == "" {
-		return []any{
+		return []map[string]any{
 			map[string]any{
 				"Element": params,
 			},
@@ -84,7 +84,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]any, e
 		}
 	}
 
-	elements := []any{}
+	elements := []map[string]any{}
 	for _, v := range repeated {
 		elements = append(elements, map[string]any{
 			"Element": params,
@@ -104,7 +104,7 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	}
 
 	for _, p := range repeatedParams {
-		rendered, err := render(tmpl.Content.Raw, p)
+		rendered, err := render(name, tmpl.Content.Raw, p)
 		if err != nil {
 			return nil, err
 		}
@@ -155,10 +155,10 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	return objects, nil
 }
 
-// TODO: pass the `GitOpsSet` through to here so that we can fix the
-// `template.New` to include the name/namespace.
-func render(b []byte, params any) ([]byte, error) {
-	t, err := template.New("gitopsset-template").Funcs(templateFuncs).Parse(string(b))
+func render(name types.NamespacedName, b []byte, params map[string]any) ([]byte, error) {
+	t, err := template.New(fmt.Sprintf("%s", name)).
+		Option("missingkey=error").
+		Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
@@ -197,6 +197,13 @@ func makeTemplateFunctions() template.FuncMap {
 	}
 
 	f["sanitize"] = sanitize.SanitizeDNSName
+	f["getordefault"] = func(element map[string]any, key string, def interface{}) interface{} {
+		if v, ok := element[key]; ok {
+			return v
+		}
+
+		return def
+	}
 
 	return f
 }
