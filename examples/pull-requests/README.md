@@ -34,12 +34,6 @@ $ kubectl create secret generic github-secret --from-literal=secret=<insert secr
 Then apply the following YAML...
 
 ```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: pull-request-generator-sa
-  namespace: default
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -58,7 +52,7 @@ metadata:
   namespace: default
 subjects:
 - kind: ServiceAccount
-  name: pull-request-generator-sa
+  name: gitopssets-controller-manager
   namespace: default
 roleRef:
   kind: Role
@@ -71,9 +65,9 @@ This will authenticate access to the GitHub API.
 You can verify the RBAC access...
 
 ```shell
-$ kubectl auth can-i get secret/github-secret -n default --as=system:serviceaccount:default:pull-request-generator-sa
+$ kubectl auth can-i get secret/github-secret -n default --as=system:serviceaccount:gitopssets-controller:gitopssets-controller-manager
 yes
-kubectl auth can-i update secret/github-secret -n default --as=system:serviceaccount:default:pull-request-generator-sa
+kubectl auth can-i update secret/github-secret -n default --as=system:serviceaccount:gitopssets-controller:gitopssets-controller-manager
 no
 ```
 **NOTE:** Do not allow other users to access this secret.

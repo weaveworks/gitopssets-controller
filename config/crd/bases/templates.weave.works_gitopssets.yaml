@@ -59,8 +59,9 @@ spec:
                         the cluster API for relevant clusters.
                       properties:
                         selector:
-                          description: Selector is used to filter the clusters that
-                            you want to target.
+                          description: "Selector is used to filter the clusters that
+                            you want to target. \n If no selector is provided, no
+                            clusters will be matched."
                           properties:
                             matchExpressions:
                               description: matchExpressions is a list of label selector
@@ -155,8 +156,9 @@ spec:
                                   that queries the cluster API for relevant clusters.
                                 properties:
                                   selector:
-                                    description: Selector is used to filter the clusters
-                                      that you want to target.
+                                    description: "Selector is used to filter the clusters
+                                      that you want to target. \n If no selector is
+                                      provided, no clusters will be matched."
                                     properties:
                                       matchExpressions:
                                         description: matchExpressions is a list of
