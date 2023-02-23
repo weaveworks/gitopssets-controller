@@ -90,6 +90,107 @@ func TestGenerateFromFiles_missing_url(t *testing.T) {
 	}
 }
 
+func TestGenerateFromDirectories(t *testing.T) {
+	fetchTests := []struct {
+		description string
+		filename    string
+		items       []templatesv1.GitRepositoryGeneratorDirectoryItem
+		want        []map[string]any
+	}{
+		{
+			description: "simple path",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"}},
+			want: []map[string]any{
+				{"Directory": "./applications/backend", "Base": "backend"},
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
+		{
+			// TODO: non-glob path
+			description: "rooted path",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "*"}},
+			want: []map[string]any{
+				{"Directory": "./applications", "Base": "applications"},
+			},
+		},
+		{
+			description: "non-glob path",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "/applications"}},
+			want: []map[string]any{
+				{"Directory": "./applications", "Base": "applications"},
+			},
+		},
+		{
+			description: "exclusion",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"},
+				{Path: "applications/backend", Exclude: true}},
+			want: []map[string]any{
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
+		{
+			description: "exclusion different form",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"},
+				{Path: "./applications/backend", Exclude: true}},
+			want: []map[string]any{
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
+		{
+			description: "exclusion different form",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"},
+				{Path: "./applications/backend/", Exclude: true}},
+			want: []map[string]any{
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
+	}
+
+	srv := test.StartFakeArchiveServer(t, "testdata")
+	for _, tt := range fetchTests {
+		t.Run(tt.description, func(t *testing.T) {
+			parser := NewRepositoryParser(logr.Discard())
+			parsed, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+tt.filename,
+				strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			sort.Slice(parsed, func(i, j int) bool { return parsed[i]["Directory"].(string) < parsed[j]["Directory"].(string) })
+			if diff := cmp.Diff(tt.want, parsed); diff != "" {
+				t.Fatalf("failed to scan directory:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateFromDirectories_missing_dir(t *testing.T) {
+	parser := NewRepositoryParser(logr.Discard())
+	srv := test.StartFakeArchiveServer(t, "testdata")
+
+	generated, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/directories.tar.gz",
+		strings.TrimSpace(mustReadFile(t, "testdata/directories.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorDirectoryItem{{Path: "files"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(generated) > 0 {
+		t.Fatalf("missing path generated %v", generated)
+	}
+}
+
 func mustReadFile(t *testing.T, filename string) string {
 	t.Helper()
 	b, err := os.ReadFile(filename)

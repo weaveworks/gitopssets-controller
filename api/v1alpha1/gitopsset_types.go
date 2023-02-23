@@ -67,10 +67,17 @@ type PullRequestGenerator struct {
 	Forks bool `json:"forks,omitempty"`
 }
 
-// GitRepositoryGeneratorFileItemm defines a path to a file to be parsed when generating.
+// GitRepositoryGeneratorFileItem defines a path to a file to be parsed when generating.
 type GitRepositoryGeneratorFileItem struct {
 	// Path is the name of a file to read and generate from can be JSON or YAML.
 	Path string `json:"path"`
+}
+
+// GitRepositoryGeneratorDirectoryItem stores the information about a specific
+// directory to be generated from.
+type GitRepositoryGeneratorDirectoryItem struct {
+	Path    string `json:"path"`
+	Exclude bool   `json:"exclude,omitempty"`
 }
 
 // GitRepositoryGenerator generates from files in a Flux GitRepository resource.
@@ -80,6 +87,10 @@ type GitRepositoryGenerator struct {
 
 	// Files is a set of rules for identifying files to be parsed.
 	Files []GitRepositoryGeneratorFileItem `json:"files,omitempty"`
+
+	// Directories is a set of rules for identifying directories to be
+	// generated.
+	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories"`
 }
 
 // MatrixGenerator defines a matrix that combines generators.

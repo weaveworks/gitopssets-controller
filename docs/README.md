@@ -143,6 +143,14 @@ This is the simplest generator, this is a hard-coded array of JSON objects, desc
 
 ### GitRepository generator
 
+The `GitRepository` generator operates on [Flux GitRepositories](https://fluxcd.io/flux/components/source/gitrepositories/).
+
+When a `GitRepository` is updated, this will trigger a regeneration of templates.
+
+The generator operates in two different ways, you can parse files (YAML or JSON) into Elements, or you can scan directories for subdirectories.
+
+#### Generation from files
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -182,6 +190,70 @@ These files can be JSON or YAML.
 Changes pushed to the `GitRepository` will result in rereconciliation of the templates into the cluster.
 
 For security reasons, you need to explicitly list out the files that the generator should parse.
+
+#### Generation from directories
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: repository-sample
+spec:
+  generators:
+    - gitRepository:
+        repositoryRef: go-demo-repo
+        directories:
+          - path: examples/kustomize/environments/*
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.Base }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.Base }}"
+            com.example/team: "{{ .Element.Base }}"
+        spec:
+          interval: 5m
+          path: "{{ .Element.Directory }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+```
+In this example, a [Flux `GitRepository`](https://fluxcd.io/flux/components/source/gitrepositories/) called `go-demo-repo` in the same namespace as the `GitOpsSet` will be tracked, and `Kustomization` resources are generated from paths within the `examples/kustomize/environments/*` directory within the repository.
+
+Each generated element has two keys, `.Element.Directory` which will be a repo-relative path and `.Element.Base` which contains the last element of the path, for example, for a directory `./examples/kustomize/environments/production` this will be `production`.
+
+It is also possible to exclude paths from the generated list, for example, if you do not want to generate for a directory you can exclude it with:
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: repository-sample
+spec:
+  generators:
+    - gitRepository:
+        repositoryRef: go-demo-repo
+        directories:
+          - path: examples/kustomize/environments/*
+          - path: examples/kustomize/environments/production
+            exclude: true
+  templates:
+    - content:
+```
+In this case, all directories that are subdirectories of `examples/kustomize/environments` will be generated, **but** not `examples/kustomize/environments/production`.
+
+**Note**: The directory tree detection is restricted to the same directory as the path, no recursion is done.
+
+In fact the path is treated as a [Glob](https://pkg.go.dev/path/filepath#Glob).
 
 ### PullRequests generator
 
