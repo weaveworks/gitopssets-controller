@@ -120,7 +120,7 @@ func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveU
 		if exclusions.Has(r) {
 			continue
 		}
-		unexcluded = append(unexcluded, map[string]any{"Directory": "./" + r})
+		unexcluded = append(unexcluded, map[string]any{"Directory": "./" + r, "Base": filepath.Base(r)})
 	}
 
 	return unexcluded, nil

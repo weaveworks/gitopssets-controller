@@ -103,8 +103,8 @@ func TestGenerateFromDirectories(t *testing.T) {
 			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
 				{Path: "applications/*"}},
 			want: []map[string]any{
-				{"Directory": "./applications/backend"},
-				{"Directory": "./applications/frontend"},
+				{"Directory": "./applications/backend", "Base": "backend"},
+				{"Directory": "./applications/frontend", "Base": "frontend"},
 			},
 		},
 		{
@@ -114,7 +114,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
 				{Path: "*"}},
 			want: []map[string]any{
-				{"Directory": "./applications"},
+				{"Directory": "./applications", "Base": "applications"},
 			},
 		},
 		{
@@ -123,7 +123,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
 				{Path: "/applications"}},
 			want: []map[string]any{
-				{"Directory": "./applications"},
+				{"Directory": "./applications", "Base": "applications"},
 			},
 		},
 		{
@@ -133,7 +133,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 				{Path: "applications/*"},
 				{Path: "applications/backend", Exclude: true}},
 			want: []map[string]any{
-				{"Directory": "./applications/frontend"},
+				{"Directory": "./applications/frontend", "Base": "frontend"},
 			},
 		},
 	}

@@ -85,8 +85,8 @@ func TestGenerate(t *testing.T) {
 				withArchiveURLAndChecksum(srv.URL+"/directories.tar.gz",
 					"a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
 			[]map[string]any{
-				{"Directory": "backend"},
-				{"Directory": "frontend"},
+				{"Directory": "./applications/backend", "Base": "backend"},
+				{"Directory": "./applications/frontend", "Base": "frontend"},
 			},
 		},
 	}
