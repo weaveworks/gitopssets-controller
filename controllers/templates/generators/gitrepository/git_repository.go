@@ -49,6 +49,10 @@ func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 		return g.generateParamsFromGitFiles(ctx, sg, ks)
 	}
 
+	if sg.GitRepository.Directories != nil {
+		return g.generateParamsFromGitDirectories(ctx, sg, ks)
+	}
+
 	return nil, generators.ErrEmptyGitOpsSet
 }
 
@@ -73,7 +77,30 @@ func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context,
 	return parser.GenerateFromFiles(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Checksum, sg.GitRepository.Files)
 }
 
+func (g *GitRepositoryGenerator) generateParamsFromGitDirectories(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
+	var gr sourcev1.GitRepository
+	repoName := client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}
+	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
+		return nil, fmt.Errorf("could not load GitRepository: %w", err)
+	}
+
+	// No artifact? nothing to generate...
+	if gr.Status.Artifact == nil {
+		g.Logger.Info("GitRepository does not have an artifact", "repository", repoName)
+		return []map[string]any{}, nil
+	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
+		"checksum", gr.Status.Artifact.Checksum, "revision", gr.Status.Artifact.Revision)
+
+	parser := git.NewRepositoryParser(g.Logger)
+
+	return parser.GenerateFromDirectories(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Checksum, sg.GitRepository.Directories)
+}
+
 // Interval is an implementation of the Generator interface.
+//
+// GitRepositoryGenerator is driven by watching a Flux GitRepository resource.
 func (g *GitRepositoryGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
 	return generators.NoRequeueInterval
 }

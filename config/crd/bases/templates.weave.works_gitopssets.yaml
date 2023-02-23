@@ -59,8 +59,9 @@ spec:
                         the cluster API for relevant clusters.
                       properties:
                         selector:
-                          description: Selector is used to filter the clusters that
-                            you want to target.
+                          description: "Selector is used to filter the clusters that
+                            you want to target. \n If no selector is provided, no
+                            clusters will be matched."
                           properties:
                             matchExpressions:
                               description: matchExpressions is a list of label selector
@@ -110,11 +111,27 @@ spec:
                       description: GitRepositoryGenerator generates from files in
                         a Flux GitRepository resource.
                       properties:
+                        directories:
+                          description: Directories is a set of rules for identifying
+                            directories to be generated.
+                          items:
+                            description: GitRepositoryGeneratorDirectoryItem stores
+                              the information about a specific directory to be generated
+                              from.
+                            properties:
+                              exclude:
+                                type: boolean
+                              path:
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
                         files:
                           description: Files is a set of rules for identifying files
                             to be parsed.
                           items:
-                            description: GitRepositoryGeneratorFileItemm defines a
+                            description: GitRepositoryGeneratorFileItem defines a
                               path to a file to be parsed when generating.
                             properties:
                               path:
@@ -129,6 +146,8 @@ spec:
                           description: RepositoryRef is the name of a GitRepository
                             resource to be generated from.
                           type: string
+                      required:
+                      - directories
                       type: object
                     list:
                       description: ListGenerator generates from a hard-coded list.
@@ -155,8 +174,9 @@ spec:
                                   that queries the cluster API for relevant clusters.
                                 properties:
                                   selector:
-                                    description: Selector is used to filter the clusters
-                                      that you want to target.
+                                    description: "Selector is used to filter the clusters
+                                      that you want to target. \n If no selector is
+                                      provided, no clusters will be matched."
                                     properties:
                                       matchExpressions:
                                         description: matchExpressions is a list of
@@ -211,11 +231,27 @@ spec:
                                 description: GitRepositoryGenerator generates from
                                   files in a Flux GitRepository resource.
                                 properties:
+                                  directories:
+                                    description: Directories is a set of rules for
+                                      identifying directories to be generated.
+                                    items:
+                                      description: GitRepositoryGeneratorDirectoryItem
+                                        stores the information about a specific directory
+                                        to be generated from.
+                                      properties:
+                                        exclude:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
                                   files:
                                     description: Files is a set of rules for identifying
                                       files to be parsed.
                                     items:
-                                      description: GitRepositoryGeneratorFileItemm
+                                      description: GitRepositoryGeneratorFileItem
                                         defines a path to a file to be parsed when
                                         generating.
                                       properties:
@@ -232,6 +268,8 @@ spec:
                                     description: RepositoryRef is the name of a GitRepository
                                       resource to be generated from.
                                     type: string
+                                required:
+                                - directories
                                 type: object
                               list:
                                 description: ListGenerator generates from a hard-coded

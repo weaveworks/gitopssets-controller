@@ -55,7 +55,7 @@ func TestGenerate(t *testing.T) {
 			[]map[string]any{},
 		},
 		{
-			"simple case",
+			"file list case",
 			&templatesv1.GitRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Files: []templatesv1.GitRepositoryGeneratorFileItem{
@@ -71,6 +71,22 @@ func TestGenerate(t *testing.T) {
 				{"environment": "dev", "instances": 2.0},
 				{"environment": "production", "instances": 10.0},
 				{"environment": "staging", "instances": 5.0},
+			},
+		},
+		{
+			"directory generation",
+			&templatesv1.GitRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Directories: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+					{Path: "applications/*"},
+				},
+			},
+			[]runtime.Object{newGitRepository(
+				withArchiveURLAndChecksum(srv.URL+"/directories.tar.gz",
+					"a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
+			[]map[string]any{
+				{"Directory": "backend"},
+				{"Directory": "frontend"},
 			},
 		},
 	}
