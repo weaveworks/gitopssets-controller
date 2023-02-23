@@ -92,7 +92,7 @@ func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveU
 	paths := []string{}
 	for _, dir := range dirs {
 		if dir.Exclude == true {
-			exclusions.Insert(dir.Path)
+			exclusions.Insert(filepath.Clean(dir.Path))
 			continue
 		}
 

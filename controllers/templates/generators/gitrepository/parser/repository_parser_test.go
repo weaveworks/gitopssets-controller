@@ -136,6 +136,26 @@ func TestGenerateFromDirectories(t *testing.T) {
 				{"Directory": "./applications/frontend", "Base": "frontend"},
 			},
 		},
+		{
+			description: "exclusion different form",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"},
+				{Path: "./applications/backend", Exclude: true}},
+			want: []map[string]any{
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
+		{
+			description: "exclusion different form",
+			filename:    "/directories.tar.gz",
+			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+				{Path: "applications/*"},
+				{Path: "./applications/backend/", Exclude: true}},
+			want: []map[string]any{
+				{"Directory": "./applications/frontend", "Base": "frontend"},
+			},
+		},
 	}
 
 	srv := test.StartFakeArchiveServer(t, "testdata")

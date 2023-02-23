@@ -251,6 +251,10 @@ spec:
 ```
 In this case, all directories that are subdirectories of `examples/kustomize/environments` will be generated, **but** not `examples/kustomize/environments/production`.
 
+**Note**: The directory tree detection is restricted to the same directory as the path, no recursion is done.
+
+In fact the path is treated as a [Glob](https://pkg.go.dev/path/filepath#Glob).
+
 ### PullRequests generator
 
 This will require to make authenticated requests to your Git hosting provider e.g. GitHub, GitLab, Bitbucket etc.
