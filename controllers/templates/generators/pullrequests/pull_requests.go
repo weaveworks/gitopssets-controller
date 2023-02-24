@@ -51,7 +51,7 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		return nil, nil
 	}
 
-	g.Logger.Info("generating params", "repo", sg.PullRequests.Repo)
+	g.Logger.Info("generating params from PullRequest generator", "repo", sg.PullRequests.Repo)
 	authToken := ""
 	if sg.PullRequests.SecretRef != nil {
 		secretName := types.NamespacedName{

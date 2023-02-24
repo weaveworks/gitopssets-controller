@@ -54,6 +54,25 @@ spec:
                   description: GitOpsSetGenerator is the top-level set of generators
                     for this GitOpsSet.
                   properties:
+                    apiClient:
+                      description: APIClientGenerator defines a generator that queries
+                        an API endpoint and uses that to generate data.
+                      properties:
+                        endpoint:
+                          description: This is the API endpoint to use.
+                          pattern: ^https://
+                          type: string
+                        interval:
+                          description: The interval at which to poll the API endpoint.
+                          type: string
+                        jsonPath:
+                          description: "JSONPath is string that is used to modify
+                            the result of the API call. \n This can be used to extract
+                            a repeating element from a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
+                          type: string
+                      required:
+                      - interval
+                      type: object
                     cluster:
                       description: ClusterGenerator defines a generator that queries
                         the cluster API for relevant clusters.
@@ -169,6 +188,28 @@ spec:
                               generators allowed by the GitOpsSetGenerator because
                               the CRD format doesn't support recursive declarations.
                             properties:
+                              apiClient:
+                                description: APIClientGenerator defines a generator
+                                  that queries an API endpoint and uses that to generate
+                                  data.
+                                properties:
+                                  endpoint:
+                                    description: This is the API endpoint to use.
+                                    pattern: ^https://
+                                    type: string
+                                  interval:
+                                    description: The interval at which to poll the
+                                      API endpoint.
+                                    type: string
+                                  jsonPath:
+                                    description: "JSONPath is string that is used
+                                      to modify the result of the API call. \n This
+                                      can be used to extract a repeating element from
+                                      a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
+                                    type: string
+                                required:
+                                - interval
+                                type: object
                               cluster:
                                 description: ClusterGenerator defines a generator
                                   that queries the cluster API for relevant clusters.

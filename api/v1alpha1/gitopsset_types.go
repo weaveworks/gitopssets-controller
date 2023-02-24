@@ -67,6 +67,26 @@ type PullRequestGenerator struct {
 	Forks bool `json:"forks,omitempty"`
 }
 
+// APIClientGenerator defines a generator that queries an API endpoint and uses
+// that to generate data.
+type APIClientGenerator struct {
+	// The interval at which to poll the API endpoint.
+	// +required
+	Interval metav1.Duration `json:"interval"`
+
+	// This is the API endpoint to use.
+	// +kubebuilder:validation:Pattern="^https://"
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// JSONPath is string that is used to modify the result of the API
+	// call.
+	//
+	// This can be used to extract a repeating element from a response.
+	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
+	JSONPath string `json:"jsonPath,omitempty"`
+}
+
 // GitRepositoryGeneratorFileItem defines a path to a file to be parsed when generating.
 type GitRepositoryGeneratorFileItem struct {
 	// Path is the name of a file to read and generate from can be JSON or YAML.
@@ -107,6 +127,7 @@ type GitOpsSetNestedGenerator struct {
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
+	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
@@ -116,6 +137,7 @@ type GitOpsSetGenerator struct {
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
+	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

@@ -1,0 +1,3 @@
+resources:
+  - ../base
+  - api-client-generator.yaml

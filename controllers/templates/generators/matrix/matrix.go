@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// MatrixGenerator is a generator that combines the results of multiple
+// generators into a single set of values.
 type MatrixGenerator struct {
 	client.Client
 	logr.Logger

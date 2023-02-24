@@ -45,6 +45,8 @@ func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 		return nil, nil
 	}
 
+	g.Logger.Info("generating params from GitRepository generator", "repo", sg.GitRepository.RepositoryRef)
+
 	if sg.GitRepository.Files != nil {
 		return g.generateParamsFromGitFiles(ctx, sg, ks)
 	}

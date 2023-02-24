@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -23,6 +24,7 @@ import (
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
@@ -119,11 +121,14 @@ func main() {
 		Generators: map[string]generators.GeneratorFactory{
 			"List":          list.GeneratorFactory,
 			"GitRepository": gitrepository.GeneratorFactory,
+			// TODO: Figure out how to configure the client
+			"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
 				"List":          list.GeneratorFactory,
 				"GitRepository": gitrepository.GeneratorFactory,
 				"PullRequests":  pullrequests.GeneratorFactory,
 				"Cluster":       cluster.GeneratorFactory,
+				"APIClient":     apiclient.GeneratorFactory(http.DefaultClient),
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
