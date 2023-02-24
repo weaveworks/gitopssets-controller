@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,13 +47,31 @@ func TestGenerate(t *testing.T) {
 	defer ts.Close()
 
 	testCases := []struct {
-		name     string
-		endpoint string
-		want     []map[string]any
+		name      string
+		apiClient *templatesv1.APIClientGenerator
+		want      []map[string]any
 	}{
 		{
-			name:     "simple API endpoint",
-			endpoint: ts.URL + "/api/testing",
+			name: "simple API endpoint with get request",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				Method:   http.MethodGet,
+			},
+			want: []map[string]any{
+				{
+					"name": "testing1",
+				},
+				{
+					"name": "testing2",
+				},
+			},
+		},
+		{
+			name: "simple API endpoint with post request",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/post-testing",
+				Method:   http.MethodPost,
+			},
 			want: []map[string]any{
 				{
 					"name": "testing1",
@@ -69,9 +88,7 @@ func TestGenerate(t *testing.T) {
 			gen := GeneratorFactory(ts.Client())(logr.Discard(), fake.NewFakeClient())
 
 			gsg := templatesv1.GitOpsSetGenerator{
-				APIClient: &templatesv1.APIClientGenerator{
-					Endpoint: tt.endpoint,
-				},
+				APIClient: tt.apiClient,
 			}
 
 			got, err := gen.Generate(context.TODO(), &gsg,
@@ -164,7 +181,8 @@ func TestAPIClientGenerator_GetInterval(t *testing.T) {
 func newTestMux(t *testing.T) *http.ServeMux {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/testing", func(w http.ResponseWriter, r *http.Request) {
+
+	writeResponse := func(w http.ResponseWriter) {
 		enc := json.NewEncoder(w)
 		if err := enc.Encode([]map[string]any{
 			{
@@ -177,6 +195,23 @@ func newTestMux(t *testing.T) *http.ServeMux {
 		}); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	mux.HandleFunc("/api/get-testing", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("KEVIN!!!!!! %v", r)
+		if r.Method != http.MethodGet {
+			http.Error(w, "wrong test endpoint", http.StatusMethodNotAllowed)
+			return
+		}
+		writeResponse(w)
+	})
+
+	mux.HandleFunc("/api/post-testing", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "wrong test endpoint", http.StatusMethodNotAllowed)
+			return
+		}
+		writeResponse(w)
 	})
 
 	mux.HandleFunc("/api/bad", func(w http.ResponseWriter, r *http.Request) {

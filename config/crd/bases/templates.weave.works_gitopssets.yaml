@@ -70,6 +70,14 @@ spec:
                             the result of the API call. \n This can be used to extract
                             a repeating element from a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
                           type: string
+                        method:
+                          default: GET
+                          description: Method defines the HTTP method to use to talk
+                            to the endpoint.
+                          enum:
+                          - GET
+                          - POST
+                          type: string
                       required:
                       - interval
                       type: object
@@ -206,6 +214,14 @@ spec:
                                       to modify the result of the API call. \n This
                                       can be used to extract a repeating element from
                                       a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
+                                    type: string
+                                  method:
+                                    default: GET
+                                    description: Method defines the HTTP method to
+                                      use to talk to the endpoint.
+                                    enum:
+                                    - GET
+                                    - POST
                                     type: string
                                 required:
                                 - interval

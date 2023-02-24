@@ -51,7 +51,7 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 
 	g.Logger.Info("generating params frou APIClient generator", "endpoint", sg.APIClient.Endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sg.APIClient.Endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, sg.APIClient.Method, sg.APIClient.Endpoint, nil)
 	if err != nil {
 		g.Logger.Error(err, "failed to create request", "endpoint", sg.APIClient.Endpoint)
 		return nil, err

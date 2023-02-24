@@ -79,6 +79,11 @@ type APIClientGenerator struct {
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
+	// Method defines the HTTP method to use to talk to the endpoint.
+	// +kubebuilder:default="GET"
+	// +kubebuilder:validation:Enum=GET;POST
+	Method string `json:"method,omitempty"`
+
 	// JSONPath is string that is used to modify the result of the API
 	// call.
 	//
