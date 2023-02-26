@@ -160,6 +160,22 @@ type GitOpsSet struct {
 	Status GitOpsSetStatus `json:"status,omitempty"`
 }
 
+// GetConditions returns the status conditions of the object.
+func (in GitOpsSet) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *GitOpsSet) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
+}
+
+// GetStatusConditions returns a pointer to the Status.Conditions slice.
+// Deprecated: use GetConditions instead.
+func (in *GitOpsSet) GetStatusConditions() *[]metav1.Condition {
+	return &in.Status.Conditions
+}
+
 //+kubebuilder:object:root=true
 
 // GitOpsSetList contains a list of GitOpsSet

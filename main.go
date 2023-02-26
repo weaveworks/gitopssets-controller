@@ -8,6 +8,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
+	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/logger"
 	flag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
-	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -27,6 +26,10 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
+
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -34,6 +37,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+const controllerName = "GitOpsSet"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -52,9 +57,11 @@ func main() {
 		defaultServiceAccount string
 		clientOptions         runtimeclient.Options
 		logOptions            logger.Options
+		eventsAddr            string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&eventsAddr, "events-addr", "", "The address of the events receiver.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -105,6 +112,7 @@ func main() {
 		setupLog.Error(err, "unable to create REST Mapper")
 		os.Exit(1)
 	}
+	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
 
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
@@ -124,8 +132,10 @@ func main() {
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 		},
+		Metrics: metricsH,
+		// EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")
+		setupLog.Error(err, "unable to create controller", "controller", controllerName)
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
