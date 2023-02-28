@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -81,6 +80,22 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "api endpoint returning map with JSONPath",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/non-array",
+				Method:   http.MethodGet,
+				JSONPath: "{ $.things }",
+			},
+			want: []map[string]any{
+				{
+					"name": "testing1",
+				},
+				{
+					"name": "testing2",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -117,19 +132,47 @@ func TestGenerate_errors(t *testing.T) {
 	defer ts.Close()
 
 	testCases := []struct {
-		name     string
-		wantErr  string
-		endpoint string
+		name      string
+		wantErr   string
+		apiClient *templatesv1.APIClientGenerator
 	}{
 		{
-			name:     "endpoint returning 404",
-			endpoint: ts.URL + "/unknown",
-			wantErr:  fmt.Sprintf("got 404 response from endpoint %s", ts.URL+"/unknown"),
+			name: "endpoint returning 404",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/unknown",
+			},
+			wantErr: fmt.Sprintf("got 404 response from endpoint %s", ts.URL+"/unknown"),
 		},
 		{
-			name:     "invalid JSON response",
-			endpoint: ts.URL + "/api/bad",
-			wantErr:  fmt.Sprintf("failed to unmarshal JSON response from endpoint %s", ts.URL+"/api/bad"),
+			name: "invalid JSON response",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/bad",
+			},
+			wantErr: fmt.Sprintf("failed to unmarshal JSON response from endpoint %s", ts.URL+"/api/bad"),
+		},
+		{
+			name: "jsonpath expression failure",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				JSONPath: "{",
+			},
+			wantErr: `failed to parse JSONPath for APIClient generator "{": unclosed action`,
+		},
+		{
+			name: "JSONPath references missing key",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				JSONPath: "{ $.things }",
+			},
+			wantErr: `failed to find results from expression { \$.things } accessing endpoint.*: things is not found`,
+		},
+		{
+			name: "JSONPath is not slice of maps",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/map-of-strings",
+				JSONPath: "{ $.things }",
+			},
+			wantErr: `failed to parse response JSONPath { \$.things } did not generate suitable values accessing endpoint`,
 		},
 	}
 
@@ -138,9 +181,7 @@ func TestGenerate_errors(t *testing.T) {
 			gen := GeneratorFactory(ts.Client())(logr.Discard(), nil)
 
 			gsg := templatesv1.GitOpsSetGenerator{
-				APIClient: &templatesv1.APIClientGenerator{
-					Endpoint: tt.endpoint,
-				},
+				APIClient: tt.apiClient,
 			}
 
 			_, err := gen.Generate(context.TODO(), &gsg,
@@ -197,8 +238,20 @@ func newTestMux(t *testing.T) *http.ServeMux {
 		}
 	}
 
+	mux.HandleFunc("/api/map-of-strings", func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(map[string]any{
+			"things": []any{
+				"testing1",
+				"testing2",
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+	})
+
 	mux.HandleFunc("/api/get-testing", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("KEVIN!!!!!! %v", r)
 		if r.Method != http.MethodGet {
 			http.Error(w, "wrong test endpoint", http.StatusMethodNotAllowed)
 			return
@@ -212,6 +265,23 @@ func newTestMux(t *testing.T) *http.ServeMux {
 			return
 		}
 		writeResponse(w)
+	})
+
+	mux.HandleFunc("/api/non-array", func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(map[string]any{
+			"things": []any{
+				map[string]string{
+					"name": "testing1",
+				},
+				map[string]string{
+					"name": "testing2",
+				},
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+
 	})
 
 	mux.HandleFunc("/api/bad", func(w http.ResponseWriter, r *http.Request) {
