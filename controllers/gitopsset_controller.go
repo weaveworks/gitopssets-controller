@@ -10,6 +10,7 @@ import (
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
 
+	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
@@ -49,6 +50,7 @@ type GitOpsSetReconciler struct {
 	client.Client
 	DefaultServiceAccount string
 	Config                *rest.Config
+	runtimeCtrl.Metrics
 
 	Generators map[string]generators.GeneratorFactory
 
@@ -71,6 +73,7 @@ type GitOpsSetReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
 	logger := log.FromContext(ctx)
+	reconcileStart := time.Now()
 
 	var gitOpsSet templatesv1.GitOpsSet
 	if err := r.Client.Get(ctx, req.NamespacedName, &gitOpsSet); err != nil {
@@ -101,6 +104,14 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		k8sClient = c
 	}
+
+	defer func() {
+		// Record Prometheus metrics.
+		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
+		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
+		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
+
+	}()
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
+	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/logger"
 	flag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,6 +35,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+const controllerName = "GitOpsSet"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -105,6 +108,7 @@ func main() {
 		setupLog.Error(err, "unable to create REST Mapper")
 		os.Exit(1)
 	}
+	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
 
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
@@ -124,8 +128,9 @@ func main() {
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 		},
+		Metrics: metricsH,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GitOpsSet")
+		setupLog.Error(err, "unable to create controller", "controller", controllerName)
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
