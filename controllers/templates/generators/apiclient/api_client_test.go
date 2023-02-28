@@ -14,7 +14,11 @@ import (
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/test"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -48,6 +52,7 @@ func TestGenerate(t *testing.T) {
 	testCases := []struct {
 		name      string
 		apiClient *templatesv1.APIClientGenerator
+		objs      []runtime.Object
 		want      []map[string]any
 	}{
 		{
@@ -96,11 +101,51 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "request with custom secret headers",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/secret-header",
+				Method:   http.MethodGet,
+				HeadersRef: &templatesv1.HeadersReference{
+					Name: "test-secret",
+					Kind: "Secret",
+				},
+			},
+			objs: []runtime.Object{newTestSecret()},
+			want: []map[string]any{
+				{
+					"name": "Bearer 1234567",
+				},
+				{
+					"name": "test-value",
+				},
+			},
+		},
+		{
+			name: "request with custom configmap headers",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/config-header",
+				Method:   http.MethodGet,
+				HeadersRef: &templatesv1.HeadersReference{
+					Name: "test-configmap",
+					Kind: "ConfigMap",
+				},
+			},
+			objs: []runtime.Object{newTestConfigMap()},
+			want: []map[string]any{
+				{
+					"name": "config-value",
+				},
+				{
+					"name": "configuration",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := GeneratorFactory(ts.Client())(logr.Discard(), fake.NewFakeClient())
+			gen := GeneratorFactory(ts.Client())(logr.Discard(), newFakeClient(t, tt.objs...))
 
 			gsg := templatesv1.GitOpsSetGenerator{
 				APIClient: tt.apiClient,
@@ -133,6 +178,7 @@ func TestGenerate_errors(t *testing.T) {
 
 	testCases := []struct {
 		name      string
+		objs      []runtime.Object
 		wantErr   string
 		apiClient *templatesv1.APIClientGenerator
 	}{
@@ -159,6 +205,14 @@ func TestGenerate_errors(t *testing.T) {
 			wantErr: `failed to parse JSONPath for APIClient generator "{": unclosed action`,
 		},
 		{
+			name: "jsonpath expression with invalid JSON response",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/bad",
+				JSONPath: "{ $.testing }",
+			},
+			wantErr: fmt.Sprintf("failed to unmarshal JSON response from endpoint %s", ts.URL+"/api/bad"),
+		},
+		{
 			name: "JSONPath references missing key",
 			apiClient: &templatesv1.APIClientGenerator{
 				Endpoint: ts.URL + "/api/get-testing",
@@ -174,11 +228,33 @@ func TestGenerate_errors(t *testing.T) {
 			},
 			wantErr: `failed to parse response JSONPath { \$.things } did not generate suitable values accessing endpoint`,
 		},
+		{
+			name: "Reference to unknown secret",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				HeadersRef: &templatesv1.HeadersReference{
+					Name: "test-secret",
+					Kind: "Secret",
+				},
+			},
+			wantErr: `failed to load Secret for Request headers default/test-secret: secrets "test-secret" not found`,
+		},
+		{
+			name: "Reference to unknown config-map",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				HeadersRef: &templatesv1.HeadersReference{
+					Name: "test-configmap",
+					Kind: "ConfigMap",
+				},
+			},
+			wantErr: `failed to load ConfigMap for Request headers default/test-configmap: configmaps "test-configmap" not found`,
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := GeneratorFactory(ts.Client())(logr.Discard(), nil)
+			gen := GeneratorFactory(ts.Client())(logr.Discard(), newFakeClient(t, tt.objs...))
 
 			gsg := templatesv1.GitOpsSetGenerator{
 				APIClient: tt.apiClient,
@@ -238,6 +314,34 @@ func newTestMux(t *testing.T) *http.ServeMux {
 		}
 	}
 
+	mux.HandleFunc("/api/secret-header", func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		if err := enc.Encode([]map[string]any{
+			{
+				"name": r.Header.Get("Authorization"),
+			},
+			{
+				"name": r.Header.Get("Second-Value"),
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	mux.HandleFunc("/api/config-header", func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		if err := enc.Encode([]map[string]any{
+			{
+				"name": r.Header.Get("Config-Key"),
+			},
+			{
+				"name": r.Header.Get("testValue"),
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	mux.HandleFunc("/api/map-of-strings", func(w http.ResponseWriter, r *http.Request) {
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(map[string]any{
@@ -248,7 +352,6 @@ func newTestMux(t *testing.T) *http.ServeMux {
 		}); err != nil {
 			t.Fatal(err)
 		}
-
 	})
 
 	mux.HandleFunc("/api/get-testing", func(w http.ResponseWriter, r *http.Request) {
@@ -289,4 +392,89 @@ func newTestMux(t *testing.T) *http.ServeMux {
 	})
 
 	return mux
+}
+
+func Test_addHeadersFromSecretToRequest(t *testing.T) {
+	secret := newTestSecret()
+	kc := newFakeClient(t, secret)
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := addHeadersFromSecretToRequest(context.TODO(), kc, req, client.ObjectKeyFromObject(secret)); err != nil {
+		t.Fatal(err)
+	}
+
+	if v := req.Header.Get(http.CanonicalHeaderKey("Testing")); v != "value" {
+		t.Fatalf("got header %s value %q, want %q", "Testing", v, "value")
+	}
+}
+
+func Test_addHeadersFromConfigMapToRequest(t *testing.T) {
+	configMap := newTestConfigMap()
+	kc := newFakeClient(t, configMap)
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := addHeadersFromConfigMapToRequest(context.TODO(), kc, req, client.ObjectKeyFromObject(configMap)); err != nil {
+		t.Fatal(err)
+	}
+
+	if v := req.Header.Get(http.CanonicalHeaderKey("Config-Key")); v != "config-value" {
+		t.Fatalf("got header %s value %q, want %q", "Config-Key", v, "config-value")
+	}
+}
+
+func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objs...).Build()
+}
+
+func newTestSecret(opts ...func(*corev1.Secret)) *corev1.Secret {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-secret",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"testing":       []byte("value"),
+			"Authorization": []byte("Bearer 1234567"),
+			"second-value":  []byte("test-value"),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(secret)
+	}
+
+	return secret
+}
+
+func newTestConfigMap(opts ...func(*corev1.ConfigMap)) *corev1.ConfigMap {
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-configmap",
+			Namespace: "default",
+		},
+		Data: map[string]string{
+			"config-key": "config-value",
+			"testValue":  "configuration",
+		},
+	}
+
+	for _, opt := range opts {
+		opt(configMap)
+	}
+
+	return configMap
 }

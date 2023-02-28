@@ -92,13 +92,10 @@ func TestClusterGenerator_Generate(t *testing.T) {
 
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 	t.Helper()
-
 	scheme := runtime.NewScheme()
-
 	if err := clustersv1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
-
 	if err := templatesv1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}

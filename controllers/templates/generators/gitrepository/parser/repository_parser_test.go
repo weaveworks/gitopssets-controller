@@ -85,7 +85,7 @@ func TestGenerateFromFiles_missing_url(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
-	if !strings.Contains(err.Error(), "failed to get archive") {
+	if !strings.Contains(err.Error(), "failed to get archive URL") {
 		t.Fatalf("got error %v", err)
 	}
 }
@@ -188,6 +188,17 @@ func TestGenerateFromDirectories_missing_dir(t *testing.T) {
 
 	if len(generated) > 0 {
 		t.Fatalf("missing path generated %v", generated)
+	}
+}
+
+func TestGenerateFromDirectories_missing_url(t *testing.T) {
+	parser := NewRepositoryParser(logr.Discard())
+	srv := test.StartFakeArchiveServer(t, "testdata")
+
+	_, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")),
+		[]templatesv1.GitRepositoryGeneratorDirectoryItem{{Path: "files/test.yaml"}})
+	if !strings.Contains(err.Error(), "failed to get archive URL") {
+		t.Fatalf("got error %v", err)
 	}
 }
 

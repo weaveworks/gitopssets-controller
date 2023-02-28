@@ -90,6 +90,25 @@ type APIClientGenerator struct {
 	// This can be used to extract a repeating element from a response.
 	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
 	JSONPath string `json:"jsonPath,omitempty"`
+
+	// HeadersRef allows optional configuration of a Secret or ConfigMap to add
+	// additional headers to an outgoing request.
+	//
+	// For example, a Secret with a key Authorization: Bearer abc123 could be
+	// used to configure an authorization header.
+	//
+	// +optional
+	HeadersRef *HeadersReference `json:"headersRef"`
+}
+
+// HeadersReference references either a Secret or ConfigMap to be used for
+// additional request headers.
+type HeadersReference struct {
+	// The resource kind to get headers from.
+	// +kubebuilder:validation:Enum=Secret;ConfigMap
+	Kind string `json:"kind"`
+	// Name of the resource in the same namespace to apply headers from.
+	Name string `json:"name"`
 }
 
 // GitRepositoryGeneratorFileItem defines a path to a file to be parsed when generating.

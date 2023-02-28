@@ -62,6 +62,27 @@ spec:
                           description: This is the API endpoint to use.
                           pattern: ^https://
                           type: string
+                        headersRef:
+                          description: "HeadersRef allows optional configuration of
+                            a Secret or ConfigMap to add additional headers to an
+                            outgoing request. \n For example, a Secret with a key
+                            Authorization: Bearer abc123 could be used to configure
+                            an authorization header."
+                          properties:
+                            kind:
+                              description: The resource kind to get headers from.
+                              enum:
+                              - Secret
+                              - ConfigMap
+                              type: string
+                            name:
+                              description: Name of the resource in the same namespace
+                                to apply headers from.
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
                         interval:
                           description: The interval at which to poll the API endpoint.
                           type: string
@@ -205,6 +226,28 @@ spec:
                                     description: This is the API endpoint to use.
                                     pattern: ^https://
                                     type: string
+                                  headersRef:
+                                    description: "HeadersRef allows optional configuration
+                                      of a Secret or ConfigMap to add additional headers
+                                      to an outgoing request. \n For example, a Secret
+                                      with a key Authorization: Bearer abc123 could
+                                      be used to configure an authorization header."
+                                    properties:
+                                      kind:
+                                        description: The resource kind to get headers
+                                          from.
+                                        enum:
+                                        - Secret
+                                        - ConfigMap
+                                        type: string
+                                      name:
+                                        description: Name of the resource in the same
+                                          namespace to apply headers from.
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
                                   interval:
                                     description: The interval at which to poll the
                                       API endpoint.
