@@ -131,12 +131,11 @@ In this case, six different `ConfigMaps` are generated, three for the "dev-team"
 ## Generators
 
 We currently provide these generators:
-
-- list
-- pullRequests
-- gitRepository
-- matrix
-- apiClient
+ - [list](#list-generator)
+ - [pullRequests](#pullrequests-generator)
+ - [gitRepository](#gitrepository-generator)
+ - [matrix](#matrix-generator)
+ - [apiClient](#apiclient-generator)
 
 ### List generator
 
@@ -537,7 +536,7 @@ Not all APIs return an array of JSON objects, sometimes it's nested within a res
 }
 ```
 You can use JSONPath to extract the fields from this data...
-```
+```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
 metadata:
@@ -556,6 +555,38 @@ spec:
         jsonPath: "{ $.things }"
 ```
 This will generate three maps for templates, with just the _env_ and _team_ keys.
+
+#### APIClient POST body
+
+Another piece of functionality in the APIClient generator is the ability to POST
+JSON to the API.
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        interval: 5m
+        endpoint: https://api.example.com/demo
+        body:
+          name: "testing"
+          value: "testing2"
+```
+This will send a request body as JSON (Content-Type "application/json") to the
+server and interpret the result.
+
+The JSON body sent will look like this:
+```json
+{"name":"testing","value":"testing2"}
+```
 
 ## Templating functions
 

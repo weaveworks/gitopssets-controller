@@ -75,7 +75,7 @@ type APIClientGenerator struct {
 	Interval metav1.Duration `json:"interval"`
 
 	// This is the API endpoint to use.
-	// +kubebuilder:validation:Pattern="^https://"
+	// +kubebuilder:validation:Pattern="^(http|https)://"
 	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
@@ -99,6 +99,11 @@ type APIClientGenerator struct {
 	//
 	// +optional
 	HeadersRef *HeadersReference `json:"headersRef"`
+
+	// Body is set as the body in a POST request.
+	//
+	// If set, this will configure the Method to be POST automatically.
+	Body *apiextensionsv1.JSON `json:"body"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for

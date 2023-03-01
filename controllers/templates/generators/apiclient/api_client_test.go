@@ -11,15 +11,17 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/test"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 var _ generators.Generator = (*APIClientGenerator)(nil)
@@ -82,6 +84,20 @@ func TestGenerate(t *testing.T) {
 				},
 				{
 					"name": "testing2",
+				},
+			},
+		},
+		{
+			name: "simple API endpoint with POST body request",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/post-body",
+				Method:   http.MethodPost,
+				Body:     &apiextensionsv1.JSON{Raw: []byte(`{"user":"demo","groups":["group1"]}`)},
+			},
+			want: []map[string]any{
+				{
+					"name":   "demo",
+					"groups": []any{"group1"},
 				},
 			},
 		},
@@ -368,6 +384,33 @@ func newTestMux(t *testing.T) *http.ServeMux {
 			return
 		}
 		writeResponse(w)
+	})
+
+	mux.HandleFunc("/api/post-body", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "unsupported method", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "unsupported content type", http.StatusUnsupportedMediaType)
+			return
+		}
+		var body map[string]any
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&body); err != nil {
+			http.Error(w, "invalid json "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		enc := json.NewEncoder(w)
+		if err := enc.Encode([]map[string]any{
+			{
+				"name":   body["user"],
+				"groups": body["groups"],
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	mux.HandleFunc("/api/non-array", func(w http.ResponseWriter, r *http.Request) {

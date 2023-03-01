@@ -58,9 +58,13 @@ spec:
                       description: APIClientGenerator defines a generator that queries
                         an API endpoint and uses that to generate data.
                       properties:
+                        body:
+                          description: "Body is set as the body in a POST request.
+                            \n If set, this will configure the Method to be POST automatically."
+                          x-kubernetes-preserve-unknown-fields: true
                         endpoint:
                           description: This is the API endpoint to use.
-                          pattern: ^https://
+                          pattern: ^(http|https)://
                           type: string
                         headersRef:
                           description: "HeadersRef allows optional configuration of
@@ -100,6 +104,7 @@ spec:
                           - POST
                           type: string
                       required:
+                      - body
                       - interval
                       type: object
                     cluster:
@@ -222,9 +227,14 @@ spec:
                                   that queries an API endpoint and uses that to generate
                                   data.
                                 properties:
+                                  body:
+                                    description: "Body is set as the body in a POST
+                                      request. \n If set, this will configure the
+                                      Method to be POST automatically."
+                                    x-kubernetes-preserve-unknown-fields: true
                                   endpoint:
                                     description: This is the API endpoint to use.
-                                    pattern: ^https://
+                                    pattern: ^(http|https)://
                                     type: string
                                   headersRef:
                                     description: "HeadersRef allows optional configuration
@@ -267,6 +277,7 @@ spec:
                                     - POST
                                     type: string
                                 required:
+                                - body
                                 - interval
                                 type: object
                               cluster:

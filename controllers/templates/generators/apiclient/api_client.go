@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -97,9 +98,23 @@ func (g *APIClientGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.D
 }
 
 func (g *APIClientGenerator) createRequest(ctx context.Context, ac *templatesv1.APIClientGenerator, namespace string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, ac.Method, ac.Endpoint, nil)
+	method := ac.Method
+	if ac.Body != nil {
+		method = http.MethodPost
+	}
+
+	var body io.Reader
+	if ac.Body != nil {
+		body = bytes.NewReader(ac.Body.Raw)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, ac.Endpoint, body)
 	if err != nil {
 		return nil, err
+	}
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	if ac.HeadersRef != nil {
