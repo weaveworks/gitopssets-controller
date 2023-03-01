@@ -69,17 +69,16 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 	}
 	defer resp.Body.Close()
 
-	// Anything 400+ is an error?
-	if resp.StatusCode >= http.StatusBadRequest {
-		// TODO: this should read the body and insert it?
-		g.Logger.Info("failed to fetch endpoint", "endpoint", sg.APIClient.Endpoint, "statusCode", resp.StatusCode)
-		return nil, fmt.Errorf("got %d response from endpoint %s", resp.StatusCode, sg.APIClient.Endpoint)
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		g.Logger.Error(err, "failed to read response", "endpoint", sg.APIClient.Endpoint)
 		return nil, err
+	}
+
+	// Anything 400+ is an error?
+	if resp.StatusCode >= http.StatusBadRequest {
+		g.Logger.Info("failed to fetch endpoint", "endpoint", sg.APIClient.Endpoint, "statusCode", resp.StatusCode, "response", string(body))
+		return nil, fmt.Errorf("got %d response from endpoint %s", resp.StatusCode, sg.APIClient.Endpoint)
 	}
 
 	if sg.APIClient.JSONPath == "" {
