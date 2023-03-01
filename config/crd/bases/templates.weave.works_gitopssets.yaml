@@ -104,7 +104,6 @@ spec:
                           - POST
                           type: string
                       required:
-                      - body
                       - interval
                       type: object
                     cluster:
@@ -277,7 +276,6 @@ spec:
                                     - POST
                                     type: string
                                 required:
-                                - body
                                 - interval
                                 type: object
                               cluster:

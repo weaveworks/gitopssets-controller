@@ -98,12 +98,13 @@ type APIClientGenerator struct {
 	// used to configure an authorization header.
 	//
 	// +optional
-	HeadersRef *HeadersReference `json:"headersRef"`
+	HeadersRef *HeadersReference `json:"headersRef,omitempty"`
 
 	// Body is set as the body in a POST request.
 	//
 	// If set, this will configure the Method to be POST automatically.
-	Body *apiextensionsv1.JSON `json:"body"`
+	// +optional
+	Body *apiextensionsv1.JSON `json:"body,omitempty"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for
