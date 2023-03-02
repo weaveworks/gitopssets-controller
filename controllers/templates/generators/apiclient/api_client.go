@@ -82,6 +82,9 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 	}
 
 	if sg.APIClient.JSONPath == "" {
+		if sg.APIClient.SingleElement {
+			return g.generateFromResponseBodySingleElement(body, sg.APIClient.Endpoint)
+		}
 		return g.generateFromResponseBody(body, sg.APIClient.Endpoint)
 	}
 
@@ -141,6 +144,16 @@ func (g *APIClientGenerator) generateFromResponseBody(body []byte, endpoint stri
 	}
 
 	return res, nil
+}
+
+func (g *APIClientGenerator) generateFromResponseBodySingleElement(body []byte, endpoint string) ([]map[string]any, error) {
+	var result map[string]any
+	if err := json.Unmarshal(body, &result); err != nil {
+		g.Logger.Error(err, "failed to unmarshal JSON response", "endpoint", endpoint)
+		return nil, fmt.Errorf("failed to unmarshal JSON response from endpoint %s", endpoint)
+	}
+
+	return []map[string]any{result}, nil
 }
 
 func (g *APIClientGenerator) generateFromJSONPath(body []byte, endpoint, jsonPath string) ([]map[string]any, error) {

@@ -73,6 +73,22 @@ func TestGenerate(t *testing.T) {
 			},
 		},
 		{
+			name: "simple API endpoint with expandList false",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint:      ts.URL + "/api/non-array",
+				Method:        http.MethodGet,
+				SingleElement: true,
+			},
+			want: []map[string]any{
+				{
+					"things": []any{
+						map[string]any{"name": "testing1"},
+						map[string]any{"name": "testing2"},
+					},
+				},
+			},
+		},
+		{
 			name: "simple API endpoint with post request",
 			apiClient: &templatesv1.APIClientGenerator{
 				Endpoint: ts.URL + "/api/post-testing",

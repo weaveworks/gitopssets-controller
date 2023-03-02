@@ -510,8 +510,7 @@ stringData:
 ```
 The keys in the secret match the command-line example using curl.
 
-Unlike the Pull Request generator, you need to figure out the paths to the
-elements yourself.
+Unlike the Pull Request generator, you need to figure out the paths to the elements yourself.
 
 #### APIClient JSONPath
 
@@ -587,6 +586,32 @@ The JSON body sent will look like this:
 ```json
 {"name":"testing","value":"testing2"}
 ```
+
+#### APIClient simple results
+
+Instead of using the JSONPath to extract from a complex structure, you can configure the result to be a single element.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        singleElement: true
+        interval: 5m
+        endpoint: https://api.example.com/demo
+```
+Whatever result is parsed from the API endpoint will be returned as a map in a single element.
+
+For generation, you might need to use the `repeat` mechanism to generate repeating results.
 
 ## Templating functions
 

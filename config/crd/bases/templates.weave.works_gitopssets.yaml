@@ -103,6 +103,13 @@ spec:
                           - GET
                           - POST
                           type: string
+                        singleElement:
+                          description: "SingleElement means generate a single element
+                            with the result of the API call. \n When true, the response
+                            must be a JSON object and will be returned as a single
+                            element, i.e. only one element will be generated containing
+                            the entire object."
+                          type: boolean
                       required:
                       - interval
                       type: object
@@ -273,6 +280,14 @@ spec:
                                     - GET
                                     - POST
                                     type: string
+                                  singleElement:
+                                    description: "SingleElement means generate a single
+                                      element with the result of the API call. \n
+                                      When true, the response must be a JSON object
+                                      and will be returned as a single element, i.e.
+                                      only one element will be generated containing
+                                      the entire object."
+                                    type: boolean
                                 required:
                                 - interval
                                 type: object
