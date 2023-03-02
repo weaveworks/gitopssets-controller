@@ -40,6 +40,7 @@ func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	if sg.Cluster == nil {
 		return nil, nil
 	}
+	g.Logger.Info("generating params from Cluster generator")
 
 	var paramsList []map[string]any
 

@@ -131,11 +131,11 @@ In this case, six different `ConfigMaps` are generated, three for the "dev-team"
 ## Generators
 
 We currently provide these generators:
-
-- list
-- pullRequests
-- gitRepository
-- matrix
+ - [list](#list-generator)
+ - [pullRequests](#pullrequests-generator)
+ - [gitRepository](#gitrepository-generator)
+ - [matrix](#matrix-generator)
+ - [apiClient](#apiclient-generator)
 
 ### List generator
 
@@ -427,6 +427,165 @@ spec:
           sourceRef:
             kind: GitRepository
             name: go-demo-repo
+```
+
+### apiClient generator
+
+This generator is configured to poll an HTTP endpoint and parse the result as the generated values.
+
+This will poll an endpoint on the interval, instead of using the simpler to use PullRequest generator, you can access GitHub's API with the APIClient generator.
+
+The PullRequest generator is simpler to use, and works across multiple different git-providers.
+
+The GitHub [documentation](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#list-pull-requests) for the API endpoint shows:
+
+```shell
+curl \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer <YOUR-TOKEN>"\
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/OWNER/REPO/pulls
+```
+This can be translated into...
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        interval: 5m
+        endpoint: https://api.github.com/repos/bigkevmcd/go-demo/pulls
+        headersRef:
+          name: github-secret
+          kind: Secret
+  templates:
+    - content:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: GitRepository
+        metadata:
+          name: "pr-{{ .Element.id | toJson}}-gitrepository"
+          namespace: default
+        spec:
+          interval: 5m0s
+          url: "{{ .Element.head.repo.clone_url }}"
+          ref:
+            branch: "{{ .Element.head.ref }}"
+    - content:
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        kind: Kustomization
+        metadata:
+          name: "pr-{{ .Element.id | toJson }}-demo"
+          namespace: default
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/dev"
+          prune: true
+          targetNamespace: "{{ .Element.head.ref }}-ns"
+          sourceRef:
+            kind: GitRepository
+            name: "pr-{{ .Element.id | toJson }}-gitrepository"
+```
+As with the [Pull Request generator](#pullrequests-generator), this also requires a secret token to be able to access the API
+
+We need to pass this as an HTTP header.
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-secret
+  namespace: default
+type: Opaque
+stringData:
+  Accept: application/vnd.github+json
+  Authorization: Bearer ghp_<redacted>
+  X-GitHub-Api-Version: "2022-11-28"
+```
+The keys in the secret match the command-line example using curl.
+
+Unlike the Pull Request generator, you need to figure out the paths to the
+elements yourself.
+
+#### APIClient JSONPath
+
+Not all APIs return an array of JSON objects, sometimes it's nested within a result type structure e.g.
+
+```json
+{
+  "things": [
+    {
+      "env": "dev",
+      "team": "dev-team"
+    },
+    {
+      "env": "production",
+      "team": "opts-team"
+    },
+    {
+      "env": "staging",
+      "team": "opts-team"
+    }
+  ]
+}
+```
+You can use JSONPath to extract the fields from this data...
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        interval: 5m
+        endpoint: https://api.example.com/demo
+        jsonPath: "{ $.things }"
+```
+This will generate three maps for templates, with just the _env_ and _team_ keys.
+
+#### APIClient POST body
+
+Another piece of functionality in the APIClient generator is the ability to POST
+JSON to the API.
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        interval: 5m
+        endpoint: https://api.example.com/demo
+        body:
+          name: "testing"
+          value: "testing2"
+```
+This will send a request body as JSON (Content-Type "application/json") to the
+server and interpret the result.
+
+The JSON body sent will look like this:
+```json
+{"name":"testing","value":"testing2"}
 ```
 
 ## Templating functions

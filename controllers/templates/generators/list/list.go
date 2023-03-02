@@ -14,7 +14,7 @@ import (
 
 // ListGenerator is a generic JSON object list.
 type ListGenerator struct {
-	logger logr.Logger
+	Logger logr.Logger
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
@@ -25,7 +25,7 @@ func GeneratorFactory(l logr.Logger, _ client.Client) generators.Generator {
 
 // NewGenerator creates and returns a new list generator.
 func NewGenerator(l logr.Logger) *ListGenerator {
-	return &ListGenerator{logger: l}
+	return &ListGenerator{Logger: l}
 }
 
 func (g *ListGenerator) Generate(_ context.Context, sg *templatesv1.GitOpsSetGenerator, _ *templatesv1.GitOpsSet) ([]map[string]any, error) {
@@ -36,6 +36,8 @@ func (g *ListGenerator) Generate(_ context.Context, sg *templatesv1.GitOpsSetGen
 	if sg.List == nil {
 		return nil, nil
 	}
+
+	g.Logger.Info("generating params from List generator")
 
 	res := make([]map[string]any, len(sg.List.Elements))
 	for i, el := range sg.List.Elements {

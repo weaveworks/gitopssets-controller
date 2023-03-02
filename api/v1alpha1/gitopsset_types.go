@@ -67,6 +67,56 @@ type PullRequestGenerator struct {
 	Forks bool `json:"forks,omitempty"`
 }
 
+// APIClientGenerator defines a generator that queries an API endpoint and uses
+// that to generate data.
+type APIClientGenerator struct {
+	// The interval at which to poll the API endpoint.
+	// +required
+	Interval metav1.Duration `json:"interval"`
+
+	// This is the API endpoint to use.
+	// +kubebuilder:validation:Pattern="^(http|https)://"
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// Method defines the HTTP method to use to talk to the endpoint.
+	// +kubebuilder:default="GET"
+	// +kubebuilder:validation:Enum=GET;POST
+	Method string `json:"method,omitempty"`
+
+	// JSONPath is string that is used to modify the result of the API
+	// call.
+	//
+	// This can be used to extract a repeating element from a response.
+	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
+	JSONPath string `json:"jsonPath,omitempty"`
+
+	// HeadersRef allows optional configuration of a Secret or ConfigMap to add
+	// additional headers to an outgoing request.
+	//
+	// For example, a Secret with a key Authorization: Bearer abc123 could be
+	// used to configure an authorization header.
+	//
+	// +optional
+	HeadersRef *HeadersReference `json:"headersRef,omitempty"`
+
+	// Body is set as the body in a POST request.
+	//
+	// If set, this will configure the Method to be POST automatically.
+	// +optional
+	Body *apiextensionsv1.JSON `json:"body,omitempty"`
+}
+
+// HeadersReference references either a Secret or ConfigMap to be used for
+// additional request headers.
+type HeadersReference struct {
+	// The resource kind to get headers from.
+	// +kubebuilder:validation:Enum=Secret;ConfigMap
+	Kind string `json:"kind"`
+	// Name of the resource in the same namespace to apply headers from.
+	Name string `json:"name"`
+}
+
 // GitRepositoryGeneratorFileItem defines a path to a file to be parsed when generating.
 type GitRepositoryGeneratorFileItem struct {
 	// Path is the name of a file to read and generate from can be JSON or YAML.
@@ -107,6 +157,7 @@ type GitOpsSetNestedGenerator struct {
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
+	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
@@ -116,6 +167,7 @@ type GitOpsSetGenerator struct {
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
+	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

@@ -54,6 +54,58 @@ spec:
                   description: GitOpsSetGenerator is the top-level set of generators
                     for this GitOpsSet.
                   properties:
+                    apiClient:
+                      description: APIClientGenerator defines a generator that queries
+                        an API endpoint and uses that to generate data.
+                      properties:
+                        body:
+                          description: "Body is set as the body in a POST request.
+                            \n If set, this will configure the Method to be POST automatically."
+                          x-kubernetes-preserve-unknown-fields: true
+                        endpoint:
+                          description: This is the API endpoint to use.
+                          pattern: ^(http|https)://
+                          type: string
+                        headersRef:
+                          description: "HeadersRef allows optional configuration of
+                            a Secret or ConfigMap to add additional headers to an
+                            outgoing request. \n For example, a Secret with a key
+                            Authorization: Bearer abc123 could be used to configure
+                            an authorization header."
+                          properties:
+                            kind:
+                              description: The resource kind to get headers from.
+                              enum:
+                              - Secret
+                              - ConfigMap
+                              type: string
+                            name:
+                              description: Name of the resource in the same namespace
+                                to apply headers from.
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        interval:
+                          description: The interval at which to poll the API endpoint.
+                          type: string
+                        jsonPath:
+                          description: "JSONPath is string that is used to modify
+                            the result of the API call. \n This can be used to extract
+                            a repeating element from a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
+                          type: string
+                        method:
+                          default: GET
+                          description: Method defines the HTTP method to use to talk
+                            to the endpoint.
+                          enum:
+                          - GET
+                          - POST
+                          type: string
+                      required:
+                      - interval
+                      type: object
                     cluster:
                       description: ClusterGenerator defines a generator that queries
                         the cluster API for relevant clusters.
@@ -169,6 +221,63 @@ spec:
                               generators allowed by the GitOpsSetGenerator because
                               the CRD format doesn't support recursive declarations.
                             properties:
+                              apiClient:
+                                description: APIClientGenerator defines a generator
+                                  that queries an API endpoint and uses that to generate
+                                  data.
+                                properties:
+                                  body:
+                                    description: "Body is set as the body in a POST
+                                      request. \n If set, this will configure the
+                                      Method to be POST automatically."
+                                    x-kubernetes-preserve-unknown-fields: true
+                                  endpoint:
+                                    description: This is the API endpoint to use.
+                                    pattern: ^(http|https)://
+                                    type: string
+                                  headersRef:
+                                    description: "HeadersRef allows optional configuration
+                                      of a Secret or ConfigMap to add additional headers
+                                      to an outgoing request. \n For example, a Secret
+                                      with a key Authorization: Bearer abc123 could
+                                      be used to configure an authorization header."
+                                    properties:
+                                      kind:
+                                        description: The resource kind to get headers
+                                          from.
+                                        enum:
+                                        - Secret
+                                        - ConfigMap
+                                        type: string
+                                      name:
+                                        description: Name of the resource in the same
+                                          namespace to apply headers from.
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  interval:
+                                    description: The interval at which to poll the
+                                      API endpoint.
+                                    type: string
+                                  jsonPath:
+                                    description: "JSONPath is string that is used
+                                      to modify the result of the API call. \n This
+                                      can be used to extract a repeating element from
+                                      a response. https://kubernetes.io/docs/reference/kubectl/jsonpath/"
+                                    type: string
+                                  method:
+                                    default: GET
+                                    description: Method defines the HTTP method to
+                                      use to talk to the endpoint.
+                                    enum:
+                                    - GET
+                                    - POST
+                                    type: string
+                                required:
+                                - interval
+                                type: object
                               cluster:
                                 description: ClusterGenerator defines a generator
                                   that queries the cluster API for relevant clusters.
