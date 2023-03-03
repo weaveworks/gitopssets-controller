@@ -198,8 +198,6 @@ spec:
                           description: RepositoryRef is the name of a GitRepository
                             resource to be generated from.
                           type: string
-                      required:
-                      - directories
                       type: object
                     list:
                       description: ListGenerator generates from a hard-coded list.
@@ -377,8 +375,6 @@ spec:
                                     description: RepositoryRef is the name of a GitRepository
                                       resource to be generated from.
                                     type: string
-                                required:
-                                - directories
                                 type: object
                               list:
                                 description: ListGenerator generates from a hard-coded
