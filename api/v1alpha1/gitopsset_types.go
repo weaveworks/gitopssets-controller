@@ -140,7 +140,7 @@ type GitRepositoryGenerator struct {
 
 	// Directories is a set of rules for identifying directories to be
 	// generated.
-	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories"`
+	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
 }
 
 // MatrixGenerator defines a matrix that combines generators.
