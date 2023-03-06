@@ -10,6 +10,7 @@ import (
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
+	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -586,6 +587,28 @@ func TestReconciliation(t *testing.T) {
 		}
 	})
 
+	t.Run("reconciling with annotation-triggered reconciliation", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.ObjectMeta.Annotations = map[string]string{
+				fluxMeta.ReconcileRequestAnnotation: time.Now().Format(time.RFC3339Nano),
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+
+		if updated.Status.ReconcileRequestStatus.LastHandledReconcileAt == "" {
+			t.Fatal("expected the Status to include the timestamp of the reconciliation")
+		}
+	})
 }
 
 func TestGetClusterSelectors(t *testing.T) {
