@@ -42,37 +42,39 @@ func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	}
 	g.Logger.Info("generating params from Cluster generator")
 
-	var paramsList []map[string]any
-
 	selector, err := metav1.LabelSelectorAsSelector(&sg.Cluster.Selector)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert selector: %w", err)
 	}
 
-	if selector.Empty() {
-		g.Logger.Info("empty GitOpsSetGenerator cluster selector: no clusters are selected")
-		return nil, nil
-	}
-
-	clusterList := clustersv1.GitopsClusterList{}
 	listOptions := client.ListOptions{LabelSelector: selector}
 
+	clusterList := clustersv1.GitopsClusterList{}
 	err = g.Client.List(ctx, &clusterList, &listOptions)
 	if err != nil {
 		return nil, err
 	}
 
+	var paramsList []map[string]any
 	for _, cluster := range clusterList.Items {
 		params := map[string]any{
 			"ClusterName":        cluster.Name,
 			"ClusterNamespace":   cluster.Namespace,
-			"ClusterLabels":      cluster.Labels,
-			"ClusterAnnotations": cluster.Annotations,
+			"ClusterLabels":      mapOrEmptyMap(cluster.Labels),
+			"ClusterAnnotations": mapOrEmptyMap(cluster.Annotations),
 		}
 		paramsList = append(paramsList, params)
 	}
 
 	return paramsList, nil
+}
+
+func mapOrEmptyMap(src map[string]string) map[string]string {
+	if src == nil {
+		return map[string]string{}
+	}
+
+	return src
 }
 
 // Interval is an implementation of the Generator interface.
