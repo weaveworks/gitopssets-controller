@@ -68,6 +68,7 @@ func TestMain(m *testing.M) {
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 		},
+		EventRecorder: testEnv.GetEventRecorderFor("gitopsset-controller"),
 	}).SetupWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Failed to start GitOpsSetReconciler: %v", err))
 	}

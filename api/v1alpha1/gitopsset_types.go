@@ -199,6 +199,12 @@ type GitOpsSetSpec struct {
 	// when reconciling this Kustomization.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// The interval at which to reconcile the GitOpsSet.
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
+	// +required
+	Interval metav1.Duration `json:"interval"`
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet

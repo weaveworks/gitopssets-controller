@@ -79,7 +79,8 @@ func TestReconciliation(t *testing.T) {
 		Generators: map[string]generators.GeneratorFactory{
 			"List": list.GeneratorFactory,
 		},
-		Config: cfg,
+		Config:        cfg,
+		EventRecorder: mgr.GetEventRecorderFor("gitopsset-controller"),
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))

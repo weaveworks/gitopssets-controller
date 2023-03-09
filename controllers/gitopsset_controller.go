@@ -10,7 +10,9 @@ import (
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
 
+	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -23,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
+	kuberecorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -51,12 +54,33 @@ type GitOpsSetReconciler struct {
 	client.Client
 	DefaultServiceAccount string
 	Config                *rest.Config
+	kuberecorder.EventRecorder
 	runtimeCtrl.Metrics
 
 	Generators map[string]generators.GeneratorFactory
 
 	Scheme *runtime.Scheme
 	Mapper meta.RESTMapper
+}
+
+// event emits a Kubernetes event using EventRecorder
+func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string, metadata map[string]string) {
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+
+	reason := severity
+	conditions.GetReason(obj, fluxMeta.ReadyCondition)
+	if r := conditions.GetReason(obj, fluxMeta.ReadyCondition); r != "" {
+		reason = r
+	}
+
+	eventtype := "Normal"
+	if severity == eventv1.EventSeverityError {
+		eventtype = "Warning"
+	}
+
+	r.EventRecorder.Event(obj, eventtype, reason, msg)
 }
 
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -66,6 +90,7 @@ type GitOpsSetReconciler struct {
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -117,13 +142,29 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
 		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
 
+		// // Log and emit success event.
+		if templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
+			msg := fmt.Sprintf("Reconciliation finished in %s, next run in %s",
+				time.Since(reconcileStart).String(),
+				gitOpsSet.Spec.Interval.Duration.String())
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg,
+				map[string]string{
+					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
+				})
+		}
 	}()
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
+
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
+			msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
+			r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
+				map[string]string{
+					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
+				})
 		}
 
 		return ctrl.Result{}, err
@@ -134,7 +175,13 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
 
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
+			msg := fmt.Sprintf("Status and inventory update failed after reconciliation")
+			r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
+				map[string]string{
+					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
+				})
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
 	}

@@ -39,3 +39,8 @@ func SetReadyWithInventory(set *GitOpsSet, inventory *ResourceInventory, reason,
 
 	SetGitOpsSetReadiness(set, metav1.ConditionTrue, reason, message)
 }
+
+// GetGitOpsSetReadiness returns the readiness condition of the GitOpsSet.
+func GetGitOpsSetReadiness(set *GitOpsSet) metav1.ConditionStatus {
+	return apimeta.FindStatusCondition(set.Status.Conditions, meta.ReadyCondition).Status
+}
