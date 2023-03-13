@@ -173,7 +173,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 	entries := sets.New[templatesv1.ResourceRef]()
 	for _, newResource := range resources {
-		ref, err := resourceRefFromObject(newResource)
+		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update inventory: %w", err)
 		}
@@ -206,8 +206,11 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			}
 		}
 
-		if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
-			return nil, fmt.Errorf("failed to set ownership: %w", err)
+		// cluster-scoped resources must not have a namespace-scoped owner
+		if newResource.GetKind() != "Namespace" {
+			if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
+				return nil, fmt.Errorf("failed to set ownership: %w", err)
+			}
 		}
 
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
@@ -427,18 +430,6 @@ func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Uns
 	u.SetNamespace(objMeta.Namespace)
 
 	return &u, nil
-}
-
-func resourceRefFromObject(obj runtime.Object) (templatesv1.ResourceRef, error) {
-	objMeta, err := object.RuntimeToObjMeta(obj)
-	if err != nil {
-		return templatesv1.ResourceRef{}, fmt.Errorf("failed to parse object Metadata: %w", err)
-	}
-
-	return templatesv1.ResourceRef{
-		ID:      objMeta.String(),
-		Version: obj.GetObjectKind().GroupVersionKind().Version,
-	}, nil
 }
 
 func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *unstructured.Unstructured {

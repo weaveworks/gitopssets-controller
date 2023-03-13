@@ -103,7 +103,7 @@ func TestReconciliation(t *testing.T) {
 			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
 			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
@@ -189,7 +189,7 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
 		defer deleteAllKustomizations(t, k8sClient)
 
-		ref, err := resourceRefFromObject(devKS)
+		ref, err := templatesv1.ResourceRefFromObject(devKS)
 		test.AssertNoError(t, err)
 
 		gs.Status.Inventory = &templatesv1.ResourceInventory{
@@ -206,7 +206,7 @@ func TestReconciliation(t *testing.T) {
 			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
 			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 		assertResourceDoesNotExist(t, k8sClient, devKS)
 	})
 
@@ -251,7 +251,7 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
 		defer cleanupResource(t, k8sClient, gs)
 
-		ref, err := resourceRefFromObject(devKS)
+		ref, err := templatesv1.ResourceRefFromObject(devKS)
 		test.AssertNoError(t, err)
 		gs.Status.Inventory = &templatesv1.ResourceInventory{
 			Entries: []templatesv1.ResourceRef{ref},
@@ -286,7 +286,7 @@ func TestReconciliation(t *testing.T) {
 		want := []runtime.Object{
 			wantUpdated,
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 
 		kustomization := &unstructured.Unstructured{}
 		kustomization.SetGroupVersionKind(kustomizationGVK)
@@ -324,7 +324,7 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
 		defer cleanupResource(t, k8sClient, gs)
 
-		ref, err := resourceRefFromObject(devKS)
+		ref, err := templatesv1.ResourceRefFromObject(devKS)
 		test.AssertNoError(t, err)
 
 		gs.Status.Inventory = &templatesv1.ResourceInventory{
@@ -388,7 +388,7 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
 		defer cleanupResource(t, k8sClient, gs)
 
-		ref, err := resourceRefFromObject(devKS)
+		ref, err := templatesv1.ResourceRefFromObject(devKS)
 		test.AssertNoError(t, err)
 		gs.Status.Inventory = &templatesv1.ResourceInventory{
 			Entries: []templatesv1.ResourceRef{ref},
@@ -412,7 +412,7 @@ func TestReconciliation(t *testing.T) {
 		want := []runtime.Object{
 			test.MakeTestKustomization(nsn("default", "engineering-dev-demo")),
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "1 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo")
 	})
@@ -445,7 +445,7 @@ func TestReconciliation(t *testing.T) {
 			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
 			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
@@ -481,7 +481,7 @@ func TestReconciliation(t *testing.T) {
 			test.MakeTestKustomization(nsn("default", "engineering-prod-demo")),
 			test.MakeTestKustomization(nsn("default", "engineering-preprod-demo")),
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
@@ -529,7 +529,7 @@ func TestReconciliation(t *testing.T) {
 			Verbs:     []string{"get", "list", "watch"},
 		})
 
-		ref, err := resourceRefFromObject(devKS)
+		ref, err := templatesv1.ResourceRefFromObject(devKS)
 		test.AssertNoError(t, err)
 		gs.Status.Inventory = &templatesv1.ResourceInventory{
 			Entries: []templatesv1.ResourceRef{ref},
@@ -575,7 +575,7 @@ func TestReconciliation(t *testing.T) {
 		want := []runtime.Object{
 			wantUpdated,
 		}
-		assertInventoryHasItems(t, updated, want...)
+		test.AssertInventoryHasItems(t, updated, want...)
 
 		kustomization := &unstructured.Unstructured{}
 		kustomization.SetGroupVersionKind(kustomizationGVK)
@@ -924,29 +924,6 @@ func assertGitOpsSetCondition(t *testing.T, gs *templatesv1.GitOpsSet, condType,
 	}
 	if cond.Message != msg {
 		t.Fatalf("got %s, want %s", cond.Message, msg)
-	}
-}
-
-func assertInventoryHasItems(t *testing.T, gs *templatesv1.GitOpsSet, objs ...runtime.Object) {
-	t.Helper()
-	if l := len(gs.Status.Inventory.Entries); l != len(objs) {
-		t.Errorf("expected %d items, got %v", len(objs), l)
-	}
-	entries := []templatesv1.ResourceRef{}
-	for _, obj := range objs {
-		ref, err := resourceRefFromObject(obj)
-		if err != nil {
-			t.Fatal(err)
-		}
-		entries = append(entries, ref)
-	}
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].ID < entries[j].ID
-	})
-	want := &templatesv1.ResourceInventory{Entries: entries}
-	if diff := cmp.Diff(want, gs.Status.Inventory); diff != "" {
-		t.Errorf("failed to get inventory:\n%s", diff)
 	}
 }
 
