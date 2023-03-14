@@ -194,7 +194,7 @@ gen-crd-api-reference-docs: ## Download gen-crd-api-reference-docs locally if ne
 
 api-docs: gen-crd-api-reference-docs  ## Generate API reference documentation
 	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1alpha1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/template -out-file=./docs/api/source.md
-
+	@sed -i '' -e 's/<br>/<br \/>/g' docs/api/source.md
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
