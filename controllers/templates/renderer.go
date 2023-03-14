@@ -132,7 +132,7 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 			delete(unstructuredMap, "status")
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
-			if uns.GetKind() != "Namespace" {
+			if IsNamespacedObject(uns) {
 				uns.SetNamespace(name.Namespace)
 
 				// Add source labels

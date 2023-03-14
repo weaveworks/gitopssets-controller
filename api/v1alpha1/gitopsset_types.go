@@ -194,7 +194,7 @@ type GitOpsSetSpec struct {
 // GitOpsSetStatus defines the observed state of GitOpsSet
 type GitOpsSetStatus struct {
 	meta.ReconcileRequestStatus `json:",inline"`
-	
+
 	// ObservedGeneration is the last observed generation of the HelmRepository
 	// object.
 	// +optional
