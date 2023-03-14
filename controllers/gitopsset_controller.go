@@ -207,7 +207,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		}
 
 		// cluster-scoped resources must not have a namespace-scoped owner
-		if newResource.GetKind() != "Namespace" {
+		if templates.IsNamespacedObject(newResource) {
 			if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
 				return nil, fmt.Errorf("failed to set ownership: %w", err)
 			}
