@@ -9,7 +9,7 @@ type ResourceInventory struct {
 // ResourceRef contains the information necessary to locate a resource within a cluster.
 type ResourceRef struct {
 	// ID is the string representation of the Kubernetes resource object's metadata,
-	// in the format '<namespace>_<name>_<group>_<kind>'.
+	// in the format 'namespace_name_group_kind'.
 	ID string `json:"id"`
 
 	// Version is the API version of the Kubernetes resource object's kind.

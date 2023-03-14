@@ -35,7 +35,7 @@
                     {{ if isExportedType . }}
                         <tr>
                             <td>
-                                <code>apiVersion</code><br>
+                                <code>apiVersion</code><br />
                                 string</td>
                             <td>
                                 <code>{{ apiGroup . }}</code>
@@ -43,7 +43,7 @@
                         </tr>
                         <tr>
                             <td>
-                                <code>kind</code><br>
+                                <code>kind</code><br />
                                 string
                             </td>
                             <td>

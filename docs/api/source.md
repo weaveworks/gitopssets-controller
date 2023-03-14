@@ -30,7 +30,7 @@ that to generate data.</p>
 <tbody>
 <tr>
 <td>
-<code>interval</code><br>
+<code>interval</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#duration-v1-meta">
 Kubernetes meta/v1.Duration
@@ -43,7 +43,7 @@ Kubernetes meta/v1.Duration
 </tr>
 <tr>
 <td>
-<code>endpoint</code><br>
+<code>endpoint</code><br />
 <em>
 string
 </em>
@@ -55,7 +55,7 @@ string
 </tr>
 <tr>
 <td>
-<code>method</code><br>
+<code>method</code><br />
 <em>
 string
 </em>
@@ -66,7 +66,7 @@ string
 </tr>
 <tr>
 <td>
-<code>jsonPath</code><br>
+<code>jsonPath</code><br />
 <em>
 string
 </em>
@@ -80,7 +80,7 @@ call.</p>
 </tr>
 <tr>
 <td>
-<code>headersRef</code><br>
+<code>headersRef</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.HeadersReference">
 HeadersReference
@@ -97,7 +97,7 @@ used to configure an authorization header.</p>
 </tr>
 <tr>
 <td>
-<code>body</code><br>
+<code>body</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#json-v1-apiextensions">
 Kubernetes pkg/apis/apiextensions/v1.JSON
@@ -135,7 +135,7 @@ relevant clusters.</p>
 <tbody>
 <tr>
 <td>
-<code>selector</code><br>
+<code>selector</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#labelselector-v1-meta">
 Kubernetes meta/v1.LabelSelector
@@ -167,7 +167,7 @@ Kubernetes meta/v1.LabelSelector
 <tbody>
 <tr>
 <td>
-<code>metadata</code><br>
+<code>metadata</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
@@ -181,7 +181,7 @@ Refer to the Kubernetes API documentation for the fields of the
 </tr>
 <tr>
 <td>
-<code>spec</code><br>
+<code>spec</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetSpec">
 GitOpsSetSpec
@@ -194,7 +194,7 @@ GitOpsSetSpec
 <table>
 <tr>
 <td>
-<code>suspend</code><br>
+<code>suspend</code><br />
 <em>
 bool
 </em>
@@ -207,7 +207,7 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
-<code>generators</code><br>
+<code>generators</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">
 []GitOpsSetGenerator
@@ -220,7 +220,7 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
-<code>templates</code><br>
+<code>templates</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetTemplate">
 []GitOpsSetTemplate
@@ -234,7 +234,7 @@ from the data supplied by the generators.</p>
 </tr>
 <tr>
 <td>
-<code>serviceAccountName</code><br>
+<code>serviceAccountName</code><br />
 <em>
 string
 </em>
@@ -250,7 +250,7 @@ when reconciling this Kustomization.</p>
 </tr>
 <tr>
 <td>
-<code>status</code><br>
+<code>status</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetStatus">
 GitOpsSetStatus
@@ -283,7 +283,7 @@ GitOpsSetStatus
 <tbody>
 <tr>
 <td>
-<code>list</code><br>
+<code>list</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ListGenerator">
 ListGenerator
@@ -295,7 +295,7 @@ ListGenerator
 </tr>
 <tr>
 <td>
-<code>pullRequests</code><br>
+<code>pullRequests</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.PullRequestGenerator">
 PullRequestGenerator
@@ -307,7 +307,7 @@ PullRequestGenerator
 </tr>
 <tr>
 <td>
-<code>gitRepository</code><br>
+<code>gitRepository</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">
 GitRepositoryGenerator
@@ -319,7 +319,7 @@ GitRepositoryGenerator
 </tr>
 <tr>
 <td>
-<code>matrix</code><br>
+<code>matrix</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.MatrixGenerator">
 MatrixGenerator
@@ -331,7 +331,7 @@ MatrixGenerator
 </tr>
 <tr>
 <td>
-<code>cluster</code><br>
+<code>cluster</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ClusterGenerator">
 ClusterGenerator
@@ -343,7 +343,7 @@ ClusterGenerator
 </tr>
 <tr>
 <td>
-<code>apiClient</code><br>
+<code>apiClient</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.APIClientGenerator">
 APIClientGenerator
@@ -377,7 +377,7 @@ This is a subset of the generators allowed by the GitOpsSetGenerator because the
 <tbody>
 <tr>
 <td>
-<code>list</code><br>
+<code>list</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ListGenerator">
 ListGenerator
@@ -389,7 +389,7 @@ ListGenerator
 </tr>
 <tr>
 <td>
-<code>gitRepository</code><br>
+<code>gitRepository</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">
 GitRepositoryGenerator
@@ -401,7 +401,7 @@ GitRepositoryGenerator
 </tr>
 <tr>
 <td>
-<code>pullRequests</code><br>
+<code>pullRequests</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.PullRequestGenerator">
 PullRequestGenerator
@@ -413,7 +413,7 @@ PullRequestGenerator
 </tr>
 <tr>
 <td>
-<code>cluster</code><br>
+<code>cluster</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ClusterGenerator">
 ClusterGenerator
@@ -425,7 +425,7 @@ ClusterGenerator
 </tr>
 <tr>
 <td>
-<code>apiClient</code><br>
+<code>apiClient</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.APIClientGenerator">
 APIClientGenerator
@@ -458,7 +458,7 @@ APIClientGenerator
 <tbody>
 <tr>
 <td>
-<code>suspend</code><br>
+<code>suspend</code><br />
 <em>
 bool
 </em>
@@ -471,7 +471,7 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
-<code>generators</code><br>
+<code>generators</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">
 []GitOpsSetGenerator
@@ -484,7 +484,7 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
-<code>templates</code><br>
+<code>templates</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetTemplate">
 []GitOpsSetTemplate
@@ -498,7 +498,7 @@ from the data supplied by the generators.</p>
 </tr>
 <tr>
 <td>
-<code>serviceAccountName</code><br>
+<code>serviceAccountName</code><br />
 <em>
 string
 </em>
@@ -532,7 +532,7 @@ when reconciling this Kustomization.</p>
 <tbody>
 <tr>
 <td>
-<code>ReconcileRequestStatus</code><br>
+<code>ReconcileRequestStatus</code><br />
 <em>
 <a href="https://godoc.org/github.com/fluxcd/pkg/apis/meta#ReconcileRequestStatus">
 github.com/fluxcd/pkg/apis/meta.ReconcileRequestStatus
@@ -547,7 +547,7 @@ github.com/fluxcd/pkg/apis/meta.ReconcileRequestStatus
 </tr>
 <tr>
 <td>
-<code>observedGeneration</code><br>
+<code>observedGeneration</code><br />
 <em>
 int64
 </em>
@@ -560,7 +560,7 @@ object.</p>
 </tr>
 <tr>
 <td>
-<code>conditions</code><br>
+<code>conditions</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#condition-v1-meta">
 []Kubernetes meta/v1.Condition
@@ -574,7 +574,7 @@ object.</p>
 </tr>
 <tr>
 <td>
-<code>inventory</code><br>
+<code>inventory</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ResourceInventory">
 ResourceInventory
@@ -610,7 +610,7 @@ have been successfully applied</p>
 <tbody>
 <tr>
 <td>
-<code>repeat</code><br>
+<code>repeat</code><br />
 <em>
 string
 </em>
@@ -623,7 +623,7 @@ repeated for each of the matching elements in the JSONPath expression.
 </tr>
 <tr>
 <td>
-<code>content</code><br>
+<code>content</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#rawextension-runtime-pkg">
 k8s.io/apimachinery/pkg/runtime.RawExtension
@@ -658,7 +658,7 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 <tbody>
 <tr>
 <td>
-<code>repositoryRef</code><br>
+<code>repositoryRef</code><br />
 <em>
 string
 </em>
@@ -669,7 +669,7 @@ string
 </tr>
 <tr>
 <td>
-<code>files</code><br>
+<code>files</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitRepositoryGeneratorFileItem">
 []GitRepositoryGeneratorFileItem
@@ -682,7 +682,7 @@ string
 </tr>
 <tr>
 <td>
-<code>directories</code><br>
+<code>directories</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitRepositoryGeneratorDirectoryItem">
 []GitRepositoryGeneratorDirectoryItem
@@ -718,7 +718,7 @@ directory to be generated from.</p>
 <tbody>
 <tr>
 <td>
-<code>path</code><br>
+<code>path</code><br />
 <em>
 string
 </em>
@@ -728,7 +728,7 @@ string
 </tr>
 <tr>
 <td>
-<code>exclude</code><br>
+<code>exclude</code><br />
 <em>
 bool
 </em>
@@ -759,7 +759,7 @@ bool
 <tbody>
 <tr>
 <td>
-<code>path</code><br>
+<code>path</code><br />
 <em>
 string
 </em>
@@ -792,7 +792,7 @@ additional request headers.</p>
 <tbody>
 <tr>
 <td>
-<code>kind</code><br>
+<code>kind</code><br />
 <em>
 string
 </em>
@@ -803,7 +803,7 @@ string
 </tr>
 <tr>
 <td>
-<code>name</code><br>
+<code>name</code><br />
 <em>
 string
 </em>
@@ -836,7 +836,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>elements</code><br>
+<code>elements</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#json-v1-apiextensions">
 []Kubernetes pkg/apis/apiextensions/v1.JSON
@@ -870,7 +870,7 @@ The matrix is a cartesian product of the generators.</p>
 <tbody>
 <tr>
 <td>
-<code>generators</code><br>
+<code>generators</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">
 []GitOpsSetNestedGenerator
@@ -906,7 +906,7 @@ for relevant PRs.</p>
 <tbody>
 <tr>
 <td>
-<code>interval</code><br>
+<code>interval</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#duration-v1-meta">
 Kubernetes meta/v1.Duration
@@ -919,7 +919,7 @@ Kubernetes meta/v1.Duration
 </tr>
 <tr>
 <td>
-<code>driver</code><br>
+<code>driver</code><br />
 <em>
 string
 </em>
@@ -930,7 +930,7 @@ string
 </tr>
 <tr>
 <td>
-<code>serverURL</code><br>
+<code>serverURL</code><br />
 <em>
 string
 </em>
@@ -942,7 +942,7 @@ string
 </tr>
 <tr>
 <td>
-<code>repo</code><br>
+<code>repo</code><br />
 <em>
 string
 </em>
@@ -954,7 +954,7 @@ e.g. my-org/my-repo</p>
 </tr>
 <tr>
 <td>
-<code>secretRef</code><br>
+<code>secretRef</code><br />
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#localobjectreference-v1-core">
 Kubernetes core/v1.LocalObjectReference
@@ -968,7 +968,7 @@ auth token that can query the Git Provider API.</p>
 </tr>
 <tr>
 <td>
-<code>labels</code><br>
+<code>labels</code><br />
 <em>
 []string
 </em>
@@ -981,7 +981,7 @@ This may be applied on the server.</p>
 </tr>
 <tr>
 <td>
-<code>forks</code><br>
+<code>forks</code><br />
 <em>
 bool
 </em>
@@ -1015,7 +1015,7 @@ or to include forks if  true</p>
 <tbody>
 <tr>
 <td>
-<code>entries</code><br>
+<code>entries</code><br />
 <em>
 <a href="#templates.weave.works/v1alpha1.ResourceRef">
 []ResourceRef
@@ -1049,19 +1049,19 @@ or to include forks if  true</p>
 <tbody>
 <tr>
 <td>
-<code>id</code><br>
+<code>id</code><br />
 <em>
 string
 </em>
 </td>
 <td>
 <p>ID is the string representation of the Kubernetes resource object&rsquo;s metadata,
-in the format &lsquo;<namespace><em><name></em><group>_<kind>&rsquo;.</p>
+in the format &lsquo;namespace_name_group_kind&rsquo;.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>v</code><br>
+<code>v</code><br />
 <em>
 string
 </em>
