@@ -3,16 +3,12 @@
   "hideTypePatterns": ["ParseError$", "List$"],
   "externalPackages": [
     {
-      "typeMatchPrefix": "^k8s\\.io/apimachinery/pkg/apis/meta/v1\\.Duration$",
-      "docsURLTemplate": "https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration"
-    },
-    {
-      "typeMatchPrefix": "^k8s\\.io/apimachinery/pkg/apis/meta/v1\\.Condition$",
-      "docsURLTemplate": "https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Condition"
-    },
-    {
-      "typeMatchPrefix": "^k8s\\.io/(api|apimachinery/pkg/apis)/",
+      "typeMatchPrefix": "^k8s\\.io/(api|apimachinery|apiextensions-apiserver/pkg/apis|runtime)/",
       "docsURLTemplate": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#{{lower .TypeIdentifier}}-{{arrIndex .PackageSegments -1}}-{{arrIndex .PackageSegments -2}}"
+    },
+    {
+      "typeMatchPrefix": "^github.com/fluxcd/pkg/apis/meta",
+      "docsURLTemplate": "https://godoc.org/github.com/fluxcd/pkg/apis/meta#{{ .TypeIdentifier }}"
     },
     {
       "typeMatchPrefix": "^github.com/gitopssets-controller/api/v1alpha1",
@@ -21,6 +17,7 @@
   ],
   "typeDisplayNamePrefixOverrides": {
     "k8s.io/api/": "Kubernetes ",
+    "k8s.io/apiextensions-apiserver/": "Kubernetes ",
     "k8s.io/apimachinery/pkg/apis/": "Kubernetes "
   },
   "markdownDisabled": false
