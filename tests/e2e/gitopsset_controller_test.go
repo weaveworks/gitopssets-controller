@@ -8,6 +8,8 @@ import (
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -122,6 +124,63 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}, timeout).Should(gomega.BeTrue())
 }
 
+func TestGenerateNamespace(t *testing.T) {
+	ctx := context.TODO()
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"team": "engineering-prod"}`)},
+							{Raw: []byte(`{"team": "engineering-preprod"}`)},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Element.team }}-ns")),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer cleanupResource(t, testEnv, gs)
+
+	updated := &templatesv1.GitOpsSet{}
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		t.Log(updated.Status.Inventory)
+
+		return cond.Message == "2 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	want := []runtime.Object{
+		makeTestNamespace("engineering-prod-ns"),
+		makeTestNamespace("engineering-preprod-ns"),
+	}
+	test.AssertInventoryHasItems(t, updated, want...)
+	cleanupResource(t, testEnv, makeTestNamespace("engineering-prod-ns"))
+	cleanupResource(t, testEnv, makeTestNamespace("engineering-preprod-ns"))
+}
+
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
 	t.Helper()
 	u := &unstructured.Unstructured{}
@@ -171,4 +230,21 @@ func nsn(namespace, name string) types.NamespacedName {
 		Name:      name,
 		Namespace: namespace,
 	}
+}
+
+func makeTestNamespace(name string, opts ...func(*corev1.Namespace)) *corev1.Namespace {
+	n := corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	for _, o := range opts {
+		o(&n)
+	}
+
+	return &n
 }
