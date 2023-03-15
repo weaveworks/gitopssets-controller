@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	testGitOpsSetName      = "test-gitops-set"
-	testGitOpsSetNamespace = "demo"
+	testGitOpsSetName = "test-gitops-set"
+	testNS            = "demo"
 )
 
 func TestRender(t *testing.T) {
@@ -45,18 +45,17 @@ func TestRender(t *testing.T) {
 				{Raw: []byte(`{"env": "engineering-preprod","externalIP": "192.168.150.30"}`)},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo"), setClusterIP("192.168.100.20"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-preprod-demo"), setClusterIP("192.168.150.30"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-preprod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo"), setClusterIP("192.168.100.20"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-preprod-demo"), setClusterIP("192.168.150.30"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-preprod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
 			},
 		},
-
 		{
 			name: "sanitization",
 			elements: []apiextensionsv1.JSON{
@@ -67,17 +66,17 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ sanitize .Element.env }}-demo"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ sanitize .Element.env }}-demo", Namespace: testNS})),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineeringdev-demo"),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineeringdev-demo"),
 					setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
 			},
 		},
 		{
@@ -108,7 +107,7 @@ func TestRender(t *testing.T) {
 				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-demo"),
 					setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
 		{
@@ -122,30 +121,30 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1", Namespace: testNS})),
 							},
 						},
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo2"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo2", Namespace: testNS})),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo2"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo2"), setClusterIP("192.168.100.20"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo2"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo2"), setClusterIP("192.168.100.20"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
 			},
 		},
 		{
@@ -158,16 +157,17 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, setClusterIP("{{ first .Element.ips }}"))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1", Namespace: "{{ .GitOpsSet.Namespace }}"}, setClusterIP("{{ first .Element.ips }}"))),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.0.252"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.0.252"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set",
+						"templates.weave.works/namespace": testNS}))),
 			},
 		},
 		{
@@ -180,7 +180,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env}}-demo1"})),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env}}-demo1", Namespace: testNS})),
 							},
 						},
 						{
@@ -193,11 +193,13 @@ func TestRender(t *testing.T) {
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
-				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev")),
-				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev")),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
 			},
 		},
 		{
@@ -211,19 +213,20 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/test": string("test-value")}))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1", Namespace: testNS},
+									addLabels[*corev1.Service](map[string]string{"templates.weave.works/test": "test-value"}))),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo"), "templates.weave.works/test": string("test-value")}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS, "templates.weave.works/test": "test-value"}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS, "templates.weave.works/test": "test-value"}))),
 			},
 		},
 		{
@@ -237,19 +240,20 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1"}, addLabels(map[string]string{"templates.weave.works/namespace": string("new-ns")}))),
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo1", Namespace: testNS},
+									addLabels[*corev1.Service](map[string]string{"templates.weave.works/namespace": "new-ns"}))),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("new-ns")}))),
-				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering-prod")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("new-ns")}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": "new-ns"}))),
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": "new-ns"}))),
 			},
 		},
 		{
@@ -262,17 +266,42 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: []byte(`{"kind":"Service","apiVersion":"v1","metadata":{"name":"{{ getordefault .Element "name" "defaulted" }}-demo","creationTimestamp":null,"annotations":{"app.kubernetes.io/instance":"{{ .Element.env }}"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":8080,"targetPort":8080}],"clusterIP":"{{ .Element.externalIP }}"}}`),
+								Raw: []byte(`{"kind":"Service","apiVersion":"v1","metadata":{"name":"{{ getordefault .Element "name" "defaulted" }}-demo","namespace":"testing","creationTimestamp":null,"annotations":{"app.kubernetes.io/instance":"{{ .Element.env }}"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":8080,"targetPort":8080}],"clusterIP":"{{ .Element.externalIP }}"}}`),
 							},
 						},
 					}
 				},
 			},
 			want: []*unstructured.Unstructured{
-				test.ToUnstructured(t, makeTestService(nsn("demo", "defaulted-demo"),
+				test.ToUnstructured(t, makeTestService(nsn("testing", "defaulted-demo"),
 					setClusterIP("192.168.50.50"),
-					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}),
-					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
+		{
+			name: "populated with namespace if rendered template has no namespace",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering dev","externalIP": "192.168.50.50"}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Namespace = "template-ns"
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								// Note that the NamespacedName has no Namespace
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "testing-no-ns"})),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn("template-ns", "testing-no-ns"),
+					setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": "template-ns"}))),
 			},
 		},
 	}
@@ -389,13 +418,13 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 	ks := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testGitOpsSetName,
-			Namespace: testGitOpsSetNamespace,
+			Namespace: testNS,
 		},
 		Spec: templatesv1.GitOpsSetSpec{
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo"})),
+						Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo", Namespace: testNS})),
 					},
 				},
 			},
@@ -475,9 +504,13 @@ func addAnnotations(ann map[string]string) func(*corev1.Service) {
 	}
 }
 
-func addLabels(label map[string]string) func(*corev1.Service) {
-	return func(s *corev1.Service) {
-		s.SetLabels(label)
+type labelSetter interface {
+	SetLabels(map[string]string)
+}
+
+func addLabels[T labelSetter](labels map[string]string) func(T) {
+	return func(s T) {
+		s.SetLabels(labels)
 	}
 }
 
