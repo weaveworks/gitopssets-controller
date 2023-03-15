@@ -210,6 +210,8 @@ type GitOpsSetStatus struct {
 	Inventory *ResourceInventory `json:"inventory,omitempty"`
 }
 
+//+genclient
+//+genclient:Namespaced
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:shortName="gs"
