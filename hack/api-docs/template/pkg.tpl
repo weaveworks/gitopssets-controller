@@ -1,5 +1,4 @@
 {{ define "packages" }}
-    <h1>Source API reference</h1>
 
     {{ with .packages}}
         <p>Packages:</p>
