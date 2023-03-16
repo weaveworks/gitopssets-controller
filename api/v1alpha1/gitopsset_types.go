@@ -8,6 +8,8 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
+const GitOpsSetFinalizer = "finalizers.templates.weave.works"
+
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
 	// Repeat is a JSONPath string defining that the template content should be
@@ -187,6 +189,12 @@ type GitOpsSetSpec struct {
 	// GitOpsSet.
 	// +optional
 	Suspend bool `json:"suspend,omitempty"`
+
+	// Prune enables garbage collection.
+	// If true generated resources will be removed when the GitOpsSet is removed.
+	//
+	// +required
+	Prune bool `json:"prune"`
 
 	// Generators generate the data to be inserted into the provided templates.
 	Generators []GitOpsSetGenerator `json:"generators,omitempty"`

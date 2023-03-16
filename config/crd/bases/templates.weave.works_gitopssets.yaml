@@ -509,6 +509,10 @@ spec:
                       type: object
                   type: object
                 type: array
+              prune:
+                description: Prune enables garbage collection. If true generated resources
+                  will be removed when the GitOpsSet is removed.
+                type: boolean
               serviceAccountName:
                 description: The name of the Kubernetes service account to impersonate
                   when reconciling this Kustomization.
@@ -536,6 +540,8 @@ spec:
                   - content
                   type: object
                 type: array
+            required:
+            - prune
             type: object
           status:
             description: GitOpsSetStatus defines the observed state of GitOpsSet

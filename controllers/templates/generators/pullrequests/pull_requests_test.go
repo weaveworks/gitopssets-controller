@@ -290,7 +290,7 @@ func TestGenerate(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := NewGenerator(logr.Discard(), fake.NewFakeClient(tt.initObjs...))
+			gen := NewGenerator(logr.Discard(), fake.NewClientBuilder().WithRuntimeObjects(tt.initObjs...).Build())
 			client, data := fakescm.NewDefault()
 			tt.dataFunc(data)
 			gen.clientFactory = tt.clientFactory(client)
@@ -361,7 +361,7 @@ func TestGenerate_errors(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := NewGenerator(logr.Discard(), fake.NewFakeClient(tt.initObjs...))
+			gen := NewGenerator(logr.Discard(), fake.NewClientBuilder().WithRuntimeObjects(tt.initObjs...).Build())
 			client, _ := fakescm.NewDefault()
 			gen.clientFactory = tt.clientFactory(client)
 
@@ -394,7 +394,7 @@ func TestGenerate_errors(t *testing.T) {
 
 func TestPullRequestGenerator_GetInterval(t *testing.T) {
 	interval := time.Minute * 10
-	gen := NewGenerator(logr.Discard(), fake.NewFakeClient())
+	gen := NewGenerator(logr.Discard(), fake.NewClientBuilder().Build())
 	sg := &templatesv1.GitOpsSetGenerator{
 		PullRequests: &templatesv1.PullRequestGenerator{
 			Driver:    "fake",

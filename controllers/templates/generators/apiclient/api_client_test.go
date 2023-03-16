@@ -312,7 +312,7 @@ func TestGenerate_errors(t *testing.T) {
 
 func TestAPIClientGenerator_GetInterval(t *testing.T) {
 	interval := time.Minute * 10
-	gen := NewGenerator(logr.Discard(), fake.NewFakeClient(), http.DefaultClient)
+	gen := NewGenerator(logr.Discard(), fake.NewClientBuilder().Build(), http.DefaultClient)
 	sg := &templatesv1.GitOpsSetGenerator{
 		APIClient: &templatesv1.APIClientGenerator{
 			Endpoint: "https://example.com/testing",
@@ -466,7 +466,7 @@ func Test_addHeadersFromSecretToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if v := req.Header.Get(http.CanonicalHeaderKey("Testing")); v != "value" {
+	if v := req.Header.Get("Testing"); v != "value" {
 		t.Fatalf("got header %s value %q, want %q", "Testing", v, "value")
 	}
 }
@@ -484,7 +484,7 @@ func Test_addHeadersFromConfigMapToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if v := req.Header.Get(http.CanonicalHeaderKey("Config-Key")); v != "config-value" {
+	if v := req.Header.Get("Config-Key"); v != "config-value" {
 		t.Fatalf("got header %s value %q, want %q", "Config-Key", v, "config-value")
 	}
 }

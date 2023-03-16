@@ -13,6 +13,8 @@ import (
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
+
+	"github.com/fluxcd/pkg/runtime/predicates"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -83,19 +85,12 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	logger.Info("gitops set loaded")
 
-	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
-	}
+	// Add finalizer first if it doesn't exist to avoid the race condition
+	// between init and delete.
+	if !controllerutil.ContainsFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer) {
+		controllerutil.AddFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer)
 
-	// Skip reconciliation if the GitOpsSet is suspended.
-	if gitOpsSet.Spec.Suspend {
-		logger.Info("Reconciliation is suspended for this GitOpsSet")
-		return ctrl.Result{}, nil
-	}
-
-	// Set the value of the reconciliation request in status.
-	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
-		gitOpsSet.Status.LastHandledReconcileAt = v
+		return ctrl.Result{Requeue: true}, r.Update(ctx, &gitOpsSet)
 	}
 
 	k8sClient := r.Client
@@ -111,12 +106,26 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		k8sClient = c
 	}
 
+	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.finalize(ctx, &gitOpsSet, k8sClient)
+	}
+
+	// Skip reconciliation if the GitOpsSet is suspended.
+	if gitOpsSet.Spec.Suspend {
+		logger.Info("Reconciliation is suspended for this GitOpsSet")
+		return ctrl.Result{}, nil
+	}
+
+	// Set the value of the reconciliation request in status.
+	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
+		gitOpsSet.Status.LastHandledReconcileAt = v
+	}
+
 	defer func() {
 		// Record Prometheus metrics.
 		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
 		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
 		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
-
 	}()
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
@@ -269,6 +278,28 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient 
 	return nil
 }
 
+func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitOpsSet, k8sClient client.Client) (ctrl.Result, error) {
+	logger := ctrl.LoggerFrom(ctx)
+	logger.Info("finalizing resources")
+
+	if gs.Spec.Prune &&
+		!gs.Spec.Suspend &&
+		gs.Status.Inventory != nil &&
+		gs.Status.Inventory.Entries != nil {
+
+		if err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("cleaned resources")
+	}
+
+	logger.Info("removing the finalizer")
+	// Remove our finalizer from the list and update it
+	controllerutil.RemoveFinalizer(gs, templatesv1.GitOpsSetFinalizer)
+	return ctrl.Result{}, r.Update(ctx, gs)
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Index the GitOpsSets by the GitRepository references they (may) point at.
@@ -278,7 +309,8 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
+			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),

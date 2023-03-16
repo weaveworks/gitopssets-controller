@@ -32,8 +32,9 @@ const (
 )
 
 var (
-	testEnv *testenv.Environment
-	ctx     = ctrl.SetupSignalHandler()
+	testEnv    *testenv.Environment
+	ctx        = ctrl.SetupSignalHandler()
+	reconciler *controllers.GitOpsSetReconciler
 )
 
 func init() {
@@ -44,6 +45,7 @@ func TestMain(m *testing.M) {
 	utilruntime.Must(gitopssetsv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(clustersv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme.Scheme))
+
 	testEnv = testenv.New(testenv.WithCRDPath(filepath.Join("..", "..", "config", "crd", "bases"),
 		filepath.Join("..", "..", "controllers", "testdata", "crds"),
 		filepath.Join("testdata", "crds"),
@@ -53,7 +55,7 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("failed to create RESTMapper:  %v", err))
 	}
 
-	if err := (&controllers.GitOpsSetReconciler{
+	reconciler = &controllers.GitOpsSetReconciler{
 		Client: testEnv,
 		Config: testEnv.GetConfig(),
 		Scheme: testEnv.GetScheme(),
@@ -68,7 +70,8 @@ func TestMain(m *testing.M) {
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 		},
-	}).SetupWithManager(testEnv); err != nil {
+	}
+	if err := reconciler.SetupWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Failed to start GitOpsSetReconciler: %v", err))
 	}
 
