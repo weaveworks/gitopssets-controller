@@ -187,6 +187,13 @@ In this example, a [Flux `GitRepository`](https://fluxcd.io/flux/components/sour
 
 These files can be JSON or YAML.
 
+In this example we expect to find the following structure in the files:
+
+```yaml
+env: dev
+team: developers
+```
+
 Changes pushed to the `GitRepository` will result in rereconciliation of the templates into the cluster.
 
 For security reasons, you need to explicitly list out the files that the generator should parse.
@@ -368,6 +375,13 @@ spec:
               elements:
                 - cluster: dev-cluster
                   version: 1.0.0
+```
+
+Given the files mentioned all have the following structure:
+
+```yaml
+env: dev
+team: developers
 ```
 
 This will result in three sets of generated parameters, which are a combination of the maps in the files in the gitRepository, and the elements in the list generator, this can result in a combinatorial explosion of resources being created in your cluster.
