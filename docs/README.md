@@ -663,6 +663,18 @@ metadata:
 
 If the _key_ to get does exist in the `.Element` it will be inserted, the "default" is only inserted if it doesn't exist.
 
+### toYAML
+
+This is identical to the Helm function.
+```yaml
+kind: Service
+metadata:
+  name: testing
+spec:
+  {{ .Element.spec | toYAML }}
+```
+In the event that the `.spec` field can't be marshaled to YAML this will output an empty string.
+
 ## Security
 
 **WARNING** generating resources and applying them directly into your cluster can be dangerous to the health of your cluster.

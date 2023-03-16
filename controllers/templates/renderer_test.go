@@ -56,7 +56,6 @@ func TestRender(t *testing.T) {
 					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
 			},
 		},
-
 		{
 			name: "sanitization",
 			elements: []apiextensionsv1.JSON{
@@ -242,6 +241,42 @@ func TestRender(t *testing.T) {
 					setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}),
 					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+			},
+		},
+		{
+			name: "toYAML function",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering dev","externalIP": "192.168.50.50","spec":{"selector":{"app.kubernetes.io/name":"MyApp"}}}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: []byte("kind: Testing\nspec:\n {{ .Element.spec | toYAML }}"),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				{
+					Object: map[string]any{
+						"kind": "Testing",
+						"metadata": map[string]any{
+							"namespace": "demo",
+							"labels": map[string]any{
+								"templates.weave.works/name":      "test-gitops-set",
+								"templates.weave.works/namespace": "demo",
+							},
+						},
+						"spec": map[string]any{
+							"selector": map[string]any{
+								"app.kubernetes.io/name": "MyApp",
+							},
+						},
+					},
+				},
 			},
 		},
 	}

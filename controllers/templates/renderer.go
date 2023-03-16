@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/util/jsonpath"
+	k8syaml "sigs.k8s.io/yaml"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -197,13 +199,29 @@ func makeTemplateFunctions() template.FuncMap {
 	}
 
 	f["sanitize"] = sanitize.SanitizeDNSName
-	f["getordefault"] = func(element map[string]any, key string, def interface{}) interface{} {
-		if v, ok := element[key]; ok {
-			return v
-		}
-
-		return def
-	}
+	f["toYAML"] = toYAML
+	f["getordefault"] = getOrDefault
 
 	return f
+}
+
+// toYAML takes an interface, marshals it to yaml, and returns a string. It will
+// always return a string, even on marshal error (empty string).
+//
+// This is designed to be called from a template.
+func toYAML(v interface{}) string {
+	data, err := k8syaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return strings.TrimSuffix(string(data), "\n")
+}
+
+func getOrDefault(element map[string]any, key string, def interface{}) interface{} {
+	if v, ok := element[key]; ok {
+		return v
+	}
+
+	return def
 }
