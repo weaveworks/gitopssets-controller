@@ -106,6 +106,16 @@ type APIClientGenerator struct {
 	// If set, this will configure the Method to be POST automatically.
 	// +optional
 	Body *apiextensionsv1.JSON `json:"body,omitempty"`
+
+	// SingleElement means generate a single element with the result of the API
+	// call.
+	//
+	// When true, the response must be a JSON object and will be returned as a
+	// single element, i.e. only one element will be generated containing the
+	// entire object.
+	//
+	// +optional
+	SingleElement bool `json:"singleElement,omitempty"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for
