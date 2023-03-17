@@ -80,6 +80,37 @@ func TestRender(t *testing.T) {
 			},
 		},
 		{
+			name: "custom delimiters",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering","externalIP": "192.168.50.50"}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Annotations = map[string]string{
+						"templates.weave.works/delimiters": "$[,]",
+					}
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "$[ .Element.env ]-demo"}, func(s *corev1.Service) {
+									s.ObjectMeta.Annotations = map[string]string{
+										"app.kubernetes.io/instance": "$[ .Element.env ]",
+									}
+									s.Spec.ClusterIP = "$[ .Element.externalIP ]"
+								})),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn("demo", "engineering-demo"),
+					setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering")}),
+					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+			},
+		},
+		{
 			name: "multiple templates yields cartesian result",
 			elements: []apiextensionsv1.JSON{
 				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50"}`)},
@@ -250,10 +281,17 @@ func TestRender(t *testing.T) {
 			},
 			setOptions: []func(*templatesv1.GitOpsSet){
 				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Annotations = map[string]string{
+						"templates.weave.works/delimiters": "${{,}}",
+					}
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: []byte("kind: Testing\nspec:\n {{ .Element.spec | toYAML }}"),
+								Raw: []byte(`
+kind: Testing
+spec:
+ ${{ .Element.spec | toYAML }}
+`),
 							},
 						},
 					}

@@ -23,6 +23,14 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
+// TemplateDelimiterAnnotation can be added to a Template to change the Go
+// template delimiter.
+//
+// It's assumed to be a string with "left,right"
+// By default the delimiters are the standard Go templating delimiters:
+// {{ and }}.
+const TemplateDelimiterAnnotation string = "templates.weave.works/delimiters"
+
 var templateFuncs template.FuncMap = makeTemplateFunctions()
 
 // Render parses the GitOpsSet and renders the template resources using
@@ -40,7 +48,7 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
 					namespacedName := types.NamespacedName{Name: r.GetName(), Namespace: r.GetNamespace()}
-					res, err := renderTemplateParams(template, param, namespacedName)
+					res, err := renderTemplateParams(*r, template, param, namespacedName)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
@@ -97,7 +105,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[st
 	return elements, nil
 }
 
-func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, name types.NamespacedName) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, name types.NamespacedName) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
 	repeatedParams, err := repeat(tmpl, params)
@@ -106,7 +114,7 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	}
 
 	for _, p := range repeatedParams {
-		rendered, err := render(name, tmpl.Content.Raw, p)
+		rendered, err := render(set, name, tmpl.Content.Raw, p)
 		if err != nil {
 			return nil, err
 		}
@@ -157,9 +165,10 @@ func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]
 	return objects, nil
 }
 
-func render(name types.NamespacedName, b []byte, params map[string]any) ([]byte, error) {
+func render(set templatesv1.GitOpsSet, name types.NamespacedName, b []byte, params map[string]any) ([]byte, error) {
 	t, err := template.New(fmt.Sprintf("%s", name)).
 		Option("missingkey=error").
+		Delims(templateDelims(set)).
 		Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
@@ -224,4 +233,14 @@ func getOrDefault(element map[string]any, key string, def interface{}) interface
 	}
 
 	return def
+}
+
+func templateDelims(gs templatesv1.GitOpsSet) (string, string) {
+	ann, ok := gs.GetAnnotations()[TemplateDelimiterAnnotation]
+	if ok {
+		if elems := strings.Split(ann, ","); len(elems) == 2 {
+			return elems[0], elems[1]
+		}
+	}
+	return "{{", "}}"
 }
