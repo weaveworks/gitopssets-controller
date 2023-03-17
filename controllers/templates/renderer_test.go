@@ -329,6 +329,17 @@ func TestRender_errors(t *testing.T) {
 	}
 }
 
+func TestRender_disabled(t *testing.T) {
+	gset := makeTestGitOpsSet(t)
+	// no generators available
+	testGenerators := map[string]generators.Generator{}
+	res, err := Render(context.TODO(), gset, testGenerators)
+	test.AssertNoError(t, err)
+	if cmp.Diff([]*unstructured.Unstructured{}, res) != "" {
+		t.Fatalf("expected no resources to be rendered")
+	}
+}
+
 func listElements(el []apiextensionsv1.JSON) func(*templatesv1.GitOpsSet) {
 	return func(gs *templatesv1.GitOpsSet) {
 		if gs.Spec.Generators == nil {
