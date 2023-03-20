@@ -188,6 +188,7 @@ helm-chart: manifests kustomize helmify
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir charts/gitopssets-controller
 	echo "fullnameOverride: gitopssets" >> charts/gitopssets-controller/values.yaml
+	cp LICENSE charts/gitopssets-controller/LICENSE
 	helm lint charts/gitopssets-controller
 	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination ./helm-repo-tmp
 	cd helm-repo-tmp && helm repo index --url https://artifacts.wge.dev.weave.works/dev/charts .
