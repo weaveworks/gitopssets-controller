@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
+	"golang.org/x/exp/slices"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"golang.org/x/exp/slices"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
