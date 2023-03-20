@@ -43,6 +43,7 @@ var (
 const controllerName = "GitOpsSet"
 
 var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
+var defaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
 
 func initScheme(enabledGenerators []string) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -75,7 +76,7 @@ func main() {
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
 		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
-	flag.StringSliceVar(&enabledGenerators, "enabled-generators", allGenerators, "Generators to enable.")
+	flag.StringSliceVar(&enabledGenerators, "enabled-generators", defaultGenerators, "Generators to enable.")
 
 	logOptions.BindFlags(flag.CommandLine)
 	clientOptions.BindFlags(flag.CommandLine)
