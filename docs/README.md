@@ -713,5 +713,17 @@ spec:
             name: go-demo-repo
 ```
 
+## gitopsset-controller configuration
+
+The enabled generators can be configured via the `--enabled-generators` flag, which takes a comma separated list of generators to enable.
+
+The default is to enable all generators.
+
+For example to enable only the `list` and `apiClient` generators:
+
+```yaml
+--enabled-generators=List,GitRepository
+```
+
 [^yaml]: These are written as YAML mappings
 [^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"

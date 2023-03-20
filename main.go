@@ -1,12 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"golang.org/x/exp/slices"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
@@ -41,7 +42,7 @@ var (
 
 const controllerName = "GitOpsSet"
 
-var defaultGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
+var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
 
 func initScheme(enabledGenerators []string) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -74,12 +75,18 @@ func main() {
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
 		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
-	flag.StringSliceVar(&enabledGenerators, "enabled-generators", defaultGenerators, "Generators to enable.")
+	flag.StringSliceVar(&enabledGenerators, "enabled-generators", allGenerators, "Generators to enable.")
 
 	logOptions.BindFlags(flag.CommandLine)
 	clientOptions.BindFlags(flag.CommandLine)
 
 	flag.Parse()
+
+	err := validateEnabledGenerators(enabledGenerators)
+	if err != nil {
+		setupLog.Error(err, "invalid enabled generators")
+		os.Exit(1)
+	}
 
 	initScheme(enabledGenerators)
 
@@ -154,6 +161,15 @@ func main() {
 	}
 }
 
+func validateEnabledGenerators(enabledGenerators []string) error {
+	for _, generator := range enabledGenerators {
+		if !slices.Contains(allGenerators, generator) {
+			return fmt.Errorf("invalid generator %q. valid values: %q", generator, allGenerators)
+		}
+	}
+	return nil
+}
+
 func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFactory {
 	matrixGenerators := map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
@@ -188,11 +204,5 @@ func filterEnabledGenerators(enabledGenerators []string, gens map[string]generat
 }
 
 func isGeneratorEnabled(enabledGenerators []string, generatorName string) bool {
-	for _, gen := range enabledGenerators {
-		// do case insensitive comparison
-		if strings.EqualFold(gen, generatorName) {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(enabledGenerators, generatorName)
 }
