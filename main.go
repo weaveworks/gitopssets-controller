@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
+	"golang.org/x/exp/slices"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -40,11 +42,17 @@ var (
 
 const controllerName = "GitOpsSet"
 
-func init() {
+var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
+var defaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
+
+func initScheme(enabledGenerators []string) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
-	utilruntime.Must(clustersv1.AddToScheme(scheme))
 	utilruntime.Must(templatesv1alpha1.AddToScheme(scheme))
+
+	if isGeneratorEnabled(enabledGenerators, "Cluster") {
+		utilruntime.Must(clustersv1.AddToScheme(scheme))
+	}
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -55,6 +63,7 @@ func main() {
 		probeAddr             string
 		watchAllNamespaces    bool
 		defaultServiceAccount string
+		enabledGenerators     []string
 		clientOptions         runtimeclient.Options
 		logOptions            logger.Options
 	)
@@ -67,11 +76,21 @@ func main() {
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
 		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
+	flag.StringSliceVar(&enabledGenerators, "enabled-generators", defaultGenerators, "Generators to enable.")
 
 	logOptions.BindFlags(flag.CommandLine)
 	clientOptions.BindFlags(flag.CommandLine)
 
 	flag.Parse()
+
+	err := validateEnabledGenerators(enabledGenerators)
+	if err != nil {
+		setupLog.Error(err, "invalid enabled generators")
+		os.Exit(1)
+	}
+	setupLog.Info("Enabled generators", "generators", enabledGenerators)
+
+	initScheme(enabledGenerators)
 
 	watchNamespace := ""
 	if !watchAllNamespaces {
@@ -118,22 +137,8 @@ func main() {
 		Config:                mgr.GetConfig(),
 		Scheme:                mgr.GetScheme(),
 		Mapper:                mapper,
-		Generators: map[string]generators.GeneratorFactory{
-			"List":          list.GeneratorFactory,
-			"GitRepository": gitrepository.GeneratorFactory,
-			// TODO: Figure out how to configure the client
-			"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
-			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
-				"List":          list.GeneratorFactory,
-				"GitRepository": gitrepository.GeneratorFactory,
-				"PullRequests":  pullrequests.GeneratorFactory,
-				"Cluster":       cluster.GeneratorFactory,
-				"APIClient":     apiclient.GeneratorFactory(http.DefaultClient),
-			}),
-			"PullRequests": pullrequests.GeneratorFactory,
-			"Cluster":      cluster.GeneratorFactory,
-		},
-		Metrics: metricsH,
+		Generators:            getGenerators(enabledGenerators),
+		Metrics:               metricsH,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", controllerName)
 		os.Exit(1)
@@ -154,4 +159,48 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func validateEnabledGenerators(enabledGenerators []string) error {
+	for _, generator := range enabledGenerators {
+		if !slices.Contains(allGenerators, generator) {
+			return fmt.Errorf("invalid generator %q. valid values: %q", generator, allGenerators)
+		}
+	}
+	return nil
+}
+
+func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFactory {
+	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
+		"List":          list.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory,
+		"PullRequests":  pullrequests.GeneratorFactory,
+		"Cluster":       cluster.GeneratorFactory,
+		// TODO: Figure out how to configure the client
+		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
+	})
+
+	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
+		"List":          list.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory,
+		"PullRequests":  pullrequests.GeneratorFactory,
+		"Cluster":       cluster.GeneratorFactory,
+		// TODO: Figure out how to configure the client
+		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
+		"Matrix":    matrix.GeneratorFactory(matrixGenerators),
+	})
+}
+
+func filterEnabledGenerators(enabledGenerators []string, gens map[string]generators.GeneratorFactory) map[string]generators.GeneratorFactory {
+	newGenerators := make(map[string]generators.GeneratorFactory)
+	for generatorName := range gens {
+		if isGeneratorEnabled(enabledGenerators, generatorName) {
+			newGenerators[generatorName] = gens[generatorName]
+		}
+	}
+	return newGenerators
+}
+
+func isGeneratorEnabled(enabledGenerators []string, generatorName string) bool {
+	return slices.Contains(enabledGenerators, generatorName)
 }
