@@ -719,11 +719,13 @@ The enabled generators can be configured via the `--enabled-generators` flag, wh
 
 The default is to enable all generators.
 
-For example to enable only the `list` and `apiClient` generators:
+For example to enable only the `List` and `GitRepository` generators:
 
 ```yaml
 --enabled-generators=List,GitRepository
 ```
+
+When a GitOpsSet that uses disabled generators is created, the disabled generators will be silently ignored.
 
 [^yaml]: These are written as YAML mappings
 [^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"
