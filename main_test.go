@@ -21,12 +21,17 @@ func TestGetGenerators(t *testing.T) {
 		},
 		{
 			"enabled generators",
-			[]string{"cluster", "list"},
+			[]string{"Cluster", "List"},
 			[]string{"Cluster", "List"},
 		},
 		{
+			"case is important",
+			[]string{"cluster", "List"},
+			[]string{"List"},
+		},
+		{
 			"unknown enabled generators are ignored",
-			[]string{"cluster", "list", "foo"},
+			[]string{"Cluster", "List", "foo"},
 			[]string{"Cluster", "List"},
 		},
 	}
@@ -66,6 +71,11 @@ func TestValidateEnabledGenerators(t *testing.T) {
 			"unknown enabled generators raise error",
 			[]string{"Cluster", "List", "foo"},
 			`invalid generator "foo". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "Matrix"\]`,
+		},
+		{
+			"case insensitive generarors",
+			[]string{"cluster", "List"},
+			`invalid generator "cluster". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "Matrix"\]`,
 		},
 	}
 

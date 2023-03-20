@@ -87,6 +87,7 @@ func main() {
 		setupLog.Error(err, "invalid enabled generators")
 		os.Exit(1)
 	}
+	setupLog.Info("Enabled generators", "generators", enabledGenerators)
 
 	initScheme(enabledGenerators)
 
@@ -129,8 +130,6 @@ func main() {
 	}
 	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
 
-	setupLog.Info("Enabled generators", "generators", enabledGenerators)
-
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
 		DefaultServiceAccount: defaultServiceAccount,
@@ -171,26 +170,24 @@ func validateEnabledGenerators(enabledGenerators []string) error {
 }
 
 func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFactory {
-	matrixGenerators := map[string]generators.GeneratorFactory{
+	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
 		"GitRepository": gitrepository.GeneratorFactory,
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		// TODO: Figure out how to configure the client
 		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
-	}
+	})
 
-	allGenerators := map[string]generators.GeneratorFactory{
+	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
 		"GitRepository": gitrepository.GeneratorFactory,
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		// TODO: Figure out how to configure the client
 		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
-		"Matrix":    matrix.GeneratorFactory(filterEnabledGenerators(enabledGenerators, matrixGenerators)),
-	}
-
-	return filterEnabledGenerators(enabledGenerators, allGenerators)
+		"Matrix":    matrix.GeneratorFactory(matrixGenerators),
+	})
 }
 
 func filterEnabledGenerators(enabledGenerators []string, gens map[string]generators.GeneratorFactory) map[string]generators.GeneratorFactory {
