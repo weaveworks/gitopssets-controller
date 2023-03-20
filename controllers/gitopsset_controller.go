@@ -277,17 +277,22 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("failed setting index fields: %w", err)
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
-		).
-		Watches(
+		)
+
+	// Only watch for GitopsCluster objects if the Cluster generator is enabled.
+	if r.Generators["Cluster"] != nil {
+		builder.Watches(
 			&source.Kind{Type: &clustersv1.GitopsCluster{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
-		).
-		Complete(r)
+		)
+	}
+
+	return builder.Complete(r)
 }
 
 // gitOpsClusterToGitOpsSet maps a GitopsCluster object to its related GitOpsSet objects
