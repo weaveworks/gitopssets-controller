@@ -41,6 +41,8 @@ var (
 
 const controllerName = "GitOpsSet"
 
+var defaultGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
+
 func initScheme(enabledGenerators []string) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme))
@@ -72,7 +74,7 @@ func main() {
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
 		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
-	flag.StringSliceVar(&enabledGenerators, "enabled-generators", []string{"Cluster"}, "Generators to enable.")
+	flag.StringSliceVar(&enabledGenerators, "enabled-generators", defaultGenerators, "Generators to enable.")
 
 	logOptions.BindFlags(flag.CommandLine)
 	clientOptions.BindFlags(flag.CommandLine)
@@ -120,8 +122,7 @@ func main() {
 	}
 	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
 
-	gens := getGenerators(enabledGenerators)
-	setupLog.Info("Enabled generators", "generators", gens)
+	setupLog.Info("Enabled generators", "generators", enabledGenerators)
 
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
@@ -129,7 +130,7 @@ func main() {
 		Config:                mgr.GetConfig(),
 		Scheme:                mgr.GetScheme(),
 		Mapper:                mapper,
-		Generators:            gens,
+		Generators:            getGenerators(enabledGenerators),
 		Metrics:               metricsH,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", controllerName)
