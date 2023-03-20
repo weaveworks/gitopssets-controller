@@ -472,7 +472,11 @@ func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) erro
 func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) time.Duration {
 	res := []time.Duration{}
 	for _, mg := range gs.Spec.Generators {
-		relevantGenerators := generators.FindRelevantGenerators(mg, configuredGenerators)
+		relevantGenerators, err := generators.FindRelevantGenerators(mg, configuredGenerators)
+		if err != nil {
+			// FIXME: log this error here? It _should_ be being raised elsewhere..
+			return generators.NoRequeueInterval
+		}
 
 		for _, rg := range relevantGenerators {
 			d := rg.Interval(&mg)

@@ -173,7 +173,10 @@ func render(name types.NamespacedName, b []byte, params map[string]any) ([]byte,
 
 func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
 	generated := [][]map[string]any{}
-	generators := generators.FindRelevantGenerators(&generator, allGenerators)
+	generators, err := generators.FindRelevantGenerators(&generator, allGenerators)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find relevant generators: %w", err)
+	}
 	for _, g := range generators {
 		res, err := g.Generate(ctx, &generator, gitopsSet)
 		if err != nil {
