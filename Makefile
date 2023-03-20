@@ -1,6 +1,7 @@
 
+VERSION ?= $(shell git describe --tags --always)
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/weaveworks/gitopssets-controller:latest
+IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 GEN_API_REF_DOCS_VERSION ?= e327d0730470cbd61b06300f81c5fcf91c23c113
@@ -181,6 +182,15 @@ helmify:
 .PHONY: helm
 helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir ../weave-gitops-enterprise/charts/gitopssets-controller
+
+.PHONY: helm-chart
+helm-chart: manifests kustomize helmify
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir charts/gitopssets-controller
+	echo "fullnameOverride: gitopssets" >> charts/gitopssets-controller/values.yaml
+	helm lint charts/gitopssets-controller
+	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination ./helm-repo-tmp
+	cd helm-repo-tmp && helm repo index --url https://artifacts.wge.dev.weave.works/dev/charts .
 
 .PHONY: download-crds
 download-crds:
