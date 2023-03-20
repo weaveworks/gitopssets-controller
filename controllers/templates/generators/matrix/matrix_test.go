@@ -149,6 +149,43 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 	}
 }
 
+func TestDisabledGenerators(t *testing.T) {
+	gen := NewGenerator(logr.Discard(), nil, map[string]generators.GeneratorFactory{
+		"List": list.GeneratorFactory,
+	})
+
+	sg := &templatesv1.GitOpsSetGenerator{
+		Matrix: &templatesv1.MatrixGenerator{
+			Generators: []templatesv1.GitOpsSetNestedGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "cluster","url": "url"}`)},
+						},
+					},
+				},
+				// Not actually used as it is disabled
+				{GitRepository: &templatesv1.GitRepositoryGenerator{}},
+			},
+		},
+	}
+
+	ks := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-generator",
+			Namespace: testNamespace,
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				*sg,
+			},
+		},
+	}
+
+	_, err := gen.Generate(context.TODO(), sg, ks)
+	test.AssertErrorMatch(t, "invalid generated values, expected 2 generators, got 1", err)
+}
+
 func TestInterval(t *testing.T) {
 	gen := NewGenerator(logr.Discard(), nil, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
