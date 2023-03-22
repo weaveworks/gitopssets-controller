@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	kuberecorder "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -49,12 +48,16 @@ const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
 )
 
+type eventRecorder interface {
+	Event(object runtime.Object, eventtype, reason, message string)
+}
+
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
 	client.Client
 	DefaultServiceAccount string
 	Config                *rest.Config
-	kuberecorder.EventRecorder
+	EventRecorder         eventRecorder
 	runtimeCtrl.Metrics
 
 	Generators map[string]generators.GeneratorFactory
@@ -77,7 +80,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 
 	eventtype := "Normal"
 	if severity == eventv1.EventSeverityError {
-		eventtype = "Warning"
+		eventtype = "Error"
 	}
 
 	r.EventRecorder.Event(obj, eventtype, reason, msg)
@@ -142,11 +145,10 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
 		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
 
-		// // Log and emit success event.
-		if templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
-			msg := fmt.Sprintf("Reconciliation finished in %s, next run in %s",
-				time.Since(reconcileStart).String(),
-				gitOpsSet.Spec.Interval.Duration.String())
+		// Log and emit success event.
+		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
+			msg := fmt.Sprintf("Reconciliation finished in %s",
+				time.Since(reconcileStart).String())
 			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg,
 				map[string]string{
 					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
@@ -160,12 +162,12 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
-			msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
-			r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
-				map[string]string{
-					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
-				})
 		}
+		msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
+		r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
+			map[string]string{
+				templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
+			})
 
 		return ctrl.Result{}, err
 	}

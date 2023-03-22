@@ -71,6 +71,7 @@ func TestReconciliation(t *testing.T) {
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{Scheme: scheme})
 	test.AssertNoError(t, err)
+	eventRecorder := &fakeEventRecorderAdapter{}
 
 	reconciler := &GitOpsSetReconciler{
 		Client:                k8sClient,
@@ -80,12 +81,13 @@ func TestReconciliation(t *testing.T) {
 			"List": list.GeneratorFactory,
 		},
 		Config:        cfg,
-		EventRecorder: mgr.GetEventRecorderFor("gitopsset-controller"),
+		EventRecorder: eventRecorder,
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
 
 	t.Run("reconciling creation of new resources", func(t *testing.T) {
+		eventRecorder.reset()
 		ctx := context.TODO()
 		gs := makeTestGitOpsSet(t)
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
@@ -610,6 +612,58 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal("expected the Status to include the timestamp of the reconciliation")
 		}
 	})
+
+	t.Run("create event when successful reconciliation", func(t *testing.T) {
+		eventRecorder.reset()
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t)
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		want := []*eventData{
+			{
+				EventType: "Normal",
+				Reason:    "ReconciliationSucceeded",
+				Message:   "",
+			},
+		}
+		if diff := cmp.Diff(want, eventRecorder.events, cmpopts.IgnoreFields(eventData{}, "Message")); diff != "" {
+			t.Fatalf("failed to create event:\n%s", diff)
+		}
+	})
+
+	t.Run("create event when failed reconciliation", func(t *testing.T) {
+		eventRecorder.reset()
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.ServiceAccountName = "test-sa"
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		want := []*eventData{
+			{
+				EventType: "Error",
+				Reason:    "ReconciliationFailed",
+				Message:   "",
+			},
+		}
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertErrorMatch(t, `create Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
+		if diff := cmp.Diff(want, eventRecorder.events, cmpopts.IgnoreFields(eventData{}, "Message")); diff != "" {
+			t.Fatalf("failed to create error event:\n%s", diff)
+		}
+
+	})
+
 }
 
 func TestGetClusterSelectors(t *testing.T) {
@@ -1068,4 +1122,26 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 	t.Cleanup(func() {
 		cleanupResource(t, cl, binding)
 	})
+}
+
+type fakeEventRecorderAdapter struct {
+	events []*eventData
+}
+
+type eventData struct {
+	EventType string
+	Reason    string
+	Message   string
+}
+
+func (f *fakeEventRecorderAdapter) Event(object runtime.Object, eventtype, reason, message string) {
+	event := &eventData{
+		EventType: eventtype,
+		Reason:    reason,
+		Message:   message,
+	}
+	f.events = append(f.events, event)
+}
+func (f *fakeEventRecorderAdapter) reset() {
+	f.events = []*eventData{}
 }

@@ -22,10 +22,10 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/weaveworks/cluster-controller v1.4.1
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
-	k8s.io/api v0.25.4
-	k8s.io/apiextensions-apiserver v0.25.4
-	k8s.io/apimachinery v0.25.4
-	k8s.io/client-go v0.25.4
+	k8s.io/api v0.26.2
+	k8s.io/apiextensions-apiserver v0.26.1
+	k8s.io/apimachinery v0.26.2
+	k8s.io/client-go v0.26.2
 	sigs.k8s.io/cli-utils v0.34.0
 	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/yaml v1.3.0

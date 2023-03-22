@@ -509,10 +509,6 @@ spec:
                       type: object
                   type: object
                 type: array
-              interval:
-                description: The interval at which to reconcile the GitOpsSet.
-                pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
-                type: string
               serviceAccountName:
                 description: The name of the Kubernetes service account to impersonate
                   when reconciling this Kustomization.
@@ -540,8 +536,6 @@ spec:
                   - content
                   type: object
                 type: array
-            required:
-            - interval
             type: object
           status:
             description: GitOpsSetStatus defines the observed state of GitOpsSet
