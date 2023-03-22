@@ -13,6 +13,7 @@ import (
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
+	"github.com/fluxcd/pkg/runtime/predicates"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -278,7 +279,7 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
