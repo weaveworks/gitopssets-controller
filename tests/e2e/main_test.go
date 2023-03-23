@@ -11,6 +11,7 @@ import (
 	"github.com/fluxcd/pkg/runtime/testenv"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,8 +33,9 @@ const (
 )
 
 var (
-	testEnv *testenv.Environment
-	ctx     = ctrl.SetupSignalHandler()
+	testEnv       *testenv.Environment
+	ctx           = ctrl.SetupSignalHandler()
+	eventRecorder *fakeEventRecorderAdapter
 )
 
 func init() {
@@ -53,6 +55,7 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("failed to create RESTMapper:  %v", err))
 	}
 
+	eventRecorder = &fakeEventRecorderAdapter{}
 	if err := (&controllers.GitOpsSetReconciler{
 		Client: testEnv,
 		Config: testEnv.GetConfig(),
@@ -68,7 +71,7 @@ func TestMain(m *testing.M) {
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 		},
-		EventRecorder: testEnv.GetEventRecorderFor("gitopsset-controller"),
+		EventRecorder: eventRecorder,
 	}).SetupWithManager(testEnv); err != nil {
 		panic(fmt.Sprintf("Failed to start GitOpsSetReconciler: %v", err))
 	}
@@ -89,4 +92,26 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
+}
+
+type fakeEventRecorderAdapter struct {
+	events []*eventData
+}
+
+type eventData struct {
+	EventType string
+	Reason    string
+	Message   string
+}
+
+func (f *fakeEventRecorderAdapter) Event(object runtime.Object, eventtype, reason, message string) {
+	event := &eventData{
+		EventType: eventtype,
+		Reason:    reason,
+		Message:   message,
+	}
+	f.events = append(f.events, event)
+}
+func (f *fakeEventRecorderAdapter) reset() {
+	f.events = []*eventData{}
 }
