@@ -72,10 +72,9 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 		metadata = map[string]string{}
 	}
 
-	reason := severity
-	conditions.GetReason(obj, fluxMeta.ReadyCondition)
-	if r := conditions.GetReason(obj, fluxMeta.ReadyCondition); r != "" {
-		reason = r
+	reason := conditions.GetReason(obj, fluxMeta.ReadyCondition)
+	if reason == "" {
+		reason = severity
 	}
 
 	eventtype := "Normal"
