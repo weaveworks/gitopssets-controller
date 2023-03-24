@@ -8,7 +8,7 @@ import (
 
 	// TODO: v0.26.0 api has support for a generic Set, switch to this
 	// when Flux supports v0.26.0
-	"github.com/gitops-tools/pkg/sets"
+	gSets "github.com/gitops-tools/pkg/sets"
 
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -175,12 +176,12 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	}
 	logger.Info("rendered templates", "resourceCount", len(resources))
 
-	existingEntries := sets.New[templatesv1.ResourceRef]()
+	existingEntries := gSets.New[templatesv1.ResourceRef]()
 	if gitOpsSet.Status.Inventory != nil {
 		existingEntries.Insert(gitOpsSet.Status.Inventory.Entries...)
 	}
 
-	entries := sets.New[templatesv1.ResourceRef]()
+	entries := gSets.New[templatesv1.ResourceRef]()
 	for _, newResource := range resources {
 		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
@@ -441,6 +442,12 @@ func indexGitRepositories(o client.Object) []string {
 	for _, gen := range ks.Spec.Generators {
 		if gen.GitRepository != nil {
 			referencedRepositories = append(referencedRepositories, gen.GitRepository)
+		} else if gen.Matrix != nil && gen.Matrix.Generators != nil {
+			for _, matrixGen := range gen.Matrix.Generators {
+				if matrixGen.GitRepository != nil {
+					referencedRepositories = append(referencedRepositories, matrixGen.GitRepository)
+				}
+			}
 		}
 	}
 
@@ -448,12 +455,12 @@ func indexGitRepositories(o client.Object) []string {
 		return nil
 	}
 
-	referencedNames := []string{}
+	referencedNames := sets.NewString()
 	for _, grg := range referencedRepositories {
-		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
+		referencedNames.Insert(fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
 	}
 
-	return referencedNames
+	return referencedNames.List()
 }
 
 func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Unstructured, error) {
@@ -473,7 +480,7 @@ func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *uns
 	result := unstructured.Unstructured{}
 	existing.DeepCopyInto(&result)
 
-	disallowedKeys := sets.New("status", "metadata", "kind", "apiVersion")
+	disallowedKeys := gSets.New("status", "metadata", "kind", "apiVersion")
 
 	for k, v := range newValue.Object {
 		if !disallowedKeys.Has(k) {
