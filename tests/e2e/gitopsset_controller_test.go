@@ -267,7 +267,7 @@ func TestEventsWithReconciling(t *testing.T) {
 
 }
 
-func TestEventswitFailinghReconciling(t *testing.T) {
+func TestEventsWithFailingReconciling(t *testing.T) {
 	eventRecorder.Reset()
 	ctx := context.TODO()
 

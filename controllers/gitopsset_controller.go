@@ -68,7 +68,6 @@ type GitOpsSetReconciler struct {
 
 // event emits a Kubernetes event using EventRecorder
 func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string) {
-
 	reason := conditions.GetReason(obj, fluxMeta.ReadyCondition)
 	if reason == "" {
 		reason = severity
