@@ -194,8 +194,8 @@ func deleteAllKustomizations(t *testing.T, cl client.Client) {
 	}
 }
 
-func TestEventswithReconciling(t *testing.T) {
-	eventRecorder.reset()
+func TestEventsWithReconciling(t *testing.T) {
+	eventRecorder.Reset()
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
@@ -253,7 +253,7 @@ func TestEventswithReconciling(t *testing.T) {
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
-		want := []*eventData{
+		want := []*test.EventData{
 			{
 				EventType: "Normal",
 				Reason:    "ReconciliationSucceeded",
@@ -261,14 +261,14 @@ func TestEventswithReconciling(t *testing.T) {
 			},
 		}
 
-		return cmp.Diff(want, eventRecorder.events, cmpopts.IgnoreFields(eventData{}, "Message")) == ""
+		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 
 	}, timeout).Should(gomega.BeTrue())
 
 }
 
 func TestEventswitFailinghReconciling(t *testing.T) {
-	eventRecorder.reset()
+	eventRecorder.Reset()
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
@@ -329,14 +329,14 @@ func TestEventswitFailinghReconciling(t *testing.T) {
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
 		// reconciliation should fail because the service account does not have permissions
-		want := []*eventData{
+		want := []*test.EventData{
 			{
 				EventType: "Error",
 				Reason:    "ReconciliationFailed",
 				Message:   "",
 			},
 		}
-		return cmp.Diff(want, eventRecorder.events, cmpopts.IgnoreFields(eventData{}, "Message")) == ""
+		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 
 	}, timeout).Should(gomega.BeTrue())
 

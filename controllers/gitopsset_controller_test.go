@@ -71,7 +71,7 @@ func TestReconciliation(t *testing.T) {
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{Scheme: scheme})
 	test.AssertNoError(t, err)
-	eventRecorder := &fakeEventRecorderAdapter{}
+	eventRecorder := &test.FakeEventRecorder{}
 
 	reconciler := &GitOpsSetReconciler{
 		Client:                k8sClient,
@@ -87,7 +87,6 @@ func TestReconciliation(t *testing.T) {
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
 
 	t.Run("reconciling creation of new resources", func(t *testing.T) {
-		eventRecorder.reset()
 		ctx := context.TODO()
 		gs := makeTestGitOpsSet(t)
 		test.AssertNoError(t, k8sClient.Create(ctx, gs))
@@ -1070,26 +1069,4 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 	t.Cleanup(func() {
 		cleanupResource(t, cl, binding)
 	})
-}
-
-type fakeEventRecorderAdapter struct {
-	events []*eventData
-}
-
-type eventData struct {
-	EventType string
-	Reason    string
-	Message   string
-}
-
-func (f *fakeEventRecorderAdapter) Event(object runtime.Object, eventtype, reason, message string) {
-	event := &eventData{
-		EventType: eventtype,
-		Reason:    reason,
-		Message:   message,
-	}
-	f.events = append(f.events, event)
-}
-func (f *fakeEventRecorderAdapter) reset() {
-	f.events = []*eventData{}
 }

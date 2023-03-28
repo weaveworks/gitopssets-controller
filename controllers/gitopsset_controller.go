@@ -67,10 +67,7 @@ type GitOpsSetReconciler struct {
 }
 
 // event emits a Kubernetes event using EventRecorder
-func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string, metadata map[string]string) {
-	if metadata == nil {
-		metadata = map[string]string{}
-	}
+func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string) {
 
 	reason := conditions.GetReason(obj, fluxMeta.ReadyCondition)
 	if reason == "" {
@@ -85,7 +82,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 	r.EventRecorder.Event(obj, eventtype, reason, msg)
 }
 
-//+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=templa3tes.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
@@ -148,10 +145,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
 			msg := fmt.Sprintf("Reconciliation finished in %s",
 				time.Since(reconcileStart).String())
-			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg,
-				map[string]string{
-					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
-				})
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg)
 		}
 	}()
 
@@ -163,10 +157,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Error(err, "failed to reconcile")
 		}
 		msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
-		r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
-			map[string]string{
-				templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
-			})
+		r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 
 		return ctrl.Result{}, err
 	}
@@ -179,10 +170,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
 			msg := fmt.Sprintf("Status and inventory update failed after reconciliation")
-			r.event(&gitOpsSet, eventv1.EventSeverityError, msg,
-				map[string]string{
-					templatesv1.GroupVersion.Group + "/" + eventv1.MetaCommitStatusKey: eventv1.MetaCommitStatusUpdateValue,
-				})
+			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
 	}
