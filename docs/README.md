@@ -727,6 +727,21 @@ spec:
             name: go-demo-repo
 ```
 
+## Pruning resources
+
+You can enable pruning of resources:
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  prune: true
+```
+
+When reconcilings, the generated resources are reconciled automatically. If previously applied objects are missing from the current revision, these objects are deleted from the cluster when spec.prune is enabled.
+
+Otherwise the resources **will not be removed**.
+
 ## gitopsset-controller configuration
 
 The enabled generators can be configured via the `--enabled-generators` flag, which takes a comma separated list of generators to enable.
