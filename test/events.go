@@ -4,7 +4,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// FakeEventRecorder is a fake event recorder used in tests to simulate recording the events in a slice
+// FakeEventRecorder is a fake event recorder used in tests to simulate recording the events in a slice of EventData
 type FakeEventRecorder struct {
 	Events []*EventData
 }
