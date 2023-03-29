@@ -257,7 +257,6 @@ func TestEventsWithReconciling(t *testing.T) {
 			{
 				EventType: "Normal",
 				Reason:    "ReconciliationSucceeded",
-				Message:   "",
 			},
 		}
 
@@ -333,7 +332,6 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 			{
 				EventType: "Error",
 				Reason:    "ReconciliationFailed",
-				Message:   "",
 			},
 		}
 		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
