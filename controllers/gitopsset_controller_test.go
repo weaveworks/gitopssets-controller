@@ -71,6 +71,7 @@ func TestReconciliation(t *testing.T) {
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{Scheme: scheme})
 	test.AssertNoError(t, err)
+	eventRecorder := &test.FakeEventRecorder{}
 
 	reconciler := &GitOpsSetReconciler{
 		Client:                k8sClient,
@@ -79,7 +80,8 @@ func TestReconciliation(t *testing.T) {
 		Generators: map[string]generators.GeneratorFactory{
 			"List": list.GeneratorFactory,
 		},
-		Config: cfg,
+		Config:        cfg,
+		EventRecorder: eventRecorder,
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))

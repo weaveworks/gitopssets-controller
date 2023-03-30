@@ -12,6 +12,7 @@ import (
 
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
+	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
 	flag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -66,9 +67,11 @@ func main() {
 		enabledGenerators     []string
 		clientOptions         runtimeclient.Options
 		logOptions            logger.Options
+		eventsAddr            string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&eventsAddr, "events-addr", "", "The address of the events receiver.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -130,6 +133,11 @@ func main() {
 		os.Exit(1)
 	}
 	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
+	var eventRecorder *events.Recorder
+	if eventRecorder, err = events.NewRecorder(mgr, ctrl.Log, eventsAddr, controllerName); err != nil {
+		setupLog.Error(err, "unable to create event recorder")
+		os.Exit(1)
+	}
 
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
@@ -139,6 +147,7 @@ func main() {
 		Mapper:                mapper,
 		Generators:            getGenerators(enabledGenerators),
 		Metrics:               metricsH,
+		EventRecorder:         eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", controllerName)
 		os.Exit(1)

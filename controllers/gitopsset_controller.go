@@ -10,7 +10,9 @@ import (
 	// when Flux supports v0.26.0
 	"github.com/gitops-tools/pkg/sets"
 
+	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -46,11 +48,16 @@ const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
 )
 
+type eventRecorder interface {
+	Event(object runtime.Object, eventtype, reason, message string)
+}
+
 // GitOpsSetReconciler reconciles a GitOpsSet object
 type GitOpsSetReconciler struct {
 	client.Client
 	DefaultServiceAccount string
 	Config                *rest.Config
+	EventRecorder         eventRecorder
 	runtimeCtrl.Metrics
 
 	Generators map[string]generators.GeneratorFactory
@@ -59,13 +66,29 @@ type GitOpsSetReconciler struct {
 	Mapper meta.RESTMapper
 }
 
-//+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
+// event emits a Kubernetes event using EventRecorder
+func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string) {
+	reason := conditions.GetReason(obj, fluxMeta.ReadyCondition)
+	if reason == "" {
+		reason = severity
+	}
+
+	eventtype := "Normal"
+	if severity == eventv1.EventSeverityError {
+		eventtype = "Error"
+	}
+
+	r.EventRecorder.Event(obj, eventtype, reason, msg)
+}
+
+//+kubebuilder:rbac:groups=templa3tes.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -117,14 +140,23 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
 		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
 
+		// Log and emit success event.
+		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
+			msg := fmt.Sprintf("Reconciliation finished in %s",
+				time.Since(reconcileStart).String())
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg)
+		}
 	}()
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
+
 	if err != nil {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 		}
+		msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
+		r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 
 		return ctrl.Result{}, err
 	}
@@ -134,7 +166,10 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
 
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
+			msg := fmt.Sprintf("Status and inventory update failed after reconciliation")
+			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
 	}
