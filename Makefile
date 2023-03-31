@@ -196,6 +196,12 @@ api-docs: gen-crd-api-reference-docs  ## Generate API reference documentation
 	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1alpha1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/template -out-file=./docs/api/gitopsset.md
 	@sed -i '' -e 's/<namespace><em><name><\/em><group>_<kind>/namespace_name_group_kind/g' docs/api/gitopsset.md
 
+
+user-guide: api-docs
+	cp ./docs/api/gitopsset.md ../weave-gitops/website/docs/gitopssets/_api.mdx
+	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1alpha1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/toc-template -out-file=../weave-gitops/website/docs/gitopssets/_api-toc.json
+
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool

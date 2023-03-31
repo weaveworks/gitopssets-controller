@@ -2,7 +2,7 @@
 
     {{ with .packages}}
         <p>Packages:</p>
-        <ul class="simple">
+        <ul>
             {{ range . }}
                 <li>
                     <a href="#{{- packageAnchorID . -}}">{{ packageDisplayName . }}</a>
@@ -24,7 +24,7 @@
 
         Resource Types:
 
-        <ul class="simple">
+        <ul>
             {{- range (visibleTypes (sortedTypes .Types)) -}}
                 {{ if isExportedType . -}}
                     <li>
@@ -39,7 +39,7 @@
         {{ end }}
     {{ end }}
 
-    <div class="admonition note">
-        <p class="last">This page was automatically generated with <code>gen-crd-api-reference-docs</code></p>
+    <div>
+        <p>This page was automatically generated with <code>gen-crd-api-reference-docs</code></p>
     </div>
 {{ end }}
