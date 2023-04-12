@@ -13,6 +13,7 @@ import (
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +39,12 @@ var kustomizationGVK = schema.GroupVersionKind{
 	Group:   "kustomize.toolkit.fluxcd.io",
 	Kind:    "Kustomization",
 	Version: "v1beta2",
+}
+
+var configMapGVK = schema.GroupVersionKind{
+	Group:   "",
+	Kind:    "ConfigMap",
+	Version: "v1",
 }
 
 func TestReconciliation(t *testing.T) {
@@ -295,9 +302,110 @@ func TestReconciliation(t *testing.T) {
 		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantUpdated), kustomization); err != nil {
 			t.Fatal(err)
 		}
-		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()...); diff != "" {
+		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()); diff != "" {
 			t.Fatalf("failed to update Kustomization:\n%s", diff)
 		}
+	})
+
+	t.Run("reconciling update of configmaps", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, makeTestConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.configValue }}",
+							}
+						})),
+					},
+				},
+			}
+
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"cluster": "engineering-dev","configValue":"test-value1"}`)},
+						},
+					},
+				},
+			}
+		})
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		defer cleanupResource(t, k8sClient, gs)
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			t.Fatal(err)
+		}
+		wantCM := makeTestConfigMap(func(c *corev1.ConfigMap) {
+			c.ObjectMeta.Labels = map[string]string{
+				"templates.weave.works/name":      "demo-set",
+				"templates.weave.works/namespace": "default",
+			}
+			c.Data = map[string]string{
+				"testing": "test-value1",
+			}
+		})
+		want := []runtime.Object{
+			wantCM,
+		}
+		test.AssertInventoryHasItems(t, updated, want...)
+
+		createdCM := &unstructured.Unstructured{}
+		createdCM.SetGroupVersionKind(configMapGVK)
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantCM), createdCM); err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(test.ToUnstructured(t, wantCM), createdCM, objectMetaIgnore()); diff != "" {
+			t.Fatalf("failed to create ConfigMap:\n%s", diff)
+		}
+
+		updated.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+			{
+				List: &templatesv1.ListGenerator{
+					Elements: []apiextensionsv1.JSON{
+						{Raw: []byte(`{"cluster": "engineering-dev","configValue":"test-value2"}`)},
+					},
+				},
+			},
+		}
+		if err := k8sClient.Update(ctx, updated); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wantCM = makeTestConfigMap(func(c *corev1.ConfigMap) {
+			c.ObjectMeta.Labels = map[string]string{
+				"templates.weave.works/name":      "demo-set",
+				"templates.weave.works/namespace": "default",
+			}
+			c.Data = map[string]string{
+				"testing": "test-value2",
+			}
+		})
+
+		updatedCM := &unstructured.Unstructured{}
+		updatedCM.SetGroupVersionKind(configMapGVK)
+		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantCM), updatedCM); err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := cmp.Diff(test.ToUnstructured(t, wantCM), updatedCM, objectMetaIgnore()); diff != "" {
+			t.Fatalf("failed to update ConfigMap:\n%s", diff)
+		}
+
 	})
 
 	t.Run("reconciling with no generated resources", func(t *testing.T) {
@@ -584,7 +692,7 @@ func TestReconciliation(t *testing.T) {
 		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(wantUpdated), kustomization); err != nil {
 			t.Fatal(err)
 		}
-		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()...); diff != "" {
+		if diff := cmp.Diff(test.ToUnstructured(t, wantUpdated), kustomization, objectMetaIgnore()); diff != "" {
 			t.Fatalf("failed to update Kustomization:\n%s", diff)
 		}
 	})
@@ -997,19 +1105,17 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 	return gs
 }
 
-func objectMetaIgnore() []cmp.Option {
-	metaFields := []string{"uid", "resourceVersion", "generation", "creationTimestamp", "managedFields", "status"}
-	return []cmp.Option{
-		cmpopts.IgnoreMapEntries(func(k, v any) bool {
-			for _, key := range metaFields {
-				if key == k {
-					return true
-				}
+func objectMetaIgnore() cmp.Option {
+	metaFields := []string{"uid", "resourceVersion", "generation", "creationTimestamp", "managedFields", "status", "ownerReferences"}
+	return cmpopts.IgnoreMapEntries(func(k, v any) bool {
+		for _, key := range metaFields {
+			if key == k {
+				return true
 			}
+		}
 
-			return false
-		}),
-	}
+		return false
+	})
 }
 
 func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {
@@ -1069,4 +1175,26 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 	t.Cleanup(func() {
 		cleanupResource(t, cl, binding)
 	})
+}
+
+func makeTestConfigMap(opts ...func(*corev1.ConfigMap)) *corev1.ConfigMap {
+	cm := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-cm",
+			Namespace: "default",
+		},
+		Data: map[string]string{
+			"testing": "test",
+		},
+	}
+
+	for _, o := range opts {
+		o(cm)
+	}
+
+	return cm
 }

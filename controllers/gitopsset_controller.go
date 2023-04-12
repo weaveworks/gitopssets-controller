@@ -14,7 +14,6 @@ import (
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
-	"github.com/fluxcd/pkg/runtime/patch"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -221,16 +220,8 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			}
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
 			if err == nil {
-				patchHelper, err := patch.NewHelper(existing, k8sClient)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create patch helper for Resource: %w", err)
-				}
-
-				if err := logResourceMessage(logger, "updating existing resource if necessary", newResource); err != nil {
-					return nil, err
-				}
-				existing = copyUnstructuredContent(existing, newResource)
-				if err := patchHelper.Patch(ctx, existing); err != nil {
+				newResource = copyUnstructuredContent(existing, newResource)
+				if err := k8sClient.Patch(ctx, newResource, client.MergeFrom(existing)); err != nil {
 					return nil, fmt.Errorf("failed to update Resource: %w", err)
 				}
 				continue
