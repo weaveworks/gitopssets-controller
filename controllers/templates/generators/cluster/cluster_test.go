@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -23,13 +22,11 @@ func TestClusterGenerator_Generate(t *testing.T) {
 		sg          *templatesv1.GitOpsSetGenerator
 		clusters    []runtime.Object
 		wantParams  []map[string]any
-		wantErr     bool
 		errContains string
 	}{
 		{
 			name:        "return error if sg is nil",
 			sg:          nil,
-			wantErr:     true,
 			errContains: generators.ErrEmptyGitOpsSet.Error(),
 		},
 		{
@@ -38,10 +35,58 @@ func TestClusterGenerator_Generate(t *testing.T) {
 			wantParams: nil,
 		},
 		{
-			name: "successful clusters listing",
+			name: "generator with no label selector returns all clusters",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Cluster: &templatesv1.ClusterGenerator{},
+			},
+			clusters: []runtime.Object{
+				&clustersv1.GitopsCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "cluster1",
+						Namespace:   "ns1",
+						Annotations: map[string]string{},
+						Labels:      map[string]string{"test1": "value"},
+					},
+					Spec: clustersv1.GitopsClusterSpec{},
+				},
+				&clustersv1.GitopsCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "cluster2",
+						Namespace:   "ns2",
+						Annotations: map[string]string{},
+						Labels:      map[string]string{"test2": "value"},
+					},
+					Spec: clustersv1.GitopsClusterSpec{},
+				},
+			},
+			wantParams: []map[string]any{
+				{
+					"ClusterAnnotations": map[string]string{},
+					"ClusterLabels": map[string]string{
+						"test1": "value",
+					},
+					"ClusterName":      "cluster1",
+					"ClusterNamespace": "ns1",
+				},
+				{
+					"ClusterAnnotations": map[string]string{},
+					"ClusterLabels": map[string]string{
+						"test2": "value",
+					},
+					"ClusterName":      "cluster2",
+					"ClusterNamespace": "ns2",
+				},
+			},
+		},
+		{
+			name: "label selector filtering",
 			sg: &templatesv1.GitOpsSetGenerator{
 				Cluster: &templatesv1.ClusterGenerator{
-					Selector: *metav1.AddLabelToSelector(&metav1.LabelSelector{}, "foo", "bar"),
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"foo": "bar",
+						},
+					},
 				},
 			},
 			clusters: []runtime.Object{
@@ -76,15 +121,15 @@ func TestClusterGenerator_Generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newFakeClient(t, tt.clusters...)
 			g := NewGenerator(logr.Discard(), c)
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			gotParams, err := g.Generate(ctx, tt.sg, nil)
-			if tt.wantErr {
-				assert.Error(t, err)
+
+			gotParams, err := g.Generate(context.TODO(), tt.sg, nil)
+
+			if tt.errContains != "" {
 				assert.Contains(t, err.Error(), tt.errContains)
-			} else {
-				assert.NoError(t, err)
+				return
 			}
+
+			assert.NoError(t, err)
 			assert.Equal(t, tt.wantParams, gotParams)
 		})
 	}
@@ -93,12 +138,8 @@ func TestClusterGenerator_Generate(t *testing.T) {
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 	t.Helper()
 	scheme := runtime.NewScheme()
-	if err := clustersv1.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	if err := templatesv1.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, clustersv1.AddToScheme(scheme))
+	assert.NoError(t, templatesv1.AddToScheme(scheme))
 
 	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objs...).Build()
 }

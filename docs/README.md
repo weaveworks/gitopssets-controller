@@ -136,6 +136,7 @@ We currently provide these generators:
  - [gitRepository](#gitrepository-generator)
  - [matrix](#matrix-generator)
  - [apiClient](#apiclient-generator)
+ - [cluster](#cluster-generator)
 
 ### List generator
 
@@ -626,6 +627,75 @@ spec:
 Whatever result is parsed from the API endpoint will be returned as a map in a single element.
 
 For generation, you might need to use the `repeat` mechanism to generate repeating results.
+
+### Cluster generator
+
+The cluster generator generates from in-cluster GitOpsCluster resources.
+
+For example, this `GitOpsSet` will generate a `Kustomization` resource for each cluster matching the [Label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/).
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: cluster-sample
+spec:
+  generators:
+    - cluster:
+        selector:
+          matchLabels:
+            env: dev
+            team: dev-team
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.ClusterName }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.ClusterName }}"
+            com.example/team: "{{ .Element.ClusterLabels.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.ClusterLabels.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+```
+
+The following fields are generated for each GitOpsCluster.
+
+ - `ClusterName` the name of the cluster
+ - `ClusterNamespace` the namespace that this cluster is from
+ - `ClusterLabels` the labels from the metadata field on the GitOpsCluster
+ - `ClusterAnnotations` the annotations from the metadata field on the GitOpsCluster
+
+If the selector is not provided, all clusters from all namespaces will be returned:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: cluster-sample
+spec:
+  generators:
+    - cluster: {}
+```
+
+Otherwise if the selector is empty, no clusters will be generated:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: cluster-sample
+spec:
+  generators:
+    - cluster:
+        selector: {}
+```
 
 ## Templating functions
 
