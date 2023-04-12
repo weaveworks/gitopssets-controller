@@ -80,7 +80,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 	r.EventRecorder.Event(obj, eventtype, reason, msg)
 }
 
-//+kubebuilder:rbac:groups=templa3tes.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch

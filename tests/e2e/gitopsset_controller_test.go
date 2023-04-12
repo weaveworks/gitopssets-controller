@@ -179,8 +179,10 @@ func TestGenerateNamespace(t *testing.T) {
 		makeTestNamespace("engineering-preprod-ns"),
 	}
 	test.AssertInventoryHasItems(t, updated, want...)
-	cleanupResource(t, testEnv, makeTestNamespace("engineering-prod-ns"))
-	cleanupResource(t, testEnv, makeTestNamespace("engineering-preprod-ns"))
+	// Namespaces cannot be deleted from envtest
+	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
+	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
+
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
