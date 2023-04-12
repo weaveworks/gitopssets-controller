@@ -135,6 +135,10 @@ func (g *APIClientGenerator) generateFromResponseBody(body []byte, endpoint stri
 	var result []map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		g.Logger.Error(err, "failed to unmarshal JSON response", "endpoint", endpoint)
+
+		if isObjectResponse(body) {
+			return nil, fmt.Errorf("failed to unmarshal JSON from endpoint %s, response is an object not an array", endpoint)
+		}
 		return nil, fmt.Errorf("failed to unmarshal JSON response from endpoint %s", endpoint)
 	}
 
@@ -144,6 +148,15 @@ func (g *APIClientGenerator) generateFromResponseBody(body []byte, endpoint stri
 	}
 
 	return res, nil
+}
+
+func isObjectResponse(body []byte) bool {
+	var result map[string]any
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (g *APIClientGenerator) generateFromResponseBodySingleElement(body []byte, endpoint string) ([]map[string]any, error) {
