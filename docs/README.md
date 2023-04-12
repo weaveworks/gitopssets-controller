@@ -672,7 +672,7 @@ The following fields are generated for each GitOpsCluster.
  - `ClusterLabels` the labels from the metadata field on the GitOpsCluster
  - `ClusterAnnotations` the annotations from the metadata field on the GitOpsCluster
 
-If the selector is not provided, all clusters will be returned.
+If the selector is not provided, all clusters from all namespaces will be returned:
 
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
