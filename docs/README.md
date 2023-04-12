@@ -695,7 +695,7 @@ spec:
   generators:
     - cluster:
         selector: {}
-
+```
 
 ## Templating functions
 
