@@ -84,7 +84,7 @@ func TestFindRelevenatGeneratorsErrors(t *testing.T) {
 				List:   &templatesv1.ListGenerator{},
 				Matrix: &templatesv1.MatrixGenerator{},
 			},
-			err: "\"Matrix\" not found in enabled generators",
+			err: "Matrix not enabled",
 		},
 	}
 
@@ -92,8 +92,11 @@ func TestFindRelevenatGeneratorsErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := generators.FindRelevantGenerators(tt.set, tt.allGenerators)
 			test.AssertErrorMatch(t, tt.err, err)
-			if !errors.Is(err, generators.ErrGeneratorNotEnabled) {
-				t.Errorf("FindRelevantGenerators() error should be ErrGeneratorNotEnabled")
+			if !errors.As(err, &generators.GeneratorNotEnabledError{}) {
+				t.Errorf("FindRelevantGenerators() error should be a GeneratorNotEnabledError")
+			}
+			if !errors.Is(err, generators.GeneratorNotEnabledError{Name: "Matrix"}) {
+				t.Errorf(`FindRelevantGenerators() error should be GeneratorNotEnabledError{Name: "Matrix"}`)
 			}
 		})
 	}
