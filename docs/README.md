@@ -683,7 +683,18 @@ spec:
   generators:
     - cluster: {}
 ```
-Otherwise if the selector is empty, no clusters will be generated.
+
+Otherwise if the selector is empty, no clusters will be generated:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: cluster-sample
+spec:
+  generators:
+    - cluster:
+        selector: {}
 
 
 ## Templating functions
