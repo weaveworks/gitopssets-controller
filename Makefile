@@ -198,6 +198,7 @@ api-docs: gen-crd-api-reference-docs  ## Generate API reference documentation
 
 
 user-guide: api-docs
+	cp ./docs/README.md ../weave-gitops/website/docs/gitopssets/guide.mdx
 	cp ./docs/api/gitopsset.md ../weave-gitops/website/docs/gitopssets/_api.mdx
 	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1alpha1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/toc-template -out-file=../weave-gitops/website/docs/gitopssets/_api-toc.json
 
