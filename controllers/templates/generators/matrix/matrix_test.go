@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -108,7 +108,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				},
 			},
 			objects: []runtime.Object{newGitRepository(srv.URL+"/files.tar.gz",
-				"f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")},
+				"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")},
 			expectedMatrix: []map[string]any{
 				{
 					"cluster":     "cluster",
@@ -325,8 +325,8 @@ func newGitRepository(archiveURL, xsum string) *sourcev1.GitRepository {
 		},
 		Status: sourcev1.GitRepositoryStatus{
 			Artifact: &sourcev1.Artifact{
-				URL:      archiveURL,
-				Checksum: xsum,
+				URL:    archiveURL,
+				Digest: xsum,
 			},
 		},
 	}

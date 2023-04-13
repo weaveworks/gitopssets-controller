@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -260,6 +260,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	compareWant := gomega.BeComparableTo(want, cmpopts.IgnoreFields(test.EventData{}, "Message"))
 
 	g := gomega.NewWithT(t)
+
 	g.Eventually(func() []*test.EventData {
 		return eventRecorder.Events
 	}, timeout).Should(gomega.ContainElement(compareWant))
