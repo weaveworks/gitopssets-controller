@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,7 +147,7 @@ func TestGenerateNamespace(t *testing.T) {
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Element.team }}-ns")),
+						Raw: mustMarshalJSON(t, test.NewNamespace("{{ .Element.team }}-ns")),
 					},
 				},
 			},
@@ -175,14 +174,14 @@ func TestGenerateNamespace(t *testing.T) {
 	}, timeout).Should(gomega.BeTrue())
 
 	want := []runtime.Object{
-		makeTestNamespace("engineering-prod-ns"),
-		makeTestNamespace("engineering-preprod-ns"),
+		test.NewNamespace("engineering-prod-ns"),
+		test.NewNamespace("engineering-preprod-ns"),
 	}
 	test.AssertInventoryHasItems(t, updated, want...)
+
 	// Namespaces cannot be deleted from envtest
 	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
 	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
-
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -378,21 +377,4 @@ func nsn(namespace, name string) types.NamespacedName {
 		Name:      name,
 		Namespace: namespace,
 	}
-}
-
-func makeTestNamespace(name string, opts ...func(*corev1.Namespace)) *corev1.Namespace {
-	n := corev1.Namespace{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Namespace",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	for _, o := range opts {
-		o(&n)
-	}
-
-	return &n
 }
