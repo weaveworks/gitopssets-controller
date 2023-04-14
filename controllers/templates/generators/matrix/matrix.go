@@ -89,7 +89,11 @@ func (g *MatrixGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Dura
 
 	res := []time.Duration{}
 	for _, mg := range sg.Matrix.Generators {
-		relevantGenerators := generators.FindRelevantGenerators(mg, allGenerators)
+		relevantGenerators, err := generators.FindRelevantGenerators(mg, allGenerators)
+		if err != nil {
+			g.Logger.Error(err, "failed to find relevant generators, defaulting to no requeue")
+			return generators.NoRequeueInterval
+		}
 
 		for _, rg := range relevantGenerators {
 			gs, err := makeGitOpsSetGenerator(&mg)
@@ -122,7 +126,10 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 	generated := [][]map[string]any{}
 
 	for _, mg := range generator.Matrix.Generators {
-		relevantGenerators := generators.FindRelevantGenerators(mg, allGenerators)
+		relevantGenerators, err := generators.FindRelevantGenerators(mg, allGenerators)
+		if err != nil {
+			return nil, err
+		}
 		for _, g := range relevantGenerators {
 			gs, err := makeGitOpsSetGenerator(&mg)
 			if err != nil {

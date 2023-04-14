@@ -188,7 +188,10 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 		return nil, generators.NoRequeueInterval, err
 	}
 
-	requeueAfter := calculateInterval(gitOpsSet, instantiatedGenerators)
+	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
+	if err != nil {
+		return nil, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
+	}
 
 	return inventory, requeueAfter, nil
 }
@@ -500,10 +503,13 @@ func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) erro
 	return nil
 }
 
-func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) time.Duration {
+func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) (time.Duration, error) {
 	res := []time.Duration{}
 	for _, mg := range gs.Spec.Generators {
-		relevantGenerators := generators.FindRelevantGenerators(mg, configuredGenerators)
+		relevantGenerators, err := generators.FindRelevantGenerators(mg, configuredGenerators)
+		if err != nil {
+			return generators.NoRequeueInterval, err
+		}
 
 		for _, rg := range relevantGenerators {
 			d := rg.Interval(&mg)
@@ -516,11 +522,11 @@ func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[strin
 	}
 
 	if len(res) == 0 {
-		return generators.NoRequeueInterval
+		return generators.NoRequeueInterval, nil
 	}
 
 	// Find the lowest requeue interval provided by a generator.
 	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
 
-	return res[0]
+	return res[0], nil
 }

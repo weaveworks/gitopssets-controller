@@ -183,7 +183,10 @@ func render(set templatesv1.GitOpsSet, name types.NamespacedName, b []byte, para
 
 func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
 	generated := [][]map[string]any{}
-	generators := generators.FindRelevantGenerators(&generator, allGenerators)
+	generators, err := generators.FindRelevantGenerators(&generator, allGenerators)
+	if err != nil {
+		return nil, err
+	}
 	for _, g := range generators {
 		res, err := g.Generate(ctx, &generator, gitopsSet)
 		if err != nil {

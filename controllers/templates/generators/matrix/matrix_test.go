@@ -183,7 +183,7 @@ func TestDisabledGenerators(t *testing.T) {
 	}
 
 	_, err := gen.Generate(context.TODO(), sg, ks)
-	test.AssertErrorMatch(t, "invalid generated values, expected 2 generators, got 1", err)
+	test.AssertErrorMatch(t, `generator GitRepository not enabled`, err)
 }
 
 func TestInterval(t *testing.T) {
