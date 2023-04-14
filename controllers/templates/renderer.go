@@ -175,7 +175,7 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 	generated := [][]map[string]any{}
 	generators, err := generators.FindRelevantGenerators(&generator, allGenerators)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find relevant generators: %w", err)
+		return nil, err
 	}
 	for _, g := range generators {
 		res, err := g.Generate(ctx, &generator, gitopsSet)

@@ -5,6 +5,11 @@ import (
 	"reflect"
 )
 
+// GeneratorNotEnabledError is returned when a generator is not enabled
+// in the controller but a GitOpsSet tries to use it.
+// If you want to handle this error you can either use
+// errors.As(err, &GeneratorNotEnabledError{}) to check for any generator, or use
+// errors.Is(err, GeneratorNotEnabledError{Name: Matrix}) for a specific generator.
 type GeneratorNotEnabledError struct {
 	Name string
 }

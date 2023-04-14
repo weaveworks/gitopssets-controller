@@ -156,7 +156,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 
 	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
 	if err != nil {
-		return nil, generators.NoRequeueInterval, err
+		return nil, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
 	}
 
 	return inventory, requeueAfter, nil
@@ -477,7 +477,7 @@ func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[strin
 	for _, mg := range gs.Spec.Generators {
 		relevantGenerators, err := generators.FindRelevantGenerators(mg, configuredGenerators)
 		if err != nil {
-			return generators.NoRequeueInterval, fmt.Errorf("failed to find relevant generators: %w", err)
+			return generators.NoRequeueInterval, err
 		}
 
 		for _, rg := range relevantGenerators {
