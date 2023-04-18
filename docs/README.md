@@ -813,3 +813,11 @@ When a GitOpsSet that uses disabled generators is created, the disabled generato
 
 [^yaml]: These are written as YAML mappings
 [^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"
+
+## Notifications
+
+Events are enabled which will trigger kubernetes events when successfull reconciliation occurs with a `Normal` event or when reconciliation fails with an `Error` event. Fluxcd's [Events](https://pkg.go.dev/github.com/fluxcd/pkg/runtime/events) package is used including the `EventRecorder` to record these events.
+
+To configure recieving the recorded events on a specific host, this can be provided via the `--events-addr` flag in `RUN_ARGS` when starting the controller. This can be any HTTP endpoint.
+
+See [fluxcd event](https://github.com/fluxcd/pkg/blob/main/apis/event/v1beta1/event.go) for the struct of the event created.
