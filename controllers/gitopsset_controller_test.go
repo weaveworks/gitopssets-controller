@@ -118,35 +118,34 @@ func TestReconciliation(t *testing.T) {
 
 	t.Run("reconciling creation of resources in different namespaces", func(t *testing.T) {
 		ctx := context.TODO()
-		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+
+		// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
+		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("engineering-dev-ns")))
+		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("engineering-preprod-ns")))
+		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("engineering-prod-ns")))
+		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("test-ns", "{{ .Element.cluster }}-demo"))),
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("{{ .Element.cluster }}-ns", "demo-kustomization"))),
 					},
 				},
 			}
-		})
-
-		test.AssertNoError(t, k8sClient.Create(ctx, gs))
-
-		defer cleanupResource(t, k8sClient, gs)
-		defer deleteAllKustomizations(t, k8sClient)
+		}))
+		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 		test.AssertNoError(t, err)
 
-		updated := &templatesv1.GitOpsSet{}
-		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), gs))
 
 		want := []runtime.Object{
-			test.MakeTestKustomization(nsn("test-ns", "engineering-dev-demo")),
-			test.MakeTestKustomization(nsn("test-ns", "engineering-prod-demo")),
-			test.MakeTestKustomization(nsn("test-ns", "engineering-preprod-demo")),
+			test.MakeTestKustomization(nsn("engineering-dev-ns", "demo-kustomization")),
+			test.MakeTestKustomization(nsn("engineering-prod-ns", "demo-kustomization")),
+			test.MakeTestKustomization(nsn("engineering-preprod-ns", "demo-kustomization")),
 		}
-		test.AssertInventoryHasItems(t, updated, want...)
-		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
-		assertKustomizationsExist(t, k8sClient, "test-ns", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
+		test.AssertInventoryHasItems(t, gs, want...)
+		assertGitOpsSetCondition(t, gs, meta.ReadyCondition, "3 resources created")
 	})
 
 	t.Run("reconciling cleanup when deleted", func(t *testing.T) {
@@ -192,7 +191,8 @@ func TestReconciliation(t *testing.T) {
 				},
 			}
 		})
-		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+		gs = createAndReconcileToFinalizedState(t, k8sClient, reconciler, gs)
+		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
 
 		devKS := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Annotations = map[string]string{
@@ -200,8 +200,7 @@ func TestReconciliation(t *testing.T) {
 			}
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
-		defer deleteAllKustomizations(t, k8sClient)
-		defer cleanupResource(t, k8sClient, gs)
+		defer cleanupResource(t, k8sClient, test.ToUnstructured(t, devKS))
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
@@ -209,15 +208,6 @@ func TestReconciliation(t *testing.T) {
 		updated := &templatesv1.GitOpsSet{}
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "failed to create Resource: kustomizations.kustomize.toolkit.fluxcd.io \"engineering-dev-demo\" already exists")
-
-		want := []runtime.Object{
-			test.MakeTestKustomization(nsn("test-ns", "engineering-dev-demo")),
-			test.MakeTestKustomization(nsn("test-ns", "engineering-prod-demo")),
-			test.MakeTestKustomization(nsn("test-ns", "engineering-preprod-demo")),
-		}
-		test.AssertInventoryHasItems(t, updated, want...)
-		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
-		assertKustomizationsExist(t, k8sClient, "test-ns", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
 	t.Run("reconciling removal of resources", func(t *testing.T) {
@@ -603,12 +593,10 @@ func TestReconciliation(t *testing.T) {
 	t.Run("reconciling update of resources with service account", func(t *testing.T) {
 		ctx := context.TODO()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
-
-			gs.Spec.ServiceAccountName = "test-sa"
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("default", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
 							ks.Spec.Force = true
@@ -1219,6 +1207,7 @@ func nsn(namespace, name string) types.NamespacedName {
 }
 
 func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountName, namespace string, rules ...rbacv1.PolicyRule) {
+	t.Helper()
 	if len(rules) == 0 {
 		rules = []rbacv1.PolicyRule{
 			{

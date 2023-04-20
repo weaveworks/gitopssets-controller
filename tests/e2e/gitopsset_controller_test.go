@@ -12,6 +12,7 @@ import (
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -43,7 +44,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,8 +85,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
@@ -110,7 +110,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc2)))
-	defer cleanupResource(t, testEnv, gc2)
+	defer deleteObject(t, testEnv, gc2)
 
 	g.Eventually(func() bool {
 		updated := &templatesv1.GitOpsSet{}
@@ -156,7 +156,7 @@ func TestGenerateNamespace(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	updated := &templatesv1.GitOpsSet{}
 	g := gomega.NewWithT(t)
@@ -276,7 +276,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -317,8 +317,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	want := &test.EventData{
 		EventType: "Normal",
@@ -346,7 +345,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -389,8 +388,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
@@ -404,10 +402,20 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 
 	}, timeout).Should(gomega.BeTrue())
-
 }
 
-func cleanupResource(t *testing.T, cl client.Client, obj client.Object) {
+func deleteGitOpsSetAndWaitForNotFound(t *testing.T, cl client.Client, gs *templatesv1.GitOpsSet) {
+	t.Helper()
+	deleteObject(t, cl, gs)
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		return apierrors.IsNotFound(cl.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+	}, timeout).Should(gomega.BeTrue())
+}
+
+func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
 	if err := cl.Delete(context.TODO(), obj); err != nil {
 		t.Fatal(err)
