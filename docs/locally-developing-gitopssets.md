@@ -67,7 +67,9 @@ data:
 
 The gitrepository generator generates from a Flux [`GitRepository`](https://toolkit.fluxcd.io/components/source/gitrepositories/) resource. It requires the gitrepository to be present in the cluster before it can be evaluated.
 
-Either the gitopsset's `serviceAccountName` or the gitopssets-controller **service account** must have access to the git repo CR to generate the resources. So for the user to do this locally they need to have access to the git repo CR too. In practice a cluster's RBAC may often be setup so that users will be able to read the GitRepo CRs. The user can then view their reconcilation status and any errors etc. However some RBAC setups may be more restrictive and so the user may not have access to the GitRepo CRs. **In this case the user cannot locally evaluate the gitopsset.**
+Either the gitopsset's `serviceAccountName` or the gitopssets-controller **service account** must have access to the git repo CR to generate the resources. So for the user to do this locally they need to have access to the git repo CR too. **The gitopssets-controller service-account and the gitopsset's serviceAccountName are not used at all for local evaluation.**
+
+In practice a cluster's RBAC may often be setup so that users will be able to read the GitRepo CRs. The user can then view their reconcilation status and any errors etc. However some RBAC setups may be more restrictive and so the user may not have access to the GitRepo CRs. **In this case the user cannot locally evaluate the gitopsset.**
 
 > **Note**
 >
@@ -141,6 +143,9 @@ spec:
     name: go-demo-repo
 ```
 
+> **Warning**
+> When the gitopssets-controller actually evaluates the gitopsset, it will use either the `serviceAccountName` or the gitopssets-controller **service account** to read the GitRepo CR. If the user has RBAC access to a GitRepo but the gitopssets-controller does not, then the local `gitops gitopsset evaluate` command will work, but the gitopssets-controller will fail to evaluate the gitopsset with a permission error.
+
 ### Pull request generator
 
 The pull request generator generates from a list of pull requests from any git repository supported by go-scm.
@@ -150,6 +155,9 @@ It does not watch a Flux gitrepo CR, but instead polls the api endpoints of a "g
 Whether the git repository is private or public, the git provider api will usually require an access token to be able to access the api endpoints. The token is stored in a secret and the secret name is passed to the gitopsset via the `secretRef` field.
 
 The user will require RBAC access to read the secret mentioned in the gitopsset.
+
+> **Warning**
+> If a user can access the secret, they can access the auth token. This means they can do anything the token can do. So if the token has access to many repositories, then the user can do anything to those repositories. You should try and create a limited access token if possible.
 
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
@@ -165,10 +173,6 @@ spec:
         secretRef:
           name: github-secret
 ```
-
-> **Warning**
->
-> the auth token can potentially have access to many repositories. You should try and create a limited access token if possible.
 
 > **Note**
 >
@@ -215,6 +219,80 @@ spec:
 > ```
 >
 > this would avoid the requirement to have RBAC to read the secret from the cluster
+>
+> We may also provide a way to access cluster services via a `--with-kube-proxy` flag, but this is not currently supported. This would allow testing of apiClient generators that access services via internal urls like `http://my-service.default.svc.cluster.local:8080`
+
+#### Tip!
+
+In some cases it may be easier to simulate the apiClient generator by using a list generator at first instead.
+
+If your api endpoint returns:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "My first pull request"
+  },
+  {
+    "id": 2,
+    "title": "My second pull request"
+  }
+]
+```
+
+The following gitopssets will generate the same resources:
+
+As an apiClient generator:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: pull-requests-sample
+spec:
+  generators:
+    - apiClient:
+        interval: 5m
+        endpoint: https://my.api.endpoint
+        headersRef:
+          name: github-secret
+          kind: Secret
+```
+
+As a list generator:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: pull-requests-sample
+spec:
+  generators:
+    - list:
+        elements:
+          - id: 1
+            title: My first pull request
+          - id: 2
+            title: My second pull request
+```
+
+If you want to use the `singleElement` field in the apiClient generator you can nest your expected data in a single element list. (note the extra `-` in the list elements)
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: pull-requests-sample
+spec:
+  generators:
+    - list:
+        elements:
+          - - id: 1
+              title: My first pull request
+            - id: 2
+              title: My second pull request
+```
 
 ### Clusters generator
 
@@ -234,4 +312,4 @@ spec:
             team: dev-team
 ```
 
-In this case the user will require RBAC access to `list` and `get` the `GitopsClusters` at the cluster scope.
+In this case the user will require RBAC access to `list` the `GitopsClusters` at the cluster scope.
