@@ -288,7 +288,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: []byte(`{"kind":"Deployment","apiVersion":"apps/v1","metadata":{"name":"${{ .Element.env }}-demo"},"spec":{"replicas": "${{ .Element.replicas }}" } }`),
+								Raw: []byte(`{"kind":"Deployment","apiVersion":"apps/v1","metadata":{"name":"${{ .Element.env }}-demo"},"spec":{"version": "1.21", "enabled": "true", "light": "on", "replicas": "${{ .Element.replicas }}" } }`),
 							},
 						},
 					}
@@ -310,6 +310,10 @@ func TestRender(t *testing.T) {
 						"spec": map[string]interface{}{
 							// Type should be a number here, not a string
 							"replicas": int64(2),
+							// check that other string/bool values stay as strings
+							"light":   "on",
+							"enabled": "true",
+							"version": "1.21",
 						},
 					},
 				},
