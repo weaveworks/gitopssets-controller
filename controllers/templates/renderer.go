@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/util/jsonpath"
+	syaml "sigs.k8s.io/yaml"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -112,8 +113,23 @@ func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetT
 		return nil, err
 	}
 
+	// Raw extension is always JSON bytes, so convert back to YAML bytes as the gitopssets was
+	// most likely written in YAML, this supports correctly templating numbers
+	//
+	// Example:
+	// 1. As the yaml gitops.yaml file we have: `num: ${{ .Element.Number }}`
+	// 2. As the RawExtension (JSON) when gitops.yaml is loaded to cluster: `{ "num": "${{ .Element.Number }}"}`
+	// 3. [HERE] Convert back to YAML bytes which strips quotes again: `num: ${{ .Element.Number }}`
+	// 4. Rendered correctly as a number type without quotes: `num: 1`
+	// 5. Applied back into the cluster as number type
+	//
+	yamlBytes, err := syaml.JSONToYAML(tmpl.Content.Raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert back to YAML: %w", err)
+	}
+
 	for _, p := range repeatedParams {
-		rendered, err := render(set, name, tmpl.Content.Raw, p)
+		rendered, err := render(set, name, yamlBytes, p)
 		if err != nil {
 			return nil, err
 		}
