@@ -125,7 +125,7 @@ func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetT
 	//
 	yamlBytes, err := syaml.JSONToYAML(tmpl.Content.Raw)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert back to YAML: %w", err)
+		return nil, fmt.Errorf("failed to convert template to YAML: %w", err)
 	}
 
 	for _, p := range repeatedParams {
