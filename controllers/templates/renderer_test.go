@@ -262,7 +262,7 @@ func TestRender(t *testing.T) {
 					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: []byte(`{"kind":"Service","apiVersion":"v1","metadata":{"name":"{{ getordefault .Element "name" "defaulted" }}-demo","creationTimestamp":null,"annotations":{"app.kubernetes.io/instance":"{{ .Element.env }}"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":8080,"targetPort":8080}],"clusterIP":"{{ .Element.externalIP }}"}}`),
+								Raw: []byte(`{"kind":"Service","apiVersion":"v1","metadata":{"name":"{{ getordefault .Element \"name\" \"defaulted\" }}-demo","creationTimestamp":null,"annotations":{"app.kubernetes.io/instance":"{{ .Element.env }}"}},"spec":{"ports":[{"name":"http","protocol":"TCP","port":8080,"targetPort":8080}],"clusterIP":"{{ .Element.externalIP }}"}}`),
 							},
 						},
 					}
@@ -273,6 +273,91 @@ func TestRender(t *testing.T) {
 					setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": string("engineering dev")}),
 					addLabels(map[string]string{"templates.weave.works/name": string("test-gitops-set"), "templates.weave.works/namespace": string("demo")}))),
+			},
+		},
+		{
+			name: "templating numbers",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","replicas": 2}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Annotations = map[string]string{
+						"templates.weave.works/delimiters": "${{,}}",
+					}
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: []byte(`{"kind":"Deployment","apiVersion":"apps/v1","metadata":{"name":"${{ .Element.env }}-demo"},"spec":{"version": "1.21", "enabled": "true", "light": "on", "replicas": "${{ .Element.replicas }}" } }`),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"metadata": map[string]interface{}{
+							"name":      "engineering-dev-demo",
+							"namespace": "demo",
+							"labels": map[string]interface{}{
+								"templates.weave.works/name":      "test-gitops-set",
+								"templates.weave.works/namespace": "demo",
+							},
+						},
+						"spec": map[string]interface{}{
+							// Type should be a number here, not a string
+							"replicas": int64(2),
+							// check that other string/bool values stay as strings
+							"light":   "on",
+							"enabled": "true",
+							"version": "1.21",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "templating objects",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","sourceRef": { "kind": "GitRepository", "name": "my-git-repo" }}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Annotations = map[string]string{
+						"templates.weave.works/delimiters": "${{,}}",
+					}
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: []byte(`{"kind":"Kustomization","metadata":{"name":"${{ .Element.env }}-demo"},"spec":{"sourceRef": "${{ .Element.sourceRef | toJson }}" } }`),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"kind": "Kustomization",
+						"metadata": map[string]interface{}{
+							"name":      "engineering-dev-demo",
+							"namespace": "demo",
+							"labels": map[string]interface{}{
+								"templates.weave.works/name":      "test-gitops-set",
+								"templates.weave.works/namespace": "demo",
+							},
+						},
+						"spec": map[string]interface{}{
+							"sourceRef": map[string]interface{}{
+								"kind": "GitRepository",
+								"name": "my-git-repo",
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -312,7 +397,7 @@ func TestRender_errors(t *testing.T) {
 					gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 						{
 							Content: runtime.RawExtension{
-								Raw: []byte("{{ .test | tested }}"),
+								Raw: []byte(`"{{ .test | tested }}"`),
 							},
 						},
 					}
