@@ -15,10 +15,12 @@ import (
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
 	flag "github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
@@ -121,6 +123,15 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
+
+		// Don't cache Secrets and ConfigMaps. In general, the
+		// controller-runtime client does a LIST and WATCH to cache
+		// kinds you request (see
+		// https://github.com/kubernetes-sigs/controller-runtime/pull/1249),
+		// and this can mean caching all secrets and configmaps; when
+		// all that's required is the few that are referenced for
+		// objects of interest to this controller.
+		ClientDisableCacheFor: []ctrlclient.Object{&corev1.Secret{}, &corev1.ConfigMap{}},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

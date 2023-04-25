@@ -84,7 +84,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
