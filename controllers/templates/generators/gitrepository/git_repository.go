@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
@@ -72,7 +72,7 @@ func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context,
 	}
 
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"checksum", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
+		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
 
 	parser := git.NewRepositoryParser(g.Logger)
 
@@ -93,7 +93,7 @@ func (g *GitRepositoryGenerator) generateParamsFromGitDirectories(ctx context.Co
 	}
 
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"checksum", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
+		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
 
 	parser := git.NewRepositoryParser(g.Logger)
 
