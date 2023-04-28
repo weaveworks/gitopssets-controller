@@ -6,15 +6,12 @@ import (
 	"sort"
 	"time"
 
-	// TODO: v0.26.0 api has support for a generic Set, switch to this
-	// when Flux supports v0.26.0
-	"github.com/gitops-tools/pkg/sets"
-
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"

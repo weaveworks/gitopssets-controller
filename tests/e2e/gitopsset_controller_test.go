@@ -260,6 +260,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	compareWant := gomega.BeComparableTo(want, cmpopts.IgnoreFields(test.EventData{}, "Message"))
 
 	g := gomega.NewWithT(t)
+
 	g.Eventually(func() []*test.EventData {
 		return eventRecorder.Events
 	}, timeout).Should(gomega.ContainElement(compareWant))
