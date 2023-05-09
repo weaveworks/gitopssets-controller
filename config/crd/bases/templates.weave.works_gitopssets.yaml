@@ -206,6 +206,14 @@ spec:
                             resource to be generated from.
                           type: string
                       type: object
+                    imagePolicy:
+                      description: ImagePolicyGenerator generates from the ImagePolicy.
+                      properties:
+                        policyRef:
+                          description: PolicyRef is the name of a ImagePolicy resource
+                            to be generated from.
+                          type: string
+                      type: object
                     list:
                       description: ListGenerator generates from a hard-coded list.
                       properties:
@@ -388,6 +396,15 @@ spec:
                                     type: array
                                   repositoryRef:
                                     description: RepositoryRef is the name of a GitRepository
+                                      resource to be generated from.
+                                    type: string
+                                type: object
+                              imagePolicy:
+                                description: ImagePolicyGenerator generates from the
+                                  ImagePolicy.
+                                properties:
+                                  policyRef:
+                                    description: PolicyRef is the name of a ImagePolicy
                                       resource to be generated from.
                                     type: string
                                 type: object

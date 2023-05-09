@@ -32,6 +32,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
@@ -196,6 +197,7 @@ func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFa
 		"GitRepository": gitrepository.GeneratorFactory,
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
+		"ImagePolicy":   imagepolicy.GeneratorFactory,
 		// TODO: Figure out how to configure the client
 		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
 	})
@@ -206,8 +208,9 @@ func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFa
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		// TODO: Figure out how to configure the client
-		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
-		"Matrix":    matrix.GeneratorFactory(matrixGenerators),
+		"APIClient":   apiclient.GeneratorFactory(http.DefaultClient),
+		"ImagePolicy": imagepolicy.GeneratorFactory,
+		"Matrix":      matrix.GeneratorFactory(matrixGenerators),
 	})
 }
 
