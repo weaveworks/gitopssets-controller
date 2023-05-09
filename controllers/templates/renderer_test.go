@@ -201,6 +201,27 @@ func TestRender(t *testing.T) {
 			},
 		},
 		{
+			name: "repeat elements with maps",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"wge":{"mgmt-repo":"example-repo","gui":false},"template":{"name":"dynamic-v1","namespace":"default"},"aws":{"region":"us-west-2"},"vpcs":[{"name":"v1","mode":"create","cidr":"10.0.0.0/16","publicsubnets":3,"privatesubnets":3}],"clusters":[{"name":"nested-cluster","mode":"create","gui":true,"vpc_name":"v1","version":1.23,"apps":[{"name":"example","version":"0.0.4"},{"name":"testing"}]}]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Repeat: "{ $.clusters[?(@.gui)] }",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat.name }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestNamespace("nested-cluster")),
+			},
+		},
+		{
 			name: "template with labels merged with default labels",
 			elements: []apiextensionsv1.JSON{
 				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50"}`)},

@@ -82,14 +82,14 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[st
 		return nil, fmt.Errorf("failed to find results from expression %q: %w", tmpl.Repeat, err)
 	}
 
-	repeated := []any{}
+	var repeated []any
 	for _, result := range results {
 		for _, v := range result {
 			slice, ok := v.Interface().([]any)
 			if ok {
 				repeated = append(repeated, slice...)
 			} else {
-				repeated = append(repeated, v)
+				repeated = append(repeated, v.Interface())
 			}
 		}
 	}
