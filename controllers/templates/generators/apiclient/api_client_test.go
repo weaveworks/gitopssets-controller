@@ -229,6 +229,13 @@ func TestGenerate_errors(t *testing.T) {
 			wantErr: fmt.Sprintf("failed to unmarshal JSON response from endpoint %s", ts.URL+"/api/bad"),
 		},
 		{
+			name: "non-array response",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/non-array",
+			},
+			wantErr: fmt.Sprintf("failed to unmarshal JSON from endpoint %s, response is an object not an array", ts.URL+"/api/non-array"),
+		},
+		{
 			name: "jsonpath expression failure",
 			apiClient: &templatesv1.APIClientGenerator{
 				Endpoint: ts.URL + "/api/get-testing",

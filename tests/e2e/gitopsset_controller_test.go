@@ -179,8 +179,10 @@ func TestGenerateNamespace(t *testing.T) {
 		makeTestNamespace("engineering-preprod-ns"),
 	}
 	test.AssertInventoryHasItems(t, updated, want...)
-	cleanupResource(t, testEnv, makeTestNamespace("engineering-prod-ns"))
-	cleanupResource(t, testEnv, makeTestNamespace("engineering-preprod-ns"))
+	// Namespaces cannot be deleted from envtest
+	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
+	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
+
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -251,19 +253,17 @@ func TestEventsWithReconciling(t *testing.T) {
 	defer cleanupResource(t, testEnv, gs)
 	defer deleteAllKustomizations(t, testEnv)
 
+	want := &test.EventData{
+		EventType: "Normal",
+		Reason:    "ReconciliationSucceeded",
+	}
+	compareWant := gomega.BeComparableTo(want, cmpopts.IgnoreFields(test.EventData{}, "Message"))
+
 	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		want := []*test.EventData{
-			{
-				EventType: "Normal",
-				Reason:    "ReconciliationSucceeded",
-			},
-		}
 
-		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
-
-	}, timeout).Should(gomega.BeTrue())
-
+	g.Eventually(func() []*test.EventData {
+		return eventRecorder.Events
+	}, timeout).Should(gomega.ContainElement(compareWant))
 }
 
 func TestEventsWithFailingReconciling(t *testing.T) {

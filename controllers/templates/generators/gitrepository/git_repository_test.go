@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +67,7 @@ func TestGenerate(t *testing.T) {
 			},
 			[]runtime.Object{newGitRepository(
 				withArchiveURLAndChecksum(srv.URL+"/files.tar.gz",
-					"f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
+					"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
 			[]map[string]any{
 				{"environment": "dev", "instances": 2.0},
 				{"environment": "production", "instances": 10.0},
@@ -83,7 +84,7 @@ func TestGenerate(t *testing.T) {
 			},
 			[]runtime.Object{newGitRepository(
 				withArchiveURLAndChecksum(srv.URL+"/directories.tar.gz",
-					"a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
+					"sha256:a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
 			[]map[string]any{
 				{"Directory": "./applications/backend", "Base": "backend"},
 				{"Directory": "./applications/frontend", "Base": "frontend"},
@@ -183,17 +184,17 @@ func TestGenerate_errors(t *testing.T) {
 	}
 }
 
-func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1.GitRepository) {
-	return func(gr *sourcev1.GitRepository) {
+func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.GitRepository) {
+	return func(gr *sourcev1beta2.GitRepository) {
 		gr.Status.Artifact = &sourcev1.Artifact{
-			URL:      archiveURL,
-			Checksum: xsum,
+			URL:    archiveURL,
+			Digest: xsum,
 		}
 	}
 }
 
-func newGitRepository(opts ...func(*sourcev1.GitRepository)) *sourcev1.GitRepository {
-	gr := &sourcev1.GitRepository{
+func newGitRepository(opts ...func(*sourcev1beta2.GitRepository)) *sourcev1beta2.GitRepository {
+	gr := &sourcev1beta2.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-repository",
 			Namespace: testNamespace,
@@ -210,7 +211,7 @@ func newGitRepository(opts ...func(*sourcev1.GitRepository)) *sourcev1.GitReposi
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 	t.Helper()
 	scheme := runtime.NewScheme()
-	if err := sourcev1.AddToScheme(scheme); err != nil {
+	if err := sourcev1beta2.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
 	if err := templatesv1.AddToScheme(scheme); err != nil {

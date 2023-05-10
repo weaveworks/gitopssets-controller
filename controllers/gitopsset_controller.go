@@ -6,15 +6,12 @@ import (
 	"sort"
 	"time"
 
-	// TODO: v0.26.0 api has support for a generic Set, switch to this
-	// when Flux supports v0.26.0
-	"github.com/gitops-tools/pkg/sets"
-
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -84,7 +81,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -188,7 +185,10 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 		return nil, generators.NoRequeueInterval, err
 	}
 
-	requeueAfter := calculateInterval(gitOpsSet, instantiatedGenerators)
+	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
+	if err != nil {
+		return nil, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
+	}
 
 	return inventory, requeueAfter, nil
 }
@@ -500,10 +500,13 @@ func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) erro
 	return nil
 }
 
-func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) time.Duration {
+func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) (time.Duration, error) {
 	res := []time.Duration{}
 	for _, mg := range gs.Spec.Generators {
-		relevantGenerators := generators.FindRelevantGenerators(mg, configuredGenerators)
+		relevantGenerators, err := generators.FindRelevantGenerators(mg, configuredGenerators)
+		if err != nil {
+			return generators.NoRequeueInterval, err
+		}
 
 		for _, rg := range relevantGenerators {
 			d := rg.Interval(&mg)
@@ -516,11 +519,11 @@ func calculateInterval(gs *templatesv1.GitOpsSet, configuredGenerators map[strin
 	}
 
 	if len(res) == 0 {
-		return generators.NoRequeueInterval
+		return generators.NoRequeueInterval, nil
 	}
 
 	// Find the lowest requeue interval provided by a generator.
 	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
 
-	return res[0]
+	return res[0], nil
 }

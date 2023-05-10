@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -108,7 +109,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				},
 			},
 			objects: []runtime.Object{newGitRepository(srv.URL+"/files.tar.gz",
-				"f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")},
+				"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")},
 			expectedMatrix: []map[string]any{
 				{
 					"cluster":     "cluster",
@@ -183,7 +184,7 @@ func TestDisabledGenerators(t *testing.T) {
 	}
 
 	_, err := gen.Generate(context.TODO(), sg, ks)
-	test.AssertErrorMatch(t, "invalid generated values, expected 2 generators, got 1", err)
+	test.AssertErrorMatch(t, `generator GitRepository not enabled`, err)
 }
 
 func TestInterval(t *testing.T) {
@@ -317,16 +318,16 @@ func TestCartesian(t *testing.T) {
 	}
 }
 
-func newGitRepository(archiveURL, xsum string) *sourcev1.GitRepository {
-	return &sourcev1.GitRepository{
+func newGitRepository(archiveURL, xsum string) *sourcev1beta2.GitRepository {
+	return &sourcev1beta2.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-repository",
 			Namespace: testNamespace,
 		},
-		Status: sourcev1.GitRepositoryStatus{
+		Status: sourcev1beta2.GitRepositoryStatus{
 			Artifact: &sourcev1.Artifact{
-				URL:      archiveURL,
-				Checksum: xsum,
+				URL:    archiveURL,
+				Digest: xsum,
 			},
 		},
 	}
@@ -337,7 +338,7 @@ func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 
 	scheme := runtime.NewScheme()
 
-	if err := sourcev1.AddToScheme(scheme); err != nil {
+	if err := sourcev1beta2.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
 
