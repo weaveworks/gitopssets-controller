@@ -128,6 +128,75 @@ Templates that use `repeat` will have two separate scopes for the template param
 
 In this case, six different `ConfigMaps` are generated, three for the "dev-team" and three for the "staging-team".
 
+## Delimiters
+
+The default delimiters for the template engine are `{{` and `}}`, which is the same as the Go template engine.
+
+These can be changed by adding an annotation to the `GitOpsSet`:
+
+````yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: gitopsset-sample
+  annotations:
+    templates.weave.works/delimiters: "${{,}}"
+```
+
+Changing the delimiters can useful for:
+- Nesting GitopsSets within each other, as the default delimiters will conflict
+- Provided unquoted values to yaml
+
+### Unquoted values
+
+In yaml `{{` is invalid syntax and needs to be quoted. If you need to provide a un-quoted number value like `replicas: 3` you should use the `${{,}}` delimiters.
+
+- ❌ `replicas: {{ .params.REPLICAS }}` Invalid yaml
+- ❌ `replicas: "{{ .params.REPLICAS }}"` Valid yaml, incorrect type. The type is a string not a number and will fail validation.
+- ✅ `replicas: ${{ .params.REPLICAS }}` Valid yaml and correct number type.
+
+Unquoted values allow you to include objects in your templates too.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: gitopsset-sample
+  annotations:
+    templates.weave.works/delimiters: "${{,}}"
+spec:
+  generators:
+    - list:
+        elements:
+          - env: dev
+            resources:
+              limits:
+                cpu: 100m
+                memory: 128Mi
+          - env: staging
+            resources:
+              limits:
+                cpu: 100m
+                memory: 128Mi
+  templates:
+    - content:
+        kind: Deployment
+        apiVersion: apps/v1
+        metadata:
+          name: go-demo
+        spec:
+          template:
+            spec:
+              containers:
+                - name: go-demo
+                  image: weaveworks/go-demo:0.2.0
+                  resources: ${{ .Element.resources | toJson }}
+```
+
+With the default `{{,}}` delimiters this would fail as the "resources" field would need to be quoted.
+
+Again, if we quote them we would get a string value, not an object.
+
 ## Generators
 
 We currently provide these generators:
@@ -182,7 +251,7 @@ spec:
           sourceRef:
             kind: GitRepository
             name: go-demo-repo
-```
+````
 
 In this example, a [Flux `GitRepository`](https://fluxcd.io/flux/components/source/gitrepositories/) called `go-demo-repo` in the same namespace as the `GitOpsSet` will be tracked, and `Kustomization` resources will be generated from the three files listed.
 
@@ -236,11 +305,13 @@ spec:
             kind: GitRepository
             name: go-demo-repo
 ```
+
 In this example, a [Flux `GitRepository`](https://fluxcd.io/flux/components/source/gitrepositories/) called `go-demo-repo` in the same namespace as the `GitOpsSet` will be tracked, and `Kustomization` resources are generated from paths within the `examples/kustomize/environments/*` directory within the repository.
 
 Each generated element has two keys, `.Element.Directory` which will be a repo-relative path and `.Element.Base` which contains the last element of the path, for example, for a directory `./examples/kustomize/environments/production` this will be `production`.
 
 It is also possible to exclude paths from the generated list, for example, if you do not want to generate for a directory you can exclude it with:
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -257,6 +328,7 @@ spec:
   templates:
     - content:
 ```
+
 In this case, all directories that are subdirectories of `examples/kustomize/environments` will be generated, **but** not `examples/kustomize/environments/production`.
 
 **Note**: The directory tree detection is restricted to the same directory as the path, no recursion is done.
@@ -461,7 +533,9 @@ curl \
   -H "X-GitHub-Api-Version: 2022-11-28" \
   https://api.github.com/repos/OWNER/REPO/pulls
 ```
+
 This can be translated into...
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -508,9 +582,11 @@ spec:
             kind: GitRepository
             name: "pr-{{ .Element.id | toJson }}-gitrepository"
 ```
+
 As with the [Pull Request generator](#pullrequests-generator), this also requires a secret token to be able to access the API
 
 We need to pass this as an HTTP header.
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -523,6 +599,7 @@ stringData:
   Authorization: Bearer ghp_<redacted>
   X-GitHub-Api-Version: "2022-11-28"
 ```
+
 The keys in the secret match the command-line example using curl.
 
 Unlike the Pull Request generator, you need to figure out the paths to the elements yourself.
@@ -549,7 +626,9 @@ Not all APIs return an array of JSON objects, sometimes it's nested within a res
   ]
 }
 ```
+
 You can use JSONPath to extract the fields from this data...
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -568,12 +647,14 @@ spec:
         endpoint: https://api.example.com/demo
         jsonPath: "{ $.things }"
 ```
+
 This will generate three maps for templates, with just the _env_ and _team_ keys.
 
 #### APIClient POST body
 
 Another piece of functionality in the APIClient generator is the ability to POST
 JSON to the API.
+
 ```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
@@ -594,12 +675,14 @@ spec:
           name: "testing"
           value: "testing2"
 ```
+
 This will send a request body as JSON (Content-Type "application/json") to the
 server and interpret the result.
 
 The JSON body sent will look like this:
+
 ```json
-{"name":"testing","value":"testing2"}
+{ "name": "testing", "value": "testing2" }
 ```
 
 #### APIClient simple results
@@ -624,6 +707,7 @@ spec:
         interval: 5m
         endpoint: https://api.example.com/demo
 ```
+
 Whatever result is parsed from the API endpoint will be returned as a map in a single element.
 
 For generation, you might need to use the `repeat` mechanism to generate repeating results.
@@ -667,10 +751,10 @@ spec:
 
 The following fields are generated for each GitOpsCluster.
 
- - `ClusterName` the name of the cluster
- - `ClusterNamespace` the namespace that this cluster is from
- - `ClusterLabels` the labels from the metadata field on the GitOpsCluster
- - `ClusterAnnotations` the annotations from the metadata field on the GitOpsCluster
+- `ClusterName` the name of the cluster
+- `ClusterNamespace` the namespace that this cluster is from
+- `ClusterLabels` the labels from the metadata field on the GitOpsCluster
+- `ClusterAnnotations` the annotations from the metadata field on the GitOpsCluster
 
 If the selector is not provided, all clusters from all namespaces will be returned:
 
@@ -703,10 +787,11 @@ Currently, the [Sprig](http://masterminds.github.io/sprig/) functions are availa
 
 In addition, we also provide two additional functions:
 
- * sanitize - sanitises strings to be compatible with [Kubernetes DNS](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) name requirements
- * getordefault - gets a key from the `.Element` or defaults to another value.
+- sanitize - sanitises strings to be compatible with [Kubernetes DNS](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) name requirements
+- getordefault - gets a key from the `.Element` or defaults to another value.
 
 The examples below assume an element that looks like this:
+
 ```json
 {
   "team": "engineering dev"
@@ -716,6 +801,7 @@ The examples below assume an element that looks like this:
 ### sanitize template function
 
 And a template that looks like this:
+
 ```yaml
 kind: Service
 metadata:
@@ -723,6 +809,7 @@ metadata:
 ```
 
 This would output:
+
 ```yaml
 kind: Service
 metadata:
@@ -732,6 +819,7 @@ metadata:
 ### getordefault
 
 For template that looks like this:
+
 ```yaml
 kind: Service
 metadata:
@@ -739,6 +827,7 @@ metadata:
 ```
 
 This would output:
+
 ```yaml
 kind: Service
 metadata:
