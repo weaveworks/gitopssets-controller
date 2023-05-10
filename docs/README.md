@@ -134,7 +134,7 @@ The default delimiters for the template engine are `{{` and `}}`, which is the s
 
 These can be changed by adding an annotation to the `GitOpsSet`:
 
-````yaml
+```yaml
 apiVersion: templates.weave.works/v1alpha1
 kind: GitOpsSet
 metadata:
@@ -144,6 +144,7 @@ metadata:
 ```
 
 Changing the delimiters can useful for:
+
 - Nesting GitopsSets within each other, as the default delimiters will conflict
 - Provided unquoted values to yaml
 
@@ -200,12 +201,13 @@ Again, if we quote them we would get a string value, not an object.
 ## Generators
 
 We currently provide these generators:
- - [list](#list-generator)
- - [pullRequests](#pullrequests-generator)
- - [gitRepository](#gitrepository-generator)
- - [matrix](#matrix-generator)
- - [apiClient](#apiclient-generator)
- - [cluster](#cluster-generator)
+
+- [list](#list-generator)
+- [pullRequests](#pullrequests-generator)
+- [gitRepository](#gitrepository-generator)
+- [matrix](#matrix-generator)
+- [apiClient](#apiclient-generator)
+- [cluster](#cluster-generator)
 
 ### List generator
 
@@ -251,7 +253,7 @@ spec:
           sourceRef:
             kind: GitRepository
             name: go-demo-repo
-````
+```
 
 In this example, a [Flux `GitRepository`](https://fluxcd.io/flux/components/source/gitrepositories/) called `go-demo-repo` in the same namespace as the `GitOpsSet` will be tracked, and `Kustomization` resources will be generated from the three files listed.
 
@@ -900,9 +902,6 @@ For example to enable only the `List` and `GitRepository` generators:
 
 When a GitOpsSet that uses disabled generators is created, the disabled generators will be silently ignored.
 
-[^yaml]: These are written as YAML mappings
-[^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"
-
 ## Notifications
 
 Events are enabled which will trigger Kubernetes events when successful reconciliation occurs with a `Normal` event or when reconciliation fails with an `Error` event. Fluxcd's [Events](https://pkg.go.dev/github.com/fluxcd/pkg/runtime/events) package is used including the `EventRecorder` to record these events.
@@ -910,3 +909,6 @@ Events are enabled which will trigger Kubernetes events when successful reconcil
 To configure receiving the recorded events on a specific host, this can be provided via the `--events-addr` flag in `RUN_ARGS` when starting the controller. This can be any HTTP endpoint.
 
 See [fluxcd event](https://github.com/fluxcd/pkg/blob/main/apis/event/v1beta1/event.go) for the struct of the event created.
+
+[^yaml]: These are written as YAML mappings
+[^sprig]: The following functions are removed "env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum", "base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"
