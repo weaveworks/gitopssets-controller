@@ -34,7 +34,7 @@ var kustomizationGVK = schema.GroupVersionKind{
 func TestReconcilingNewCluster(t *testing.T) {
 	ctx := context.TODO()
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -101,7 +101,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}, timeout).Should(gomega.BeTrue())
 
 	// Create a second GitopsCluster object and ensure it is created, then check the status of the GitOpsSet
-	gc2 := makeTestgitopsCluster(nsn("default", "test-gc2"), func(g *clustersv1.GitopsCluster) {
+	gc2 := makeTestGitopsCluster(nsn("default", "test-gc2"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -184,6 +184,73 @@ func TestGenerateNamespace(t *testing.T) {
 	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
 }
 
+func TestReconcilingUpdatingImagePolicy(t *testing.T) {
+	ctx := context.TODO()
+	ip := test.NewImagePolicy()
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
+	defer cleanupResource(t, testEnv, ip)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					ImagePolicy: &templatesv1.ImagePolicyGenerator{
+						PolicyRef: ip.GetName(),
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.latestImage }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer cleanupResource(t, testEnv, gs)
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "1 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"testing": "testing/test:v0.30.0",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+}
+
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
 	t.Helper()
 	u := &unstructured.Unstructured{}
@@ -200,7 +267,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -270,7 +337,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -353,7 +420,7 @@ func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {
 	return b
 }
 
-func makeTestgitopsCluster(name types.NamespacedName, opts ...func(*clustersv1.GitopsCluster)) *clustersv1.GitopsCluster {
+func makeTestGitopsCluster(name types.NamespacedName, opts ...func(*clustersv1.GitopsCluster)) *clustersv1.GitopsCluster {
 	gc := &clustersv1.GitopsCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GitopsCluster",

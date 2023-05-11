@@ -10,11 +10,15 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	flag "github.com/spf13/pflag"
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -24,9 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
-	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
@@ -46,7 +47,7 @@ var (
 
 const controllerName = "GitOpsSet"
 
-var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "Matrix"}
+var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix"}
 var defaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
 
 func initScheme(enabledGenerators []string) {
@@ -56,6 +57,10 @@ func initScheme(enabledGenerators []string) {
 
 	if isGeneratorEnabled(enabledGenerators, "Cluster") {
 		utilruntime.Must(clustersv1.AddToScheme(scheme))
+	}
+
+	if isGeneratorEnabled(enabledGenerators, "ImagePolicy") {
+		utilruntime.Must(imagev1.AddToScheme(scheme))
 	}
 	//+kubebuilder:scaffold:scheme
 }

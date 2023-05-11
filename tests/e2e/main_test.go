@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/runtime/testenv"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
@@ -22,6 +23,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
@@ -46,6 +48,7 @@ func TestMain(m *testing.M) {
 	utilruntime.Must(gitopssetsv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(clustersv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(imagev1.AddToScheme(scheme.Scheme))
 	testEnv = testenv.New(testenv.WithCRDPath(filepath.Join("..", "..", "config", "crd", "bases"),
 		filepath.Join("..", "..", "controllers", "testdata", "crds"),
 		filepath.Join("testdata", "crds"),
@@ -67,9 +70,11 @@ func TestMain(m *testing.M) {
 				"List":          list.GeneratorFactory,
 				"GitRepository": gitrepository.GeneratorFactory,
 				"PullRequests":  pullrequests.GeneratorFactory,
+				"ImagePolicy":   imagepolicy.GeneratorFactory,
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
+			"ImagePolicy":  imagepolicy.GeneratorFactory,
 		},
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(testEnv); err != nil {

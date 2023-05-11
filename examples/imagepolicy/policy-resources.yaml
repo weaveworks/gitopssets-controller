@@ -1,0 +1,22 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: podinfo
+  namespace: default
+spec:
+  image: stefanprodan/podinfo
+  interval: 1h
+  provider: generic
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: podinfo
+  namespace: default
+spec:
+  imageRepositoryRef:
+    name: podinfo
+  policy:
+    semver:
+      range: 5.1.x

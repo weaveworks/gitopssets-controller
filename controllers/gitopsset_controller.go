@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
@@ -41,6 +42,7 @@ var accessor = meta.NewAccessor()
 
 const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
+	imagePolicyIndexKey   string = ".metadata.imagePolicy"
 )
 
 type eventRecorder interface {
@@ -83,6 +85,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
+//+kubebuilder:rbac:groups=image.toolkit.fluxcd.io,resources=imagepolicies,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -310,6 +313,20 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 	}
 
+	// Only watch for ImagePolicy objects if the ImagePolicy generator is enabled.
+	if r.Generators["ImagePolicy"] != nil {
+		// Index the GitOpsSets by the ImageRepository references they (may) point at.
+		if err := mgr.GetCache().IndexField(
+			context.TODO(), &templatesv1.GitOpsSet{}, imagePolicyIndexKey, indexImagePolicies); err != nil {
+			return fmt.Errorf("failed setting index fields: %w", err)
+		}
+
+		builder.Watches(
+			&source.Kind{Type: &imagev1.ImagePolicy{}},
+			handler.EnqueueRequestsFromMapFunc(r.imagePolicyToGitOpsSet),
+		)
+	}
+
 	return builder.Complete(r)
 }
 
@@ -407,6 +424,24 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	return result
 }
 
+func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
+	ctx := context.Background()
+	var list templatesv1.GitOpsSetList
+
+	if err := r.List(ctx, &list, client.MatchingFields{
+		imagePolicyIndexKey: client.ObjectKeyFromObject(obj).String(),
+	}); err != nil {
+		return nil
+	}
+
+	result := []reconcile.Request{}
+	for _, v := range list.Items {
+		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+	}
+
+	return result
+}
+
 func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
 	copyCfg := rest.CopyConfig(r.Config)
 
@@ -437,6 +472,31 @@ func indexGitRepositories(o client.Object) []string {
 	referencedNames := []string{}
 	for _, grg := range referencedRepositories {
 		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
+	}
+
+	return referencedNames
+}
+
+func indexImagePolicies(o client.Object) []string {
+	ks, ok := o.(*templatesv1.GitOpsSet)
+	if !ok {
+		panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+	}
+
+	referencedPolicies := []*templatesv1.ImagePolicyGenerator{}
+	for _, gen := range ks.Spec.Generators {
+		if gen.ImagePolicy != nil {
+			referencedPolicies = append(referencedPolicies, gen.ImagePolicy)
+		}
+	}
+
+	if len(referencedPolicies) == 0 {
+		return nil
+	}
+
+	referencedNames := []string{}
+	for _, ip := range referencedPolicies {
+		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), ip.PolicyRef))
 	}
 
 	return referencedNames

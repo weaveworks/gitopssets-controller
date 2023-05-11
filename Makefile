@@ -185,6 +185,7 @@ helm: manifests kustomize helmify
 .PHONY: download-crds
 download-crds:
 	@curl https://raw.githubusercontent.com/fluxcd/source-controller/main/config/crd/bases/source.toolkit.fluxcd.io_gitrepositories.yaml > tests/e2e/testdata/crds/source.toolkit.fluxcd.io_gitrepositories.yaml
+	@curl https://raw.githubusercontent.com/fluxcd/image-reflector-controller/main/config/crd/bases/image.toolkit.fluxcd.io_imagepolicies.yaml > tests/e2e/testdata/crds/image.toolkit.fluxcd.io_imagepolicies.yaml
 
 # Find or download gen-crd-api-reference-docs
 GEN_CRD_API_REFERENCE_DOCS = $(LOCALBIN)/gen-crd-api-reference-docs

@@ -19,8 +19,6 @@ import (
 
 var _ generators.Generator = (*ImagePolicyGenerator)(nil)
 
-const testNamespace = "generation"
-
 func TestGenerate_with_no_ImagePolicy(t *testing.T) {
 	gen := GeneratorFactory(logr.Discard(), nil)
 	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
@@ -45,7 +43,7 @@ func TestGenerate(t *testing.T) {
 			&templatesv1.ImagePolicyGenerator{
 				PolicyRef: "test-policy",
 			},
-			[]runtime.Object{newImagePolicy()},
+			[]runtime.Object{test.NewImagePolicy()},
 			[]map[string]any{},
 		},
 		{
@@ -53,7 +51,7 @@ func TestGenerate(t *testing.T) {
 			&templatesv1.ImagePolicyGenerator{
 				PolicyRef: "test-policy",
 			},
-			[]runtime.Object{newImagePolicy(withLatestImage("testing/test:v0.30.0"), withPreviousImage("testing/test:v0.29.0"))},
+			[]runtime.Object{test.NewImagePolicy(withImages("testing/test:v0.30.0", "testing/test:v0.29.0"))},
 			[]map[string]any{
 				{
 					"latestImage":   "testing/test:v0.30.0",
@@ -72,7 +70,7 @@ func TestGenerate(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -129,7 +127,7 @@ func TestGenerate_errors(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -145,31 +143,11 @@ func TestGenerate_errors(t *testing.T) {
 	}
 }
 
-func withLatestImage(latestImage string) func(*imagev1.ImagePolicy) {
+func withImages(latestImage, previousImage string) func(*imagev1.ImagePolicy) {
 	return func(ip *imagev1.ImagePolicy) {
 		ip.Status.LatestImage = latestImage
-	}
-}
-
-func withPreviousImage(previousImage string) func(*imagev1.ImagePolicy) {
-	return func(ip *imagev1.ImagePolicy) {
 		ip.Status.ObservedPreviousImage = previousImage
 	}
-}
-
-func newImagePolicy(opts ...func(*imagev1.ImagePolicy)) *imagev1.ImagePolicy {
-	gr := &imagev1.ImagePolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-policy",
-			Namespace: testNamespace,
-		},
-	}
-
-	for _, opt := range opts {
-		opt(gr)
-	}
-
-	return gr
 }
 
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
