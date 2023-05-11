@@ -201,13 +201,13 @@ Again, if we quote them we would get a string value, not an object.
 ## Generators
 
 We currently provide these generators:
-
 - [list](#list-generator)
 - [pullRequests](#pullrequests-generator)
 - [gitRepository](#gitrepository-generator)
 - [matrix](#matrix-generator)
 - [apiClient](#apiclient-generator)
 - [cluster](#cluster-generator)
+- [imagepolicy](#imagepolicy-generator)
 
 ### List generator
 
@@ -781,6 +781,103 @@ spec:
   generators:
     - cluster:
         selector: {}
+```
+
+### ImagePolicy generator
+
+The `ImagePolicy` generator works with the [Flux Image Automation](https://fluxcd.io/flux/components/image/).
+
+When an `ImagePolicy` is updated, this will trigger a regeneration of templates.
+
+This can be used simply, to create a deployment with an image...or, combined with a Matrix generator, to manage multiple workloads with the same image.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: imagepolicy-example
+  namespace: default
+spec:
+  generators:
+    - imagePolicy:
+        policyRef: podinfo
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "demo-configmap"
+        data:
+          image: "{{ .Element.latestImage }}"
+```
+
+In this example, a `ConfigMap` is generated containing the latest image whenever an `ImagePolicy` called `podinfo` is updated.
+
+Combined in a Matrix, like this, it will generate two `ConfigMaps` with the values.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: imagepolicy-matrix-example
+  namespace: default
+spec:
+  generators:
+    - matrix:
+        generators:
+          - imagePolicy:
+             policyRef: podinfo
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+                - cluster: prod-cluster
+                  version: 1.0.0
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "demo-configmap-{{ .Element.cluster }}"
+        data:
+          image: "{{ .Element.latestImage }}"
+          cluster: "{{ .Element.cluster }}"
+          version: "{{ .Element.version }}"
+```
+
+The resulting ConfigMaps look like this:
+
+```shell
+$ kubectl get configmaps
+NAME                          DATA   AGE
+demo-configmap-dev-cluster    3      3m19s
+demo-configmap-prod-cluster   3      3m19s
+```
+
+With the templated fields like this:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-configmap-dev-cluster
+  namespace: default
+data:
+  cluster: dev-cluster
+  image: stefanprodan/podinfo:5.1.4
+  version: 1.0.0
+```
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-configmap-prod-cluster
+  namespace: default
+data:
+  cluster: prod-cluster
+  image: stefanprodan/podinfo:5.1.4
+  version: 1.0.0
 ```
 
 ## Templating functions
