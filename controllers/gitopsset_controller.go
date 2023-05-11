@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -229,13 +228,6 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 			if !apierrors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
-			}
-		}
-
-		// cluster-scoped resources must not have a namespace-scoped owner
-		if templates.IsNamespacedObject(newResource) {
-			if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
-				return nil, fmt.Errorf("failed to set ownership: %w", err)
 			}
 		}
 

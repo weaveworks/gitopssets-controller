@@ -92,6 +92,7 @@ func TestReconciliation(t *testing.T) {
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
+	test.AssertNoError(t, k8sClient.Create(context.TODO(), test.NewNamespace("test-ns")))
 
 	t.Run("reconciling creation of new resources", func(t *testing.T) {
 		ctx := context.TODO()
@@ -115,6 +116,39 @@ func TestReconciliation(t *testing.T) {
 		test.AssertInventoryHasItems(t, updated, want...)
 		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
+	})
+
+	t.Run("reconciling creation of resources in different namespaces", func(t *testing.T) {
+		ctx := context.TODO()
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("test-ns", "{{ .Element.cluster }}-demo"))),
+					},
+				},
+			}
+		})
+
+		test.AssertNoError(t, k8sClient.Create(ctx, gs))
+
+		defer cleanupResource(t, k8sClient, gs)
+		defer deleteAllKustomizations(t, k8sClient)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+
+		want := []runtime.Object{
+			test.MakeTestKustomization(nsn("test-ns", "engineering-dev-demo")),
+			test.MakeTestKustomization(nsn("test-ns", "engineering-prod-demo")),
+			test.MakeTestKustomization(nsn("test-ns", "engineering-preprod-demo")),
+		}
+		test.AssertInventoryHasItems(t, updated, want...)
+		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "3 resources created")
+		assertKustomizationsExist(t, k8sClient, "test-ns", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
 	t.Run("reconciling creation when suspended", func(t *testing.T) {
@@ -143,7 +177,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -233,7 +267,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -471,7 +505,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Annotations = map[string]string{
 								"testing.cluster": "{{ .Element.cluster }}",
@@ -611,7 +645,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("unused", "unused"), func(ks *kustomizev1.Kustomization) {
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
 							ks.Name = "{{ .Element.cluster }}-demo"
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
 							ks.Spec.Force = true
