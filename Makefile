@@ -176,7 +176,7 @@ $(ENVTEST): $(LOCALBIN)
 HELMIFY = $(LOCALBIN)/helmify
 .PHONY: helmify
 helmify:
-	$(call go-get-tool,$(HELMIFY),github.com/arttor/helmify/cmd/helmify@v0.3.18)
+	$(call go-get-tool,$(HELMIFY),github.com/arttor/helmify/cmd/helmify@v0.4.3)
 
 .PHONY: helm
 helm: manifests kustomize helmify
