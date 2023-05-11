@@ -146,7 +146,7 @@ metadata:
 Changing the delimiters can useful for:
 
 - Nesting GitopsSets within each other, as the default delimiters will conflict
-- Provided unquoted values to yaml
+- Providing unquoted values to yaml
 
 ### Unquoted values
 
