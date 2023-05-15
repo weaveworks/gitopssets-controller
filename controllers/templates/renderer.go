@@ -250,14 +250,6 @@ func makeTemplateFunctions() template.FuncMap {
 	return f
 }
 
-func getOrDefault(element map[string]any, key string, def interface{}) interface{} {
-	if v, ok := element[key]; ok {
-		return v
-	}
-
-	return def
-}
-
 func templateDelims(gs templatesv1.GitOpsSet) (string, string) {
 	ann, ok := gs.GetAnnotations()[TemplateDelimiterAnnotation]
 	if ok {

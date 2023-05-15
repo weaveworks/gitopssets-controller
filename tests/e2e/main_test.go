@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,10 +38,6 @@ var (
 	ctx           = ctrl.SetupSignalHandler()
 	eventRecorder *test.FakeEventRecorder
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func TestMain(m *testing.M) {
 	utilruntime.Must(gitopssetsv1.AddToScheme(scheme.Scheme))

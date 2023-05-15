@@ -91,7 +91,7 @@ func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveU
 	exclusions := sets.NewString()
 	paths := []string{}
 	for _, dir := range dirs {
-		if dir.Exclude == true {
+		if dir.Exclude {
 			exclusions.Insert(filepath.Clean(dir.Path))
 			continue
 		}

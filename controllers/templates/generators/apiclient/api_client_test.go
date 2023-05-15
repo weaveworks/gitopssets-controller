@@ -473,7 +473,7 @@ func Test_addHeadersFromSecretToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if v := req.Header.Get(http.CanonicalHeaderKey("Testing")); v != "value" {
+	if v := req.Header.Get("Testing"); v != "value" {
 		t.Fatalf("got header %s value %q, want %q", "Testing", v, "value")
 	}
 }
@@ -491,7 +491,7 @@ func Test_addHeadersFromConfigMapToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if v := req.Header.Get(http.CanonicalHeaderKey("Config-Key")); v != "config-value" {
+	if v := req.Header.Get("Config-Key"); v != "config-value" {
 		t.Fatalf("got header %s value %q, want %q", "Config-Key", v, "config-value")
 	}
 }

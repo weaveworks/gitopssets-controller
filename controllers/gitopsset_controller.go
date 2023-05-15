@@ -166,7 +166,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
-			msg := fmt.Sprintf("Status and inventory update failed after reconciliation")
+			msg := "Status and inventory update failed after reconciliation"
 			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
