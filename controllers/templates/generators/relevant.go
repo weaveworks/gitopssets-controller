@@ -25,15 +25,15 @@ func FindRelevantGenerators(setGenerator any, enabledGenerators map[string]Gener
 	v := reflect.Indirect(reflect.ValueOf(setGenerator))
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		if !field.CanInterface() {
+		fieldName := v.Type().Field(i).Name
+		if !field.CanInterface() || fieldName == "Name" {
 			continue
 		}
 
 		if !reflect.ValueOf(field.Interface()).IsNil() {
-			generatorName := v.Type().Field(i).Name
-			gen, ok := enabledGenerators[generatorName]
+			gen, ok := enabledGenerators[fieldName]
 			if !ok {
-				return nil, GeneratorNotEnabledError{Name: generatorName}
+				return nil, GeneratorNotEnabledError{Name: fieldName}
 			}
 			res = append(res, gen)
 			continue

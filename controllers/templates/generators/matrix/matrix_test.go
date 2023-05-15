@@ -132,6 +132,39 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 			},
 			expectedErrorStr: "",
 		},
+		{
+			name: "naming nested elements",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							Name: "list1",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"key1": "value1"}`)},
+									{Raw: []byte(`{"key2": "value2"}`)},
+								},
+							},
+						},
+						{
+							Name: "list2",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"key1": "value3"}`)},
+									{Raw: []byte(`{"key2": "value4"}`)},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedMatrix: []map[string]any{
+				{"list1.key1": "value1", "list2.key1": "value3"},
+				{"list1.key1": "value1", "list2.key2": "value4"},
+				{"list1.key2": "value2", "list2.key1": "value3"},
+				{"list1.key2": "value2", "list2.key2": "value4"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

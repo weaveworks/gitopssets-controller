@@ -126,6 +126,7 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 	generated := [][]map[string]any{}
 
 	for _, mg := range generator.Matrix.Generators {
+		name := mg.Name
 		relevantGenerators, err := generators.FindRelevantGenerators(mg, allGenerators)
 		if err != nil {
 			return nil, err
@@ -141,11 +142,30 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 				return nil, err
 			}
 
+			if name != "" {
+				prefixed := make([]map[string]any, len(res))
+				for i, g := range res {
+					prefixed[i] = addPrefix(name, g)
+				}
+				generated = append(generated, prefixed)
+				continue
+			}
+
 			generated = append(generated, res)
 		}
 	}
 
 	return generated, nil
+}
+
+func addPrefix(name string, generated map[string]any) map[string]any {
+	added := map[string]any{}
+	for k, v := range generated {
+		added[name+"."+k] = v
+	}
+
+	return added
+
 }
 
 // makeGitOpsSetGenerator converts a GitOpsSetNestedGenerator struct to a GitOpsSetGenerator struct.
