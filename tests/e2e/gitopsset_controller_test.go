@@ -190,7 +190,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	ip := test.NewImagePolicy()
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
-	defer cleanupResource(t, testEnv, ip)
+	defer deleteObject(t, testEnv, ip)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -221,7 +221,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
 	ip.Status.LatestImage = "testing/test:v0.30.0"
