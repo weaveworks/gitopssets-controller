@@ -347,7 +347,7 @@ func TestReconciliation(t *testing.T) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestConfigMap(func(c *corev1.ConfigMap) {
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
 							c.Data = map[string]string{
 								"testing": "{{ .Element.configValue }}",
 							}
@@ -378,7 +378,7 @@ func TestReconciliation(t *testing.T) {
 		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
 			t.Fatal(err)
 		}
-		wantCM := makeTestConfigMap(func(c *corev1.ConfigMap) {
+		wantCM := test.NewConfigMap(func(c *corev1.ConfigMap) {
 			c.ObjectMeta.Labels = map[string]string{
 				"templates.weave.works/name":      "demo-set",
 				"templates.weave.works/namespace": "default",
@@ -420,7 +420,7 @@ func TestReconciliation(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		wantCM = makeTestConfigMap(func(c *corev1.ConfigMap) {
+		wantCM = test.NewConfigMap(func(c *corev1.ConfigMap) {
 			c.ObjectMeta.Labels = map[string]string{
 				"templates.weave.works/name":      "demo-set",
 				"templates.weave.works/namespace": "default",
@@ -1209,26 +1209,4 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 	t.Cleanup(func() {
 		cleanupResource(t, cl, binding)
 	})
-}
-
-func makeTestConfigMap(opts ...func(*corev1.ConfigMap)) *corev1.ConfigMap {
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "ConfigMap",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo-cm",
-			Namespace: "default",
-		},
-		Data: map[string]string{
-			"testing": "test",
-		},
-	}
-
-	for _, o := range opts {
-		o(cm)
-	}
-
-	return cm
 }

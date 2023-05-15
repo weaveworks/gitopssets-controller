@@ -143,9 +143,7 @@ func (g *APIClientGenerator) generateFromResponseBody(body []byte, endpoint stri
 	}
 
 	res := []map[string]any{}
-	for _, v := range result {
-		res = append(res, v)
-	}
+	res = append(res, result...)
 
 	return res, nil
 }

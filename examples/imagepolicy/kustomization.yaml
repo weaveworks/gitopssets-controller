@@ -1,0 +1,5 @@
+resources:
+  - ../base
+  - role.yaml
+  - policy-resources.yaml
+  - imagepolicy-generator.yaml

@@ -169,6 +169,13 @@ type GitOpsSetNestedGenerator struct {
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
+	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
+}
+
+// ImagePolicyGenerator generates from the ImagePolicy.
+type ImagePolicyGenerator struct {
+	// PolicyRef is the name of a ImagePolicy resource to be generated from.
+	PolicyRef string `json:"policyRef,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
@@ -179,6 +186,7 @@ type GitOpsSetGenerator struct {
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
+	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
