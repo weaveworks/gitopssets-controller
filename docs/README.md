@@ -518,6 +518,58 @@ spec:
             name: go-demo-repo
 ```
 
+#### Optional Name for Matrix elements
+
+If you want to use two generators in a Matrix that output the same fields, they
+will collide, for example, the `ImagePolicy` generator outputs a `latestImage`
+field, if you have two, they will collide.
+
+You can provide a name for the generator in the Matrix:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  generators:
+    - matrix:
+        generators:
+          - name: gen1
+            gitRepository:
+              repositoryRef: go-demo-repo
+              files:
+                - path: examples/generation/dev.yaml
+                - path: examples/generation/production.yaml
+                - path: examples/generation/staging.yaml
+          - name: gen2
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+```
+
+This will prefix the keys output by the generator:
+
+The provided `name` will be joined to the key with a `.` character.
+
+The example above will yield:
+
+```yaml
+- gen1.env: dev
+  gen1.team: developers
+  gen2.cluster: dev-cluster
+  gen2.version: 1.0.0
+- gen1.env: staging
+  gen1.team: staging-team
+  gen2.cluster: dev-cluster
+  gen2.version: 1.0.0
+- gen1.env: production
+  gen1.team: production-team
+  gen2.cluster: dev-cluster
+  gen2.version: 1.0.0
+```
+
 ### apiClient generator
 
 This generator is configured to poll an HTTP endpoint and parse the result as the generated values.
