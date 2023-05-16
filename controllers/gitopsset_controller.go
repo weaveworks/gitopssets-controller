@@ -26,6 +26,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -102,21 +103,20 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info("gitops set loaded")
+	logger.Info("GitOpsSet loaded")
 
-	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
+	// Add finalizer first if it doesn't exist to avoid the race condition
+	// between init and delete.
+	if !controllerutil.ContainsFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer) {
+		controllerutil.AddFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer)
+
+		return ctrl.Result{Requeue: true}, r.Update(ctx, &gitOpsSet)
 	}
 
 	// Skip reconciliation if the GitOpsSet is suspended.
 	if gitOpsSet.Spec.Suspend {
 		logger.Info("Reconciliation is suspended for this GitOpsSet")
 		return ctrl.Result{}, nil
-	}
-
-	// Set the value of the reconciliation request in status.
-	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
-		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
 
 	k8sClient := r.Client
@@ -132,6 +132,14 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		k8sClient = c
 	}
 
+	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.finalize(ctx, &gitOpsSet, k8sClient)
+	}
+
+	// Set the value of the reconciliation request in status.
+	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
+		gitOpsSet.Status.LastHandledReconcileAt = v
+	}
 	defer func() {
 		// Record Prometheus metrics.
 		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
@@ -354,6 +362,27 @@ func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconc
 	}
 
 	return result
+}
+
+func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitOpsSet, k8sClient client.Client) (ctrl.Result, error) {
+	logger := ctrl.LoggerFrom(ctx)
+	logger.Info("finalizing resources")
+
+	if !gs.Spec.Suspend &&
+		gs.Status.Inventory != nil &&
+		gs.Status.Inventory.Entries != nil {
+
+		if err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("cleaned resources")
+	}
+
+	logger.Info("removing the finalizer")
+	// Remove our finalizer from the list and update it
+	controllerutil.RemoveFinalizer(gs, templatesv1.GitOpsSetFinalizer)
+	return ctrl.Result{}, r.Update(ctx, gs)
 }
 
 func matchCluster(gitOpsCluster *clustersv1.GitopsCluster, gitOpsSet *templatesv1.GitOpsSet) bool {

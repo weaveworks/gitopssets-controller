@@ -8,6 +8,10 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
+// GitOpsSetFinalizer is the finalizer added to GitOpsSets to allow us to clean
+// up resources.
+const GitOpsSetFinalizer = "finalizers.templates.weave.works"
+
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
 	// Repeat is a JSONPath string defining that the template content should be
