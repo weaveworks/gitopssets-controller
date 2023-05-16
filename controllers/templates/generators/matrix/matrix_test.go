@@ -170,7 +170,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 			},
 		},
 		{
-			name: "naming nested elements",
+			name: "naming nested elements with three generators",
 			sg: &templatesv1.GitOpsSetGenerator{
 				Matrix: &templatesv1.MatrixGenerator{
 					Generators: []templatesv1.GitOpsSetNestedGenerator{
@@ -178,7 +178,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 							Name: "g1",
 							List: &templatesv1.ListGenerator{
 								Elements: []apiextensionsv1.JSON{
-									{Raw: []byte(`{"latestImage": "testing:v2.1", "previousImage": "v2.0"}`)},
+									{Raw: []byte(`{"latestImage": "testing:v2.1", "previousImage": "testing:v2.0"}`)},
 								},
 							},
 						},
@@ -186,12 +186,11 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 							Name: "g2",
 							List: &templatesv1.ListGenerator{
 								Elements: []apiextensionsv1.JSON{
-									{Raw: []byte(`{"latestImage": "testing:v2.1", "previousImage": "v2.0"}`)},
+									{Raw: []byte(`{"latestImage": "image:v2.1", "previousImage": "image:v2.0"}`)},
 								},
 							},
 						},
 						{
-							Name: "g3",
 							List: &templatesv1.ListGenerator{
 								Elements: []apiextensionsv1.JSON{
 									{Raw: []byte(`{"appName": "test1"}`)},
@@ -205,10 +204,19 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 			},
 			expectedMatrix: []map[string]any{
 				{
-					"g1.latestImage":   "testing:v2.1",
-					"g1.previousImage": "v2.0",
-					"g2.latestImage":   "testing:v2.1",
-					"g2.previousImage": "v2.0",
+					"appName": "test1",
+					"g1":      map[string]any{"latestImage": "testing:v2.1", "previousImage": "testing:v2.0"},
+					"g2":      map[string]any{"latestImage": "image:v2.1", "previousImage": "image:v2.0"},
+				},
+				{
+					"appName": "test2",
+					"g1":      map[string]any{"latestImage": "testing:v2.1", "previousImage": "testing:v2.0"},
+					"g2":      map[string]any{"latestImage": "image:v2.1", "previousImage": "image:v2.0"},
+				},
+				{
+					"appName": "test3",
+					"g1":      map[string]any{"latestImage": "testing:v2.1", "previousImage": "testing:v2.0"},
+					"g2":      map[string]any{"latestImage": "image:v2.1", "previousImage": "image:v2.0"},
 				},
 			},
 		},
@@ -305,32 +313,51 @@ func TestInterval(t *testing.T) {
 func TestCartesian(t *testing.T) {
 	tests := []struct {
 		name     string
-		slice1   []map[string]any
-		slice2   []map[string]any
+		slices   [][]map[string]any
 		expected []map[string]any
 	}{
 		{
 			name:     "empty slices",
-			slice1:   []map[string]any{},
-			slice2:   []map[string]any{},
+			slices:   [][]map[string]any{},
 			expected: nil,
 		},
 		{
 			name: "one empty slice",
-			slice1: []map[string]any{
-				{"a": 1},
-				{"a": 2},
+			slices: [][]map[string]any{
+				{
+					{"a": 1},
+					{"a": 2},
+				},
 			},
-			slice2:   []map[string]any{},
 			expected: nil,
 		},
 		{
-			name: "both slices have one element",
-			slice1: []map[string]any{
-				{"a": 1},
+			name: "simple slices",
+			slices: [][]map[string]any{
+				{
+					{"eggs": 6},
+					{"milk": 2},
+					{"cheese": 1},
+				},
+				{
+					{"bag": 1},
+				},
 			},
-			slice2: []map[string]any{
-				{"b": 2},
+			expected: []map[string]any{
+				{"eggs": 6, "bag": 1},
+				{"milk": 2, "bag": 1},
+				{"cheese": 1, "bag": 1},
+			},
+		},
+		{
+			name: "both slices have one element",
+			slices: [][]map[string]any{
+				{
+					{"a": 1},
+				},
+				{
+					{"b": 2},
+				},
 			},
 			expected: []map[string]any{
 				{"a": 1, "b": 2},
@@ -338,13 +365,15 @@ func TestCartesian(t *testing.T) {
 		},
 		{
 			name: "both slices have multiple elements",
-			slice1: []map[string]any{
-				{"a": 1},
-				{"a": 2},
-			},
-			slice2: []map[string]any{
-				{"b": 3},
-				{"b": 4},
+			slices: [][]map[string]any{
+				{
+					{"a": 1},
+					{"a": 2},
+				},
+				{
+					{"b": 3},
+					{"b": 4},
+				},
 			},
 			expected: []map[string]any{
 				{"a": 1, "b": 3},
@@ -355,13 +384,15 @@ func TestCartesian(t *testing.T) {
 		},
 		{
 			name: "overlapping values and different ordering",
-			slice1: []map[string]any{
-				{"name": "test1", "value": "value1"},
-				{"name": "test2", "value": "value2"},
-			},
-			slice2: []map[string]any{
-				{"name": "test2", "value": "value3"},
-				{"name": "test1", "value": "value4"},
+			slices: [][]map[string]any{
+				{
+					{"name": "test1", "value": "value1"},
+					{"name": "test2", "value": "value2"},
+				},
+				{
+					{"name": "test2", "value": "value3"},
+					{"name": "test1", "value": "value4"},
+				},
 			},
 			expected: []map[string]any{
 				{"name": "test2", "value": "value3"},
@@ -370,13 +401,15 @@ func TestCartesian(t *testing.T) {
 		},
 		{
 			name: "nested maps",
-			slice1: []map[string]any{
-				{"a": 1, "b": map[string]any{"c": 2, "d": 3}},
-				{"a": 4, "b": map[string]any{"c": 5, "d": 6}},
-			},
-			slice2: []map[string]any{
-				{"e": 7, "f": map[string]any{"g": 8, "h": 9}},
-				{"e": 10, "f": map[string]any{"g": 11, "h": 12}},
+			slices: [][]map[string]any{
+				{
+					{"a": 1, "b": map[string]any{"c": 2, "d": 3}},
+					{"a": 4, "b": map[string]any{"c": 5, "d": 6}},
+				},
+				{
+					{"e": 7, "f": map[string]any{"g": 8, "h": 9}},
+					{"e": 10, "f": map[string]any{"g": 11, "h": 12}},
+				},
 			},
 			expected: []map[string]any{
 				{"a": 1, "b": map[string]any{"c": 2, "d": 3}, "e": 7, "f": map[string]any{"g": 8, "h": 9}},
@@ -385,11 +418,53 @@ func TestCartesian(t *testing.T) {
 				{"a": 4, "b": map[string]any{"c": 5, "d": 6}, "e": 10, "f": map[string]any{"g": 11, "h": 12}},
 			},
 		},
+		{
+			name: "three slices",
+			slices: [][]map[string]any{
+				{
+					{"a": 1},
+				},
+				{
+					{"b": 2},
+				},
+				{
+					{"c": 3},
+				},
+			},
+			expected: []map[string]any{
+				{"a": 1, "b": 2, "c": 3},
+			},
+		},
+		{
+			name: "longer slices",
+			slices: [][]map[string]any{
+				{
+					{"a": 1},
+					{"aa": 1},
+					{"aaa": 1},
+					{"aaaa": 1},
+					{"aaaaa": 1},
+				},
+				{
+					{"b": 2},
+				},
+				{
+					{"c": 3},
+				},
+			},
+			expected: []map[string]any{
+				{"a": 1, "b": 2, "c": 3},
+				{"aa": 1, "b": 2, "c": 3},
+				{"aaa": 1, "b": 2, "c": 3},
+				{"aaaa": 1, "b": 2, "c": 3},
+				{"aaaaa": 1, "b": 2, "c": 3},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := cartesian(tt.slice1, tt.slice2)
+			result, err := cartesian(tt.slices)
 			test.AssertNoError(t, err)
 			if diff := cmp.Diff(tt.expected, result); diff != "" {
 				t.Errorf("cartesian mismatch (-want +got):\n%s", diff)
