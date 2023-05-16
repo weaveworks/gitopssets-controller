@@ -159,10 +159,14 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				},
 			},
 			expectedMatrix: []map[string]any{
-				{"list1.key1": "value1", "list2.key1": "value3"},
-				{"list1.key1": "value1", "list2.key2": "value4"},
-				{"list1.key2": "value2", "list2.key1": "value3"},
-				{"list1.key2": "value2", "list2.key2": "value4"},
+				{"list1": map[string]any{"key1": "value1"},
+					"list2": map[string]any{"key1": "value3"}},
+				{"list1": map[string]any{"key1": "value1"},
+					"list2": map[string]any{"key2": "value4"}},
+				{"list1": map[string]any{"key2": "value2"},
+					"list2": map[string]any{"key1": "value3"}},
+				{"list1": map[string]any{"key2": "value2"},
+					"list2": map[string]any{"key2": "value4"}},
 			},
 		},
 	}

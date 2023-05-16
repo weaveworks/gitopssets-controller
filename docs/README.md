@@ -556,18 +556,24 @@ The provided `name` will be joined to the key with a `.` character.
 The example above will yield:
 
 ```yaml
-- gen1.env: dev
-  gen1.team: developers
-  gen2.cluster: dev-cluster
-  gen2.version: 1.0.0
-- gen1.env: staging
-  gen1.team: staging-team
-  gen2.cluster: dev-cluster
-  gen2.version: 1.0.0
-- gen1.env: production
-  gen1.team: production-team
-  gen2.cluster: dev-cluster
-  gen2.version: 1.0.0
+- gen1:
+    env: dev
+    team: developers
+  gen2:
+    cluster: dev-cluster
+    ersion: 1.0.0
+- gen1:
+    env: staging
+    team: staging-team
+  gen2:
+    cluster: dev-cluster
+    version: 1.0.0
+- gen1:
+    env: production
+    team: production-team
+  gen2:
+    cluster: dev-cluster
+    version: 1.0.0
 ```
 
 ### apiClient generator

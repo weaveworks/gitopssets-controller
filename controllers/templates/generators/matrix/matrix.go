@@ -145,7 +145,9 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 			if name != "" {
 				prefixed := make([]map[string]any, len(res))
 				for i, g := range res {
-					prefixed[i] = addPrefix(name, g)
+					prefixed[i] = map[string]any{
+						name: g,
+					}
 				}
 				generated = append(generated, prefixed)
 				continue
