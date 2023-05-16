@@ -70,7 +70,7 @@ func (mg *MatrixGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	}
 
 	// Create cartesian product of results
-	cartesianProduct, err := cartesian(generated[0], generated[1])
+	cartesianProduct, err := cartesian(generated...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cartesian product of generators: %w", err)
 	}
@@ -189,11 +189,15 @@ func makeGitOpsSetGenerator(mg *templatesv1.GitOpsSetNestedGenerator) (*template
 }
 
 // cartesian returns the cartesian product of the two slices.
-func cartesian(slice1, slice2 []map[string]any) ([]map[string]any, error) {
+func cartesian(slices ...[]map[string]any) ([]map[string]any, error) {
 	var result []map[string]any
 
-	for _, item1 := range slice1 {
-		for _, item2 := range slice2 {
+	// for _, v := range cartesianProduct(slices) {
+	// 	result = append(result, v...)
+	// }
+
+	for _, item1 := range slices[0] {
+		for _, item2 := range slices[1] {
 			newMap := make(map[string]any)
 			if err := mergo.Merge(&newMap, item1, mergo.WithOverride); err != nil {
 				return nil, fmt.Errorf("failed to merge maps: %w", err)
@@ -222,4 +226,37 @@ func alreadyExists(newMap map[string]any, result []map[string]any) bool {
 	}
 
 	return false
+}
+
+// cartesianProduct returns the cartesian product
+// of a given matrix
+func cartesianProduct[T any](matrix [][]T) [][]T {
+	// nextIndex sets ix to the lexicographically next value,
+	// such that for each i>0, 0 <= ix[i] < lens(i).
+	nextIndex := func(ix []int, lens func(i int) int) {
+		for j := len(ix) - 1; j >= 0; j-- {
+			ix[j]++
+
+			if j == 0 || ix[j] < lens(j) {
+				return
+			}
+
+			ix[j] = 0
+		}
+	}
+
+	lens := func(i int) int { return len(matrix[i]) }
+
+	results := make([][]T, 0, len(matrix))
+	for indexes := make([]int, len(matrix)); indexes[0] < lens(0); nextIndex(indexes, lens) {
+		var temp []T
+
+		for j, k := range indexes {
+			temp = append(temp, matrix[j][k])
+		}
+
+		results = append(results, temp)
+	}
+
+	return results
 }

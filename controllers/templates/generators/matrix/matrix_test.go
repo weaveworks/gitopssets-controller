@@ -169,6 +169,49 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 					"list2": map[string]any{"key2": "value4"}},
 			},
 		},
+		{
+			name: "naming nested elements",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							Name: "g1",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"latestImage": "testing:v2.1", "previousImage": "v2.0"}`)},
+								},
+							},
+						},
+						{
+							Name: "g2",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"latestImage": "testing:v2.1", "previousImage": "v2.0"}`)},
+								},
+							},
+						},
+						{
+							Name: "g3",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"appName": "test1"}`)},
+									{Raw: []byte(`{"appName": "test2"}`)},
+									{Raw: []byte(`{"appName": "test3"}`)},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedMatrix: []map[string]any{
+				{
+					"g1.latestImage":   "testing:v2.1",
+					"g1.previousImage": "v2.0",
+					"g2.latestImage":   "testing:v2.1",
+					"g2.previousImage": "v2.0",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
