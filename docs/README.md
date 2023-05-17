@@ -547,11 +547,28 @@ spec:
               elements:
                 - cluster: dev-cluster
                   version: 1.0.0
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.gen1.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.gen1.env }}"
+            com.example/team: "{{ .Element.gen1.team }}"
+            com.example/cluster: "{{ .Element.gen2.cluster }}"
+            com.example/version: "{{ .Element.gen2.version }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.gen1.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+
 ```
-
-This will prefix the keys output by the generator:
-
-The provided `name` will be joined to the key with a `.` character.
+The name value is used as a key in the generated results.
 
 The example above will yield:
 
