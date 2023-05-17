@@ -518,6 +518,81 @@ spec:
             name: go-demo-repo
 ```
 
+#### Optional Name for Matrix elements
+
+If you want to use two generators in a Matrix that output the same fields, they
+will collide, for example, the `ImagePolicy` generator outputs a `latestImage`
+field, if you have two, they will collide.
+
+You can provide a name for the generator in the Matrix:
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: matrix-sample
+spec:
+  generators:
+    - matrix:
+        generators:
+          - name: gen1
+            gitRepository:
+              repositoryRef: go-demo-repo
+              files:
+                - path: examples/generation/dev.yaml
+                - path: examples/generation/production.yaml
+                - path: examples/generation/staging.yaml
+          - name: gen2
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.gen1.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.gen1.env }}"
+            com.example/team: "{{ .Element.gen1.team }}"
+            com.example/cluster: "{{ .Element.gen2.cluster }}"
+            com.example/version: "{{ .Element.gen2.version }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.gen1.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+
+```
+The name value is used as a key in the generated results.
+
+The example above will yield:
+
+```yaml
+- gen1:
+    env: dev
+    team: developers
+  gen2:
+    cluster: dev-cluster
+    ersion: 1.0.0
+- gen1:
+    env: staging
+    team: staging-team
+  gen2:
+    cluster: dev-cluster
+    version: 1.0.0
+- gen1:
+    env: production
+    team: production-team
+  gen2:
+    cluster: dev-cluster
+    version: 1.0.0
+```
+
 ### apiClient generator
 
 This generator is configured to poll an HTTP endpoint and parse the result as the generated values.

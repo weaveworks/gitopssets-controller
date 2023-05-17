@@ -168,6 +168,12 @@ type MatrixGenerator struct {
 // GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
 // This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn't support recursive declarations.
 type GitOpsSetNestedGenerator struct {
+	// Name is an optional field that will be used to prefix the values generated
+	// by the nested generators, this allows multiple generators of the same
+	// type in a single Matrix generator.
+	// +optional
+	Name string `json:"name,omitempty"`
+
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
