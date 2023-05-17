@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"testing"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
@@ -256,8 +255,12 @@ func TestReconcilingWithAnnotationChange(t *testing.T) {
 	test.AssertNoError(t, testEnv.Update(ctx, gs))
 
 	g.Eventually(func() bool {
-		log.Println("checking for the recreated object")
 		return testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm) == nil
+	}, timeout).Should(gomega.BeTrue())
+
+	g.Eventually(func() bool {
+		test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+		return gs.Status.ReconcileRequestStatus.LastHandledReconcileAt != ""
 	}, timeout).Should(gomega.BeTrue())
 }
 
