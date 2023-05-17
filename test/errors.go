@@ -3,6 +3,8 @@ package test
 import (
 	"regexp"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // AssertNoError will fail if the provided err value is an error.
@@ -18,6 +20,16 @@ func AssertErrorMatch(t *testing.T, s string, e error) {
 	t.Helper()
 	if !MatchErrorString(t, s, e) {
 		t.Fatalf("error did not match, got %s, want %s", e, s)
+	}
+}
+
+// AssertNotFound will fail if the provided err value not a NotFound error from
+// the K8s client API.
+func AssertNotFound(t *testing.T, err error) {
+	t.Helper()
+
+	if !errors.IsNotFound(err) {
+		t.Fatalf("got err %v instead of NotFound", err)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
+	"github.com/fluxcd/pkg/runtime/predicates"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
@@ -140,6 +141,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
 		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
+
 	defer func() {
 		// Record Prometheus metrics.
 		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
@@ -290,7 +292,7 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient 
 			return err
 		}
 
-		if err := k8sClient.Delete(ctx, u); err != nil {
+		if err := client.IgnoreNotFound(k8sClient.Delete(ctx, u)); err != nil {
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
 	}
@@ -307,7 +309,8 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
+			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),

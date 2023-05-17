@@ -7,6 +7,7 @@ import (
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
+	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/onsi/gomega"
@@ -183,6 +184,84 @@ func TestGenerateNamespace(t *testing.T) {
 	// Namespaces cannot be deleted from envtest
 	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
 	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
+}
+
+func TestReconcilingWithAnnotationChange(t *testing.T) {
+	ctx := context.TODO()
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"team": "engineering-prod"}`)},
+							{Raw: []byte(`{"team": "engineering-preprod"}`)},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.SetName("{{ .Element.team }}-cm")
+
+							c.Data = map[string]string{
+								"testing": "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "2 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"testing": "engineering-prod",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+
+	test.AssertNoError(t, testEnv.Delete(ctx, &cm))
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+	gs.Annotations = map[string]string{
+		fluxMeta.ReconcileRequestAnnotation: "testing",
+	}
+	test.AssertNoError(t, testEnv.Update(ctx, gs))
+
+	g.Eventually(func() bool {
+		return testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm) == nil
+	}, timeout).Should(gomega.BeTrue())
+
+	g.Eventually(func() bool {
+		test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+		return gs.Status.ReconcileRequestStatus.LastHandledReconcileAt != ""
+	}, timeout).Should(gomega.BeTrue())
 }
 
 func TestReconcilingUpdatingImagePolicy(t *testing.T) {
