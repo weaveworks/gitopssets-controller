@@ -11,6 +11,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/http/fetch"
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/events"
@@ -209,7 +210,7 @@ func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFa
 
 	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory(fetch.NewArchiveFetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		// TODO: Figure out how to configure the client

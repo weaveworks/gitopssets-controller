@@ -543,7 +543,7 @@ spec:
                 - path: examples/generation/production.yaml
                 - path: examples/generation/staging.yaml
           - name: gen2
-          - list:
+            list:
               elements:
                 - cluster: dev-cluster
                   version: 1.0.0
@@ -566,7 +566,6 @@ spec:
           sourceRef:
             kind: GitRepository
             name: go-demo-repo
-
 ```
 The name value is used as a key in the generated results.
 

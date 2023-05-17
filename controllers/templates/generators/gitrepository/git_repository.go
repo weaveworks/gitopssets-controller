@@ -3,6 +3,7 @@ package gitrepository
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
@@ -21,8 +22,10 @@ type GitRepositoryGenerator struct {
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the GitRepositoryGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
-	return NewGenerator(l, c)
+func GeneratorFactory(httpClient *http.Client) generators.GeneratorFactory {
+	return func(l logr.Logger, c client.Client) generators.Generator {
+		return NewGenerator(l, c)
+	}
 }
 
 // NewGenerator creates and returns a new GitRepository generator.

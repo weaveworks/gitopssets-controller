@@ -18,7 +18,7 @@ import (
 )
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
-// the MatrixGenerator.
+// the APIClientGenerator.
 func GeneratorFactory(httpClient *http.Client) generators.GeneratorFactory {
 	return func(l logr.Logger, c client.Client) generators.Generator {
 		return NewGenerator(l, c, httpClient)
