@@ -439,14 +439,14 @@ func TestCartesian(t *testing.T) {
 			name: "longer slices",
 			slices: [][]map[string]any{
 				{
+					{"b": 2},
+				},
+				{
 					{"a": 1},
 					{"aa": 1},
 					{"aaa": 1},
 					{"aaaa": 1},
 					{"aaaaa": 1},
-				},
-				{
-					{"b": 2},
 				},
 				{
 					{"c": 3},
