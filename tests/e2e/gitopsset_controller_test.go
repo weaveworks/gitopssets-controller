@@ -331,6 +331,89 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	}
 }
 
+func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
+	ctx := context.TODO()
+	ip := test.NewImagePolicy()
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
+	defer deleteObject(t, testEnv, ip)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								ImagePolicy: &templatesv1.ImagePolicyGenerator{
+									PolicyRef: ip.GetName(),
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"team": "engineering-prod"}`)},
+										{Raw: []byte(`{"team": "engineering-preprod"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.ObjectMeta.Name = "{{ .Element.team }}-demo-cm"
+							c.Data = map[string]string{
+								"testing": "{{ .Element.latestImage }}",
+								"team":    "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "2 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-preprod-demo-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"team":    "engineering-preprod",
+		"testing": "testing/test:v0.30.0",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+}
+
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
 	t.Helper()
 	u := &unstructured.Unstructured{}
