@@ -519,6 +519,14 @@ func indexImagePolicies(o client.Object) []string {
 	for _, gen := range ks.Spec.Generators {
 		if gen.ImagePolicy != nil {
 			referencedPolicies = append(referencedPolicies, gen.ImagePolicy)
+			continue
+		}
+		if gen.Matrix != nil && gen.Matrix.Generators != nil {
+			for _, matrixGen := range gen.Matrix.Generators {
+				if matrixGen.ImagePolicy != nil {
+					referencedPolicies = append(referencedPolicies, matrixGen.ImagePolicy)
+				}
+			}
 		}
 	}
 
