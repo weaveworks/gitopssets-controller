@@ -1,0 +1,58 @@
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: imagepolicy-matrix-example
+  namespace: default
+spec:
+  generators:
+    - matrix:
+        generators:
+          - imagePolicy:
+             policyRef: podinfo
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+                - cluster: prod-cluster
+                  version: 1.0.0
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "demo-configmap-{{ .Element.cluster }}"
+        data:
+          image: "{{ .Element.latestImage }}"
+          cluster: "{{ .Element.cluster }}"
+          version: "{{ .Element.version }}"
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: imagepolicy-example
+  namespace: default
+spec:
+  generators:
+    - imagePolicy:
+        policyRef: podinfo
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "demo-configmap"
+        data:
+          image: "{{ .Element.latestImage }}"

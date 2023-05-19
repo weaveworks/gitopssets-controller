@@ -7,11 +7,13 @@ import (
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
+	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -35,7 +37,7 @@ var kustomizationGVK = schema.GroupVersionKind{
 func TestReconcilingNewCluster(t *testing.T) {
 	ctx := context.TODO()
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -43,7 +45,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,8 +86,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
@@ -102,7 +103,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}, timeout).Should(gomega.BeTrue())
 
 	// Create a second GitopsCluster object and ensure it is created, then check the status of the GitOpsSet
-	gc2 := makeTestgitopsCluster(nsn("default", "test-gc2"), func(g *clustersv1.GitopsCluster) {
+	gc2 := makeTestGitopsCluster(nsn("default", "test-gc2"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -110,7 +111,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc2)))
-	defer cleanupResource(t, testEnv, gc2)
+	defer deleteObject(t, testEnv, gc2)
 
 	g.Eventually(func() bool {
 		updated := &templatesv1.GitOpsSet{}
@@ -148,7 +149,7 @@ func TestGenerateNamespace(t *testing.T) {
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Element.team }}-ns")),
+						Raw: mustMarshalJSON(t, test.NewNamespace("{{ .Element.team }}-ns")),
 					},
 				},
 			},
@@ -156,7 +157,7 @@ func TestGenerateNamespace(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	updated := &templatesv1.GitOpsSet{}
 	g := gomega.NewWithT(t)
@@ -175,14 +176,242 @@ func TestGenerateNamespace(t *testing.T) {
 	}, timeout).Should(gomega.BeTrue())
 
 	want := []runtime.Object{
-		makeTestNamespace("engineering-prod-ns"),
-		makeTestNamespace("engineering-preprod-ns"),
+		test.NewNamespace("engineering-prod-ns"),
+		test.NewNamespace("engineering-preprod-ns"),
 	}
 	test.AssertInventoryHasItems(t, updated, want...)
+
 	// Namespaces cannot be deleted from envtest
 	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
 	// https://github.com/kubernetes-sigs/controller-runtime/issues/880
+}
 
+func TestReconcilingWithAnnotationChange(t *testing.T) {
+	ctx := context.TODO()
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"team": "engineering-prod"}`)},
+							{Raw: []byte(`{"team": "engineering-preprod"}`)},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.SetName("{{ .Element.team }}-cm")
+
+							c.Data = map[string]string{
+								"testing": "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "2 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"testing": "engineering-prod",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+
+	test.AssertNoError(t, testEnv.Delete(ctx, &cm))
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+	gs.Annotations = map[string]string{
+		fluxMeta.ReconcileRequestAnnotation: "testing",
+	}
+	test.AssertNoError(t, testEnv.Update(ctx, gs))
+
+	g.Eventually(func() bool {
+		return testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm) == nil
+	}, timeout).Should(gomega.BeTrue())
+
+	g.Eventually(func() bool {
+		test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+		return gs.Status.ReconcileRequestStatus.LastHandledReconcileAt != ""
+	}, timeout).Should(gomega.BeTrue())
+}
+
+func TestReconcilingUpdatingImagePolicy(t *testing.T) {
+	ctx := context.TODO()
+	ip := test.NewImagePolicy()
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
+	defer deleteObject(t, testEnv, ip)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					ImagePolicy: &templatesv1.ImagePolicyGenerator{
+						PolicyRef: ip.GetName(),
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.latestImage }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "1 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"testing": "testing/test:v0.30.0",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+}
+
+func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
+	ctx := context.TODO()
+	ip := test.NewImagePolicy()
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
+	defer deleteObject(t, testEnv, ip)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								ImagePolicy: &templatesv1.ImagePolicyGenerator{
+									PolicyRef: ip.GetName(),
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"team": "engineering-prod"}`)},
+										{Raw: []byte(`{"team": "engineering-preprod"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.ObjectMeta.Name = "{{ .Element.team }}-demo-cm"
+							c.Data = map[string]string{
+								"testing": "{{ .Element.latestImage }}",
+								"team":    "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		return cond.Message == "2 resources created"
+	}, timeout).Should(gomega.BeTrue())
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-preprod-demo-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"team":    "engineering-preprod",
+		"testing": "testing/test:v0.30.0",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
 }
 
 func deleteAllKustomizations(t *testing.T, cl client.Client) {
@@ -201,7 +430,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -209,7 +438,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -250,8 +479,7 @@ func TestEventsWithReconciling(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	want := &test.EventData{
 		EventType: "Normal",
@@ -271,7 +499,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	ctx := context.TODO()
 
 	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestgitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
+	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
 			"env":  "dev",
 			"team": "engineering",
@@ -279,7 +507,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	})
 
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer cleanupResource(t, testEnv, gc)
+	defer deleteObject(t, testEnv, gc)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -322,8 +550,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	}
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
-	defer cleanupResource(t, testEnv, gs)
-	defer deleteAllKustomizations(t, testEnv)
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
@@ -337,10 +564,20 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 
 	}, timeout).Should(gomega.BeTrue())
-
 }
 
-func cleanupResource(t *testing.T, cl client.Client, obj client.Object) {
+func deleteGitOpsSetAndWaitForNotFound(t *testing.T, cl client.Client, gs *templatesv1.GitOpsSet) {
+	t.Helper()
+	deleteObject(t, cl, gs)
+
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		return apierrors.IsNotFound(cl.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+	}, timeout).Should(gomega.BeTrue())
+}
+
+func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
 	if err := cl.Delete(context.TODO(), obj); err != nil {
 		t.Fatal(err)
@@ -354,7 +591,7 @@ func mustMarshalJSON(t *testing.T, r runtime.Object) []byte {
 	return b
 }
 
-func makeTestgitopsCluster(name types.NamespacedName, opts ...func(*clustersv1.GitopsCluster)) *clustersv1.GitopsCluster {
+func makeTestGitopsCluster(name types.NamespacedName, opts ...func(*clustersv1.GitopsCluster)) *clustersv1.GitopsCluster {
 	gc := &clustersv1.GitopsCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "GitopsCluster",
@@ -378,21 +615,4 @@ func nsn(namespace, name string) types.NamespacedName {
 		Name:      name,
 		Namespace: namespace,
 	}
-}
-
-func makeTestNamespace(name string, opts ...func(*corev1.Namespace)) *corev1.Namespace {
-	n := corev1.Namespace{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Namespace",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	for _, o := range opts {
-		o(&n)
-	}
-
-	return &n
 }

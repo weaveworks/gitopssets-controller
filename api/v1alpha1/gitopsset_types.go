@@ -8,6 +8,10 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
+// GitOpsSetFinalizer is the finalizer added to GitOpsSets to allow us to clean
+// up resources.
+const GitOpsSetFinalizer = "finalizers.templates.weave.works"
+
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
 	// Repeat is a JSONPath string defining that the template content should be
@@ -164,11 +168,24 @@ type MatrixGenerator struct {
 // GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
 // This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn't support recursive declarations.
 type GitOpsSetNestedGenerator struct {
+	// Name is an optional field that will be used to prefix the values generated
+	// by the nested generators, this allows multiple generators of the same
+	// type in a single Matrix generator.
+	// +optional
+	Name string `json:"name,omitempty"`
+
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
+	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
+}
+
+// ImagePolicyGenerator generates from the ImagePolicy.
+type ImagePolicyGenerator struct {
+	// PolicyRef is the name of a ImagePolicy resource to be generated from.
+	PolicyRef string `json:"policyRef,omitempty"`
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
@@ -179,6 +196,7 @@ type GitOpsSetGenerator struct {
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
+	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

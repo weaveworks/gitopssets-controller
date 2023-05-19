@@ -6,10 +6,12 @@ import (
 	"sort"
 	"time"
 
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	eventv1 "github.com/fluxcd/pkg/apis/event/v1beta1"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
+	"github.com/fluxcd/pkg/runtime/predicates"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
@@ -42,6 +44,7 @@ var accessor = meta.NewAccessor()
 
 const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
+	imagePolicyIndexKey   string = ".metadata.imagePolicy"
 )
 
 type eventRecorder interface {
@@ -84,6 +87,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
 //+kubebuilder:rbac:groups=gitops.weave.works,resources=gitopsclusters,verbs=get;list;watch
+//+kubebuilder:rbac:groups=image.toolkit.fluxcd.io,resources=imagepolicies,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -100,21 +104,20 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info("gitops set loaded")
+	logger.Info("GitOpsSet loaded")
 
-	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
-		return ctrl.Result{}, nil
+	// Add finalizer first if it doesn't exist to avoid the race condition
+	// between init and delete.
+	if !controllerutil.ContainsFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer) {
+		controllerutil.AddFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer)
+
+		return ctrl.Result{Requeue: true}, r.Update(ctx, &gitOpsSet)
 	}
 
 	// Skip reconciliation if the GitOpsSet is suspended.
 	if gitOpsSet.Spec.Suspend {
 		logger.Info("Reconciliation is suspended for this GitOpsSet")
 		return ctrl.Result{}, nil
-	}
-
-	// Set the value of the reconciliation request in status.
-	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
-		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
 
 	k8sClient := r.Client
@@ -128,6 +131,15 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to create client for ServiceAccount %s: %w", serviceAccountName, err)
 		}
 		k8sClient = c
+	}
+
+	if !gitOpsSet.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.finalize(ctx, &gitOpsSet, k8sClient)
+	}
+
+	// Set the value of the reconciliation request in status.
+	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
+		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
 
 	defer func() {
@@ -164,7 +176,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
-			msg := fmt.Sprintf("Status and inventory update failed after reconciliation")
+			msg := "Status and inventory update failed after reconciliation"
 			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
@@ -232,13 +244,6 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			}
 		}
 
-		// cluster-scoped resources must not have a namespace-scoped owner
-		if templates.IsNamespacedObject(newResource) {
-			if err := controllerutil.SetOwnerReference(gitOpsSet, newResource, r.Scheme); err != nil {
-				return nil, fmt.Errorf("failed to set ownership: %w", err)
-			}
-		}
-
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
 			return nil, err
 		}
@@ -287,7 +292,7 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient 
 			return err
 		}
 
-		if err := k8sClient.Delete(ctx, u); err != nil {
+		if err := client.IgnoreNotFound(k8sClient.Delete(ctx, u)); err != nil {
 			return fmt.Errorf("failed to delete %v: %w", u, err)
 		}
 	}
@@ -304,7 +309,8 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
+			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
@@ -315,6 +321,20 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		builder.Watches(
 			&source.Kind{Type: &clustersv1.GitopsCluster{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
+		)
+	}
+
+	// Only watch for ImagePolicy objects if the ImagePolicy generator is enabled.
+	if r.Generators["ImagePolicy"] != nil {
+		// Index the GitOpsSets by the ImageRepository references they (may) point at.
+		if err := mgr.GetCache().IndexField(
+			context.TODO(), &templatesv1.GitOpsSet{}, imagePolicyIndexKey, indexImagePolicies); err != nil {
+			return fmt.Errorf("failed setting index fields: %w", err)
+		}
+
+		builder.Watches(
+			&source.Kind{Type: &imagev1.ImagePolicy{}},
+			handler.EnqueueRequestsFromMapFunc(r.imagePolicyToGitOpsSet),
 		)
 	}
 
@@ -345,6 +365,27 @@ func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconc
 	}
 
 	return result
+}
+
+func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitOpsSet, k8sClient client.Client) (ctrl.Result, error) {
+	logger := ctrl.LoggerFrom(ctx)
+	logger.Info("finalizing resources")
+
+	if !gs.Spec.Suspend &&
+		gs.Status.Inventory != nil &&
+		gs.Status.Inventory.Entries != nil {
+
+		if err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		logger.Info("cleaned resources")
+	}
+
+	logger.Info("removing the finalizer")
+	// Remove our finalizer from the list and update it
+	controllerutil.RemoveFinalizer(gs, templatesv1.GitOpsSetFinalizer)
+	return ctrl.Result{}, r.Update(ctx, gs)
 }
 
 func matchCluster(gitOpsCluster *clustersv1.GitopsCluster, gitOpsSet *templatesv1.GitOpsSet) bool {
@@ -415,6 +456,24 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	return result
 }
 
+func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
+	ctx := context.Background()
+	var list templatesv1.GitOpsSetList
+
+	if err := r.List(ctx, &list, client.MatchingFields{
+		imagePolicyIndexKey: client.ObjectKeyFromObject(obj).String(),
+	}); err != nil {
+		return nil
+	}
+
+	result := []reconcile.Request{}
+	for _, v := range list.Items {
+		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+	}
+
+	return result
+}
+
 func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
 	copyCfg := rest.CopyConfig(r.Config)
 
@@ -445,6 +504,39 @@ func indexGitRepositories(o client.Object) []string {
 	referencedNames := []string{}
 	for _, grg := range referencedRepositories {
 		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
+	}
+
+	return referencedNames
+}
+
+func indexImagePolicies(o client.Object) []string {
+	ks, ok := o.(*templatesv1.GitOpsSet)
+	if !ok {
+		panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+	}
+
+	referencedPolicies := []*templatesv1.ImagePolicyGenerator{}
+	for _, gen := range ks.Spec.Generators {
+		if gen.ImagePolicy != nil {
+			referencedPolicies = append(referencedPolicies, gen.ImagePolicy)
+			continue
+		}
+		if gen.Matrix != nil && gen.Matrix.Generators != nil {
+			for _, matrixGen := range gen.Matrix.Generators {
+				if matrixGen.ImagePolicy != nil {
+					referencedPolicies = append(referencedPolicies, matrixGen.ImagePolicy)
+				}
+			}
+		}
+	}
+
+	if len(referencedPolicies) == 0 {
+		return nil
+	}
+
+	referencedNames := []string{}
+	for _, ip := range referencedPolicies {
+		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), ip.PolicyRef))
 	}
 
 	return referencedNames

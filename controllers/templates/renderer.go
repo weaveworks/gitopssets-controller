@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/util/jsonpath"
 	syaml "sigs.k8s.io/yaml"
@@ -47,8 +46,7 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
-					namespacedName := types.NamespacedName{Name: r.GetName(), Namespace: r.GetNamespace()}
-					res, err := renderTemplateParams(*r, template, param, namespacedName)
+					res, err := renderTemplateParams(template, param, *r)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
@@ -105,7 +103,7 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[st
 	return elements, nil
 }
 
-func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, name types.NamespacedName) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
 	repeatedParams, err := repeat(tmpl, params)
@@ -129,7 +127,7 @@ func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetT
 	}
 
 	for _, p := range repeatedParams {
-		rendered, err := render(set, name, yamlBytes, p)
+		rendered, err := render(yamlBytes, p, gs)
 		if err != nil {
 			return nil, err
 		}
@@ -158,20 +156,22 @@ func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetT
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
 			if IsNamespacedObject(uns) {
-				uns.SetNamespace(name.Namespace)
-
-				// Add source labels
-				labels := map[string]string{
-					"templates.weave.works/name":      name.Name,
-					"templates.weave.works/namespace": name.Namespace,
+				if uns.GetNamespace() == "" {
+					uns.SetNamespace(gs.GetNamespace())
 				}
-
-				renderedLabels := uns.GetLabels()
-				if err := mergo.Merge(&labels, renderedLabels, mergo.WithOverride); err != nil {
-					return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
-				}
-				uns.SetLabels(labels)
 			}
+
+			// Add source labels
+			labels := map[string]string{
+				"templates.weave.works/name":      gs.GetName(),
+				"templates.weave.works/namespace": gs.GetNamespace(),
+			}
+
+			renderedLabels := uns.GetLabels()
+			if err := mergo.Merge(&labels, renderedLabels, mergo.WithOverride); err != nil {
+				return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
+			}
+			uns.SetLabels(labels)
 
 			objects = append(objects, uns)
 		}
@@ -180,13 +180,17 @@ func renderTemplateParams(set templatesv1.GitOpsSet, tmpl templatesv1.GitOpsSetT
 	return objects, nil
 }
 
-func render(set templatesv1.GitOpsSet, name types.NamespacedName, b []byte, params map[string]any) ([]byte, error) {
-	t, err := template.New(fmt.Sprintf("%s", name)).
+func render(b []byte, params map[string]any, gs templatesv1.GitOpsSet) ([]byte, error) {
+	t, err := template.New(fmt.Sprintf("%s/%s", gs.GetNamespace(), gs.GetName())).
 		Option("missingkey=error").
-		Delims(templateDelims(set)).
+		Delims(templateDelims(gs)).
 		Funcs(templateFuncs).Parse(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	if err := mergo.Merge(&params, templateParams(gs), mergo.WithOverride); err != nil {
+		return nil, fmt.Errorf("failed to generate context when rendering template: %w", err)
 	}
 
 	var out bytes.Buffer
@@ -195,6 +199,15 @@ func render(set templatesv1.GitOpsSet, name types.NamespacedName, b []byte, para
 	}
 
 	return out.Bytes(), nil
+}
+
+func templateParams(gs templatesv1.GitOpsSet) map[string]any {
+	return map[string]any{
+		"GitOpsSet": map[string]any{
+			"Name":      gs.GetName(),
+			"Namespace": gs.GetNamespace(),
+		},
+	}
 }
 
 func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
@@ -235,14 +248,6 @@ func makeTemplateFunctions() template.FuncMap {
 	}
 
 	return f
-}
-
-func getOrDefault(element map[string]any, key string, def interface{}) interface{} {
-	if v, ok := element[key]; ok {
-		return v
-	}
-
-	return def
 }
 
 func templateDelims(gs templatesv1.GitOpsSet) (string, string) {

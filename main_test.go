@@ -70,12 +70,12 @@ func TestValidateEnabledGenerators(t *testing.T) {
 		{
 			"unknown enabled generators raise error",
 			[]string{"Cluster", "List", "foo"},
-			`invalid generator "foo". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "Matrix"\]`,
+			`invalid generator "foo". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "ImagePolicy" "Matrix"\]`,
 		},
 		{
-			"case insensitive generarors",
+			"case insensitive generators",
 			[]string{"cluster", "List"},
-			`invalid generator "cluster". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "Matrix"\]`,
+			`invalid generator "cluster". valid values: \["GitRepository" "Cluster" "PullRequests" "List" "APIClient" "ImagePolicy" "Matrix"\]`,
 		},
 	}
 
