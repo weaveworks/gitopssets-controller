@@ -86,6 +86,8 @@ jobs:
 
   build-push-helm-chart:
     runs-on: ubuntu-latest
+    # only run on tag
+    # if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
@@ -135,4 +137,4 @@ jobs:
           curl -O -f "https://artifacts.wge.dev.weave.works/${repo}/index.yaml" || echo "no index.yaml found"
           helm repo index --merge index.yaml --url "https://artifacts.wge.dev.weave.works/${repo}" .
 
-          # aws s3 cp helm-repo-tmp/* s3://weave-gitops-enterprise/${repo}/
+          aws s3 cp helm-repo-tmp/* s3://weave-gitops-enterprise/${repo}/
