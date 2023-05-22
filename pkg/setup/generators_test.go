@@ -1,4 +1,4 @@
-package main
+package setup
 
 import (
 	"sort"
@@ -38,7 +38,7 @@ func TestGetGenerators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getGenerators(tt.enabledGenerators)
+			got := GetGenerators(tt.enabledGenerators, nil, nil)
 			keys := make([]string, 0, len(got))
 			for k := range got {
 				keys = append(keys, k)
@@ -81,7 +81,7 @@ func TestValidateEnabledGenerators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateEnabledGenerators(tt.enabledGenerators)
+			err := ValidateEnabledGenerators(tt.enabledGenerators)
 			test.AssertErrorMatch(t, tt.expected, err)
 		})
 	}
