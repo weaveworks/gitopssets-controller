@@ -16,6 +16,7 @@ import (
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
+	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	flag "github.com/spf13/pflag"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
@@ -47,6 +48,10 @@ var (
 )
 
 const controllerName = "GitOpsSet"
+
+// retries is the number of retries to make when fetching artifacts.
+// TODO: Make this configurable?
+const retries = 9
 
 var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix"}
 var defaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
@@ -198,9 +203,11 @@ func validateEnabledGenerators(enabledGenerators []string) error {
 }
 
 func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFactory {
+	fetcher := fetch.NewArchiveFetcher(retries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
+
 	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
@@ -210,7 +217,7 @@ func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFa
 
 	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory(fetch.NewArchiveFetcher),
+		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		// TODO: Figure out how to configure the client

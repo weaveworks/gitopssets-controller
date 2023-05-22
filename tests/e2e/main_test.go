@@ -8,7 +8,9 @@ import (
 	"time"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/runtime/testenv"
+	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/test"
@@ -44,6 +46,8 @@ func TestMain(m *testing.M) {
 	utilruntime.Must(clustersv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme.Scheme))
+	fetcher := fetch.NewArchiveFetcher(1, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
+
 	testEnv = testenv.New(testenv.WithCRDPath(filepath.Join("..", "..", "config", "crd", "bases"),
 		filepath.Join("..", "..", "controllers", "testdata", "crds"),
 		filepath.Join("testdata", "crds"),
@@ -63,7 +67,7 @@ func TestMain(m *testing.M) {
 			"List": list.GeneratorFactory,
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
 				"List":          list.GeneratorFactory,
-				"GitRepository": gitrepository.GeneratorFactory,
+				"GitRepository": gitrepository.GeneratorFactory(fetcher),
 				"PullRequests":  pullrequests.GeneratorFactory,
 				"ImagePolicy":   imagepolicy.GeneratorFactory,
 			}),
