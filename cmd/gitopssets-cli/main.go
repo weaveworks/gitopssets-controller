@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
@@ -21,6 +22,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
 )
@@ -60,8 +62,12 @@ func makeRootCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			clientset, err := kubernetes.NewForConfig(cfg)
+			if err != nil {
+				return err
+			}
 
-			gens := instantiateGenerators(logger, cl)
+			gens := instantiateGenerators(logger, cl, NewProxyArchiveFetcher(clientset))
 			generated, err := templates.Render(context.Background(), gitOpsSet, gens)
 			if err != nil {
 				// TODO: improve error
@@ -103,24 +109,24 @@ func marshalOutput(out io.Writer, output runtime.Object) error {
 }
 
 // TODO: rework this to accept the configured generators.
-func instantiateGenerators(log logr.Logger, cl client.Client) map[string]generators.Generator {
+func instantiateGenerators(log logr.Logger, cl client.Client, fetcher parser.ArchiveFetcher) map[string]generators.Generator {
 	instantiatedGenerators := map[string]generators.Generator{}
-	for k, factory := range configuredGenerators() {
+	for k, factory := range configuredGenerators(fetcher) {
 		instantiatedGenerators[k] = factory(log, cl)
 	}
 
 	return instantiatedGenerators
 }
 
-func configuredGenerators() map[string]generators.GeneratorFactory {
+func configuredGenerators(fetcher parser.ArchiveFetcher) map[string]generators.GeneratorFactory {
 	matrixGenerators := map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 	}
 
 	return map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 		"Matrix":        matrix.GeneratorFactory(matrixGenerators),
 	}
 }
