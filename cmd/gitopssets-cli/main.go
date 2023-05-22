@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -21,10 +22,7 @@ import (
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
+	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 
 func main() {
@@ -32,12 +30,14 @@ func main() {
 }
 
 func makeRootCmd() *cobra.Command {
+	var enabledGenerators []string
+
 	cmd := &cobra.Command{
 		Use:   "gitopssets-cli [filename]",
 		Short: "Render GitOpsSets from the CLI",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scheme, err := buildScheme()
+			scheme, err := setup.NewScheme(enabledGenerators)
 			if err != nil {
 				return err
 			}
@@ -67,7 +67,8 @@ func makeRootCmd() *cobra.Command {
 				return err
 			}
 
-			gens := instantiateGenerators(logger, cl, NewProxyArchiveFetcher(clientset))
+			factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(clientset), http.DefaultClient)
+			gens := instantiateGenerators(factories, logger, cl)
 			generated, err := templates.Render(context.Background(), gitOpsSet, gens)
 			if err != nil {
 				// TODO: improve error
@@ -77,6 +78,8 @@ func makeRootCmd() *cobra.Command {
 			return outputResources(generated)
 		},
 	}
+
+	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable.")
 
 	return cmd
 }
@@ -108,27 +111,13 @@ func marshalOutput(out io.Writer, output runtime.Object) error {
 	return nil
 }
 
-// TODO: rework this to accept the configured generators.
-func instantiateGenerators(log logr.Logger, cl client.Client, fetcher parser.ArchiveFetcher) map[string]generators.Generator {
+func instantiateGenerators(factories map[string]generators.GeneratorFactory, log logr.Logger, cl client.Client) map[string]generators.Generator {
 	instantiatedGenerators := map[string]generators.Generator{}
-	for k, factory := range configuredGenerators(fetcher) {
+	for k, factory := range factories {
 		instantiatedGenerators[k] = factory(log, cl)
 	}
 
 	return instantiatedGenerators
-}
-
-func configuredGenerators(fetcher parser.ArchiveFetcher) map[string]generators.GeneratorFactory {
-	matrixGenerators := map[string]generators.GeneratorFactory{
-		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory(fetcher),
-	}
-
-	return map[string]generators.GeneratorFactory{
-		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory(fetcher),
-		"Matrix":        matrix.GeneratorFactory(matrixGenerators),
-	}
 }
 
 func newLogger() (logr.Logger, error) {
