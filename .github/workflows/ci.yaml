@@ -108,12 +108,12 @@ jobs:
           repo="branches/gitopssets/charts"
 
           if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
-            # dev here is "dev owned".
+            # dev here is "owned by the dev team"..
             repo="dev/charts"
           fi
 
           cd helm-repo-tmp
-          curl -O "https://artifacts.wge.dev.weave.works/${repo}/index.yaml" || echo "no index.yaml found"
+          curl -O -f "https://artifacts.wge.dev.weave.works/${repo}/index.yaml" || echo "no index.yaml found"
           helm repo index --merge index.yaml --url "https://artifacts.wge.dev.weave.works/${repo}" .
 
           # aws s3 cp helm-repo-tmp/* s3://weave-gitops-enterprise/${repo}/
