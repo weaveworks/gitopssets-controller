@@ -138,4 +138,5 @@ jobs:
           helm repo index --merge index.yaml --url "https://artifacts.wge.dev.weave.works/${repo}" .
 
           # copy all files to the bucket
-          aws s3 cp --recursive . "s3://artifacts.wge.dev.weave.works/${repo}"
+
+          aws s3 cp --recursive . "s3://weave-gitops-enterprise/${repo}"
