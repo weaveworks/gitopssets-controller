@@ -72,7 +72,7 @@ jobs:
           GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
           GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
-        
+
       - name: go mod vendor
         run: go mod vendor
 
@@ -83,3 +83,48 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  publish_helm_chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # for actions/checkout to fetch code
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # for git describe
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install Helm
+        run: |
+          wget --no-verbose https://get.helm.sh/helm-v3.10.0-linux-amd64.tar.gz
+          tar -zxvf helm-v3.10.0-linux-amd64.tar.gz
+          mv linux-amd64/helm /usr/local/bin/helm
+          helm version
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1-node16
+        with:
+          aws-access-key-id: ${{ secrets.PUSH_HELM_CHART_S3_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PUSH_HELM_CHART_S3_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Build helm chart
+        run: |
+          make helm-chart
+
+      - name: Push helm chart to S3
+        run: |
+          # if a tag was pushed then push the chart to the prod bucket
+          repo="branches/gitopssets/charts"
+
+          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+            # dev here is "dev owned".
+            repo="dev/charts"
+          fi
+
+          cd helm-repo-tmp
+          curl -O "https://artifacts.wge.dev.weave.works/${repo}/index.yaml" || echo "no index.yaml found"
+          helm repo index --merge index.yaml --url "https://artifacts.wge.dev.weave.works/${repo}" .
+
+          # aws s3 cp helm-repo-tmp/* s3://weave-gitops-enterprise/${repo}/
