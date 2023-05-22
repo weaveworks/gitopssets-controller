@@ -104,6 +104,8 @@ jobs:
 
       - name: Push helm chart to S3
         run: |
+          set -x
+
           # if a tag was pushed then push the chart to the prod bucket
           repo="branches/gitopssets/charts"
 
