@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -30,6 +30,8 @@ type ProxyArchiveFetcher struct {
 	maxUntarSize int
 }
 
+// Fetch implements the ArchiveFetcher implementation, but uses the Kube service
+// proxy mechanism to get the archive.
 func (p *ProxyArchiveFetcher) Fetch(archiveURL, checksum, dir string) error {
 	parsed, err := parseArtifactURL(archiveURL)
 	if err != nil {
