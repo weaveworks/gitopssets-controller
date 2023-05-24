@@ -191,7 +191,6 @@ helm-chart: manifests kustomize helmify
 	cp LICENSE charts/gitopssets-controller/LICENSE
 	helm lint charts/gitopssets-controller
 	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination ./helm-repo-tmp
-	cd helm-repo-tmp && curl -O https://artifacts.wge.dev.weave.works/dev/charts/index.yaml && helm repo index --merge index.yaml --url https://artifacts.wge.dev.weave.works/dev/charts .
 
 .PHONY: download-crds
 download-crds:
