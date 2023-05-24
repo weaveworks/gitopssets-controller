@@ -125,7 +125,7 @@ jobs:
         run: |
           set -x
 
-          # if a tag was pushed then push the chart to the prod bucket
+          # By default (branch/main), push to a test helm repo
           repo="branches/gitopssets/charts"
 
           if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
