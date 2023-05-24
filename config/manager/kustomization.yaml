@@ -1,8 +1,8 @@
 resources:
-- manager.yaml
+  - manager.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: controller
-  newName: ghcr.io/weaveworks/gitopssets-controller
-  newTag: v0.11.0-32-g0cbe0d8
+  - name: controller
+    newName: ghcr.io/weaveworks/gitopssets-controller
+    newTag: latest
