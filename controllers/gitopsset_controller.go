@@ -32,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -312,14 +311,14 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
-			&source.Kind{Type: &sourcev1.GitRepository{}},
+			&sourcev1.GitRepository{},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
 		)
 
 	// Only watch for GitopsCluster objects if the Cluster generator is enabled.
 	if r.Generators["Cluster"] != nil {
 		builder.Watches(
-			&source.Kind{Type: &clustersv1.GitopsCluster{}},
+			&clustersv1.GitopsCluster{},
 			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
 		)
 	}
@@ -333,7 +332,7 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 
 		builder.Watches(
-			&source.Kind{Type: &imagev1.ImagePolicy{}},
+			&imagev1.ImagePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.imagePolicyToGitOpsSet),
 		)
 	}
@@ -343,13 +342,12 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // gitOpsClusterToGitOpsSet maps a GitopsCluster object to its related GitOpsSet objects
 // and returns a list of reconcile requests for the GitOpsSets.
-func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconcile.Request {
+func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(ctx context.Context, o client.Object) []reconcile.Request {
 	gitOpsCluster, ok := o.(*clustersv1.GitopsCluster)
 	if !ok {
 		return nil
 	}
 
-	ctx := context.Background()
 	list := &templatesv1.GitOpsSetList{}
 
 	err := r.List(ctx, list, &client.ListOptions{})
@@ -436,10 +434,9 @@ func selectorMatchesCluster(labelSelector metav1.LabelSelector, cluster *cluster
 	return selector.Matches(labelSet)
 }
 
-func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
+func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
 	// TODO: Store the applied version of GitRepositories in the Status, and don't
 	// retrigger if the commit-id isn't different.
-	ctx := context.Background()
 	var list templatesv1.GitOpsSetList
 
 	if err := r.List(ctx, &list, client.MatchingFields{
@@ -456,8 +453,7 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	return result
 }
 
-func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
-	ctx := context.Background()
+func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
 	var list templatesv1.GitOpsSetList
 
 	if err := r.List(ctx, &list, client.MatchingFields{

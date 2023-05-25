@@ -144,7 +144,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mapper, err := apiutil.NewDynamicRESTMapper(restConfig)
+	mapper, err := apiutil.NewDynamicRESTMapper(restConfig, http.DefaultClient)
 	if err != nil {
 		setupLog.Error(err, "unable to create REST Mapper")
 		os.Exit(1)
