@@ -495,6 +495,13 @@ func indexGitRepositories(o client.Object) []string {
 		if gen.GitRepository != nil {
 			referencedRepositories = append(referencedRepositories, gen.GitRepository)
 		}
+		if gen.Matrix != nil && gen.Matrix.Generators != nil {
+			for _, matrixGen := range gen.Matrix.Generators {
+				if matrixGen.GitRepository != nil {
+					referencedRepositories = append(referencedRepositories, matrixGen.GitRepository)
+				}
+			}
+		}
 	}
 
 	if len(referencedRepositories) == 0 {

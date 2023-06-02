@@ -3,11 +3,13 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"testing"
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
-	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	apiv1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/onsi/gomega"
@@ -250,7 +252,7 @@ func TestReconcilingWithAnnotationChange(t *testing.T) {
 
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
 	gs.Annotations = map[string]string{
-		fluxMeta.ReconcileRequestAnnotation: "testing",
+		meta.ReconcileRequestAnnotation: "testing",
 	}
 	test.AssertNoError(t, testEnv.Update(ctx, gs))
 
@@ -411,6 +413,137 @@ func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, cm.Data); diff != "" {
 		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	}
+}
+
+func TestGitOpsSetUpdateOnGitRepoChange(t *testing.T) {
+	eventRecorder.Reset()
+	ctx := context.TODO()
+
+	// Create a GitRepository with a fake archive server.
+	srv := test.StartFakeArchiveServer(t, "testdata/archive")
+	gRepo := makeTestGitRepository(t, srv.URL+"/files.tar.gz")
+	test.AssertNoError(t, testEnv.Create(ctx, gRepo))
+
+	gRepo.Status = getGitRepoStatusUpdate(t, srv.URL+"/files.tar.gz", "sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")
+
+	test.AssertNoError(t, testEnv.Status().Update(ctx, gRepo))
+
+	// Create a GitOpsSet that uses the GitRepository.
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								GitRepository: &templatesv1.GitRepositoryGenerator{
+									RepositoryRef: "my-git-repo",
+									Files: []templatesv1.GitRepositoryGeneratorFileItem{
+										{Path: "files/dev.yaml"},
+									},
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"cluster": "eng-dev"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("default", "eng-{{ .Element.environment }}-demo"))),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-dev-demo")))
+
+	// Update the GitRepository to point to a new archive.
+	gRepo.Status = getGitRepoStatusUpdate(t, srv.URL+"/files-develop.tar.gz", "sha256:14cc05e5d1206860b56630b41676dbfed05533011177e123c5dd48c72b959cdc")
+
+	test.AssertNoError(t, testEnv.Status().Update(ctx, gRepo))
+
+	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-development-demo")))
+}
+
+func makeTestGitRepository(t *testing.T, archiveURL string) *sourcev1.GitRepository {
+	gr := &sourcev1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-git-repo",
+			Namespace: "default",
+		},
+		Spec: sourcev1.GitRepositorySpec{
+			URL: archiveURL,
+		},
+	}
+
+	return gr
+}
+
+func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templatesv1.GitOpsSet, objs ...runtime.Object) {
+	t.Helper()
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+
+		if updated.Status.Inventory == nil {
+			return false
+		}
+
+		if l := len(updated.Status.Inventory.Entries); l != len(objs) {
+			t.Errorf("expected %d items, got %v", len(objs), l)
+		}
+
+		want := generateResourceInventory(objs)
+
+		return cmp.Diff(want, updated.Status.Inventory) == ""
+	}, timeout).Should(gomega.BeTrue())
+}
+
+// generateResourceInventory generates a ResourceInventory object from a list of runtime objects.
+func generateResourceInventory(objs []runtime.Object) *templatesv1.ResourceInventory {
+	entries := []templatesv1.ResourceRef{}
+	for _, obj := range objs {
+		ref, err := templatesv1.ResourceRefFromObject(obj)
+		if err != nil {
+			panic(err)
+		}
+		entries = append(entries, ref)
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].ID < entries[j].ID
+	})
+
+	return &templatesv1.ResourceInventory{Entries: entries}
+}
+
+func getGitRepoStatusUpdate(t *testing.T, url, checksum string) sourcev1.GitRepositoryStatus {
+	return sourcev1.GitRepositoryStatus{
+		Artifact: &apiv1.Artifact{
+			URL:            url,
+			Digest:         checksum,
+			LastUpdateTime: metav1.Now(),
+		},
 	}
 }
 
