@@ -167,9 +167,8 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     config:
-                      description: ConfigGenerator defines a generator that loads
-                        a referenced ConfigMap or Secret from the Cluster and makes
-                        it available as a resource.
+                      description: ConfigGenerator loads a referenced ConfigMap or
+                        Secret from the Cluster and makes it available as a resource.
                       properties:
                         kind:
                           description: Kind of the referent.
@@ -376,9 +375,9 @@ spec:
                                     x-kubernetes-map-type: atomic
                                 type: object
                               config:
-                                description: ConfigGenerator defines a generator that
-                                  loads a referenced ConfigMap or Secret from the
-                                  Cluster and makes it available as a resource.
+                                description: ConfigGenerator loads a referenced ConfigMap
+                                  or Secret from the Cluster and makes it available
+                                  as a resource.
                                 properties:
                                   kind:
                                     description: Kind of the referent.
