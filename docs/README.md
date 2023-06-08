@@ -208,6 +208,7 @@ We currently provide these generators:
 - [apiClient](#apiclient-generator)
 - [cluster](#cluster-generator)
 - [imagepolicy](#imagepolicy-generator)
+- [config](#config-generator)
 
 ### List generator
 
@@ -951,6 +952,118 @@ metadata:
 data:
   cluster: prod-cluster
   image: stefanprodan/podinfo:5.1.4
+  version: 1.0.0
+```
+
+### Config generator
+
+The `Config` generator with Kubernetes [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/) and [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/).
+
+When an `ConfigMap` or `Secret` is updated, this will trigger a regeneration of templates.
+
+This can be used simply, to create a resource with an config variable...or, combined with a Matrix generator, to manage multiple workloads with the same values.
+
+With the existing `ConfigMap`
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  name: test-config
+  demo: test-value
+```
+And the GitOpsSet below
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: config-sample
+spec:
+  generators:
+    - config:
+        kind: ConfigMap
+        name: test-cm
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .Element.name }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.name }}"
+        data:
+          generatedValue: "{{ .Element.demo }}"
+```
+In this example, a new `ConfigMap` is generated containing the value of the "demo" field from the existing `ConfigMap` _test-cm_.
+
+As with the other generators, the `Config` generator can be combined with other generators:
+
+This will generate two `ConfigMaps` with the values.
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: imagepolicy-matrix-example
+  namespace: default
+spec:
+  generators:
+    - matrix:
+        generators:
+          - config:
+              kind: ConfigMap
+              name: test-cm
+          - list:
+              elements:
+                - cluster: dev-cluster
+                  version: 1.0.0
+                - cluster: prod-cluster
+                  version: 1.0.0
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "demo-configmap-{{ .Element.cluster }}"
+        data:
+          generatedValue: "{{ .Element.demo }}"
+          cluster: "{{ .Element.cluster }}"
+          version: "{{ .Element.version }}"
+```
+
+The resulting ConfigMaps look like this:
+
+```shell
+$ kubectl get configmaps
+NAME                          DATA   AGE
+demo-configmap-dev-cluster    3      3m19s
+demo-configmap-prod-cluster   3      3m19s
+```
+
+With the templated fields like this:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-configmap-dev-cluster
+  namespace: default
+data:
+  cluster: dev-cluster
+  generatedValue: test-value
+  version: 1.0.0
+```
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-configmap-prod-cluster
+  namespace: default
+data:
+  cluster: prod-cluster
+  generatedValue: test-value
   version: 1.0.0
 ```
 
