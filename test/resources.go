@@ -15,7 +15,6 @@ func NewImagePolicy(opts ...func(*imagev1.ImagePolicy)) *imagev1.ImagePolicy {
 			APIVersion: "image.toolkit.fluxcd.io/v1beta2",
 			Kind:       "ImagePolicy",
 		},
-
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-policy",
 			Namespace: testNamespace,
@@ -42,6 +41,29 @@ func NewConfigMap(opts ...func(*corev1.ConfigMap)) *corev1.ConfigMap {
 		},
 		Data: map[string]string{
 			"testing": "test",
+		},
+	}
+
+	for _, o := range opts {
+		o(cm)
+	}
+
+	return cm
+}
+
+// NewSecret creates and returns a new Secret.
+func NewSecret(opts ...func(*corev1.Secret)) *corev1.Secret {
+	cm := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-secret",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"testing": []byte("test"),
 		},
 	}
 

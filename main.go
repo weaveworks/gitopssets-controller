@@ -23,18 +23,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/weaveworks/gitopssets-controller/controllers"
-	//+kubebuilder:scaffold:imports
 )
 
 var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-const controllerName = "GitOpsSet"
-
-// retries is the number of retries to make when fetching artifacts.
-// TODO: Make this configurable?
-const retries = 9
+const (
+	controllerName = "GitOpsSet"
+	retries        = 9
+)
 
 func main() {
 	var (

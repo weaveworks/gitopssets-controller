@@ -32,6 +32,19 @@ type ClusterGenerator struct {
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
+// ConfigGenerator defines a generator that loads a referenced ConfigMap or
+// Secret from the Cluster and makes it available as a resource.
+type ConfigGenerator struct {
+	// Kind of the referent.
+	// +kubebuilder:validation:Enum=ConfigMap;Secret
+	// +required
+	Kind string `json:"kind"`
+
+	// Name of the referent.
+	// +required
+	Name string `json:"name"`
+}
+
 // ListGenerator generates from a hard-coded list.
 type ListGenerator struct {
 	Elements []apiextensionsv1.JSON `json:"elements,omitempty"`
@@ -180,6 +193,7 @@ type GitOpsSetNestedGenerator struct {
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
+	Config        *ConfigGenerator        `json:"config,omitempty"`
 }
 
 // ImagePolicyGenerator generates from the ImagePolicy.
@@ -197,6 +211,7 @@ type GitOpsSetGenerator struct {
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
+	Config        *ConfigGenerator        `json:"config,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
