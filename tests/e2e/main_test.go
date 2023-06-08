@@ -23,6 +23,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/config"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
@@ -70,10 +71,12 @@ func TestMain(m *testing.M) {
 				"GitRepository": gitrepository.GeneratorFactory(fetcher),
 				"PullRequests":  pullrequests.GeneratorFactory,
 				"ImagePolicy":   imagepolicy.GeneratorFactory,
+				"Config":        config.GeneratorFactory,
 			}),
 			"PullRequests": pullrequests.GeneratorFactory,
 			"Cluster":      cluster.GeneratorFactory,
 			"ImagePolicy":  imagepolicy.GeneratorFactory,
+			"Config":       config.GeneratorFactory,
 		},
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(testEnv); err != nil {

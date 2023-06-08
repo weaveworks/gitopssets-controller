@@ -29,11 +29,11 @@ import (
 )
 
 // AllGenerators contains the name of all possible Generators.
-var AllGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix"}
+var AllGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix", "Config"}
 
 // DefaultGenerators contains the name of the default set of enabled Generators,
 // this leaves out generators that require optional dependencies.
-var DefaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
+var DefaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix", "Config"}
 
 // NewSchemeForGenerators creates and returns a runtime.Scheme configured with
 // the correct schemes for the enabled generators.
