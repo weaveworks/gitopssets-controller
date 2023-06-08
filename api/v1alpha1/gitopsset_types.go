@@ -32,7 +32,7 @@ type ClusterGenerator struct {
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
-// ConfigGenerator defines a generator that loads a referenced ConfigMap or
+// ConfigGenerator loads a referenced ConfigMap or
 // Secret from the Cluster and makes it available as a resource.
 type ConfigGenerator struct {
 	// Kind of the referent.
