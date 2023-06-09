@@ -470,9 +470,9 @@ func (r *GitOpsSetReconciler) queryIndexedGitOpsSets(key string, obj client.Obje
 	ctx := context.Background()
 	var list templatesv1.GitOpsSetList
 
-	if err := r.List(ctx, &list, client.MatchingFields{
-		key: client.ObjectKeyFromObject(obj).String(),
-	}); err != nil {
+	if err := r.List(ctx, &list,
+		client.MatchingFields{key: client.ObjectKeyFromObject(obj).String()},
+		client.InNamespace(obj.GetNamespace())); err != nil {
 		return nil
 	}
 
