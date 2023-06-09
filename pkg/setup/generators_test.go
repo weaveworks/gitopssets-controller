@@ -1,12 +1,102 @@
 package setup
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+
 	"github.com/weaveworks/gitopssets-controller/test"
 )
+
+func TestNewSchemeForGenerators(t *testing.T) {
+	tests := []struct {
+		enabled  []string
+		want     []schema.GroupVersionKind
+		excluded []schema.GroupVersionKind
+	}{
+		{
+			enabled: DefaultGenerators,
+			want: []schema.GroupVersionKind{
+				sourcev1.GroupVersion.WithKind("GitRepository"),
+				templatesv1.GroupVersion.WithKind("GitOpsSet"),
+			},
+			excluded: []schema.GroupVersionKind{
+				clustersv1.GroupVersion.WithKind("GitopsCluster"),
+				imagev1.GroupVersion.WithKind("ImagePolicy"),
+			},
+		},
+		{
+			enabled: AllGenerators,
+			want: []schema.GroupVersionKind{
+				sourcev1.GroupVersion.WithKind("GitRepository"),
+				templatesv1.GroupVersion.WithKind("GitOpsSet"),
+				clustersv1.GroupVersion.WithKind("GitopsCluster"),
+				imagev1.GroupVersion.WithKind("ImagePolicy"),
+			},
+		},
+		{
+			enabled: []string{"Cluster"},
+			want: []schema.GroupVersionKind{
+				sourcev1.GroupVersion.WithKind("GitRepository"),
+				templatesv1.GroupVersion.WithKind("GitOpsSet"),
+				clustersv1.GroupVersion.WithKind("GitopsCluster"),
+			},
+			excluded: []schema.GroupVersionKind{
+				imagev1.GroupVersion.WithKind("ImagePolicy"),
+			},
+		},
+		{
+			enabled: []string{"ImagePolicy"},
+			want: []schema.GroupVersionKind{
+				sourcev1.GroupVersion.WithKind("GitRepository"),
+				templatesv1.GroupVersion.WithKind("GitOpsSet"),
+				imagev1.GroupVersion.WithKind("ImagePolicy"),
+			},
+			excluded: []schema.GroupVersionKind{
+				clustersv1.GroupVersion.WithKind("GitopsCluster"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v", tt.enabled), func(t *testing.T) {
+			scheme, err := NewSchemeForGenerators(tt.enabled)
+			test.AssertNoError(t, err)
+
+			assertContainsTypes(t, tt.want, scheme)
+			refuteContainsTypes(t, tt.excluded, scheme)
+		})
+	}
+}
+
+func assertContainsTypes(t *testing.T, want []schema.GroupVersionKind, scheme *runtime.Scheme) {
+	known := scheme.AllKnownTypes()
+	for _, v := range want {
+		_, ok := known[v]
+		if !ok {
+			t.Errorf("failed to find %v in known types", v)
+		}
+	}
+}
+
+func refuteContainsTypes(t *testing.T, exclude []schema.GroupVersionKind, scheme *runtime.Scheme) {
+	known := scheme.AllKnownTypes()
+	for _, v := range exclude {
+		_, ok := known[v]
+		if ok {
+			t.Errorf("%v should be excluded from known types", v)
+		}
+	}
+}
 
 func TestGetGenerators(t *testing.T) {
 	tests := []struct {

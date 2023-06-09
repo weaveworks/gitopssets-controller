@@ -12,7 +12,7 @@ import (
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -37,11 +37,11 @@ var DefaultGenerators = []string{"GitRepository", "PullRequests", "List", "APICl
 
 // NewSchemeForGenerators creates and returns a runtime.Scheme configured with
 // the correct schemes for the enabled generators.
-func NewScheme(enabledGenerators []string) (*runtime.Scheme, error) {
+func NewSchemeForGenerators(enabledGenerators []string) (*runtime.Scheme, error) {
 	builder := runtime.SchemeBuilder{
 		clientgoscheme.AddToScheme,
 		sourcev1.AddToScheme,
-		templatesv1alpha1.AddToScheme,
+		templatesv1.AddToScheme,
 	}
 
 	if isGeneratorEnabled(enabledGenerators, "Cluster") {

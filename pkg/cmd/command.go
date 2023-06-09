@@ -16,8 +16,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/kubernetes"
+	fakeclientgo "k8s.io/client-go/kubernetes/fake"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -29,24 +32,19 @@ import (
 // NewGenerateCommand creates and returns a new Command that renders GitOpsSets.
 func NewGenerateCommand() *cobra.Command {
 	var enabledGenerators []string
+	var disableClusterAccess bool
 
 	cmd := &cobra.Command{
 		Use:   "generate [filename]",
 		Short: "Render GitOpsSets from the CLI",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scheme, err := setup.NewScheme(enabledGenerators)
+			scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
 			if err != nil {
 				return err
 			}
 
 			gitOpsSet, err := readFileAsGitOpsSet(scheme, args[0])
-			if err != nil {
-				// TODO: improve error
-				return err
-			}
-
-			cfg, err := config.GetConfig()
 			if err != nil {
 				return err
 			}
@@ -56,20 +54,15 @@ func NewGenerateCommand() *cobra.Command {
 				return err
 			}
 
-			cl, err := client.New(cfg, client.Options{Scheme: scheme})
-			if err != nil {
-				return err
-			}
-			clientset, err := kubernetes.NewForConfig(cfg)
+			services, cl, err := makeClients(disableClusterAccess, scheme)
 			if err != nil {
 				return err
 			}
 
-			factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(clientset), http.DefaultClient)
+			factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), http.DefaultClient)
 			gens := instantiateGenerators(factories, logger, cl)
 			generated, err := templates.Render(context.Background(), gitOpsSet, gens)
 			if err != nil {
-				// TODO: improve error
 				return err
 			}
 
@@ -77,9 +70,33 @@ func NewGenerateCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable.")
+	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable")
+	cmd.Flags().BoolVar(&disableClusterAccess, "disable-cluster-access", false, "Disable cluster access - no access to Cluster resources will occur")
 
 	return cmd
+}
+
+func makeClients(fakeClients bool, scheme *runtime.Scheme) (corev1.ServicesGetter, client.Client, error) {
+	if fakeClients {
+		return fakeclientgo.NewSimpleClientset().CoreV1(), fake.NewClientBuilder().WithScheme(scheme).Build(), nil
+	}
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		return nil, nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return clientset.CoreV1(), cl, nil
+
 }
 
 func outputResources(resources []*unstructured.Unstructured) error {
@@ -132,7 +149,6 @@ func newLogger() (logr.Logger, error) {
 func readFileAsGitOpsSet(scheme *runtime.Scheme, filename string) (*templatesv1.GitOpsSet, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
-		// TODO: improve error
 		return nil, err
 	}
 

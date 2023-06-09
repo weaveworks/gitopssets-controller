@@ -72,7 +72,7 @@ func main() {
 	}
 	setupLog.Info("Enabled generators", "generators", enabledGenerators)
 
-	scheme, err := setup.NewScheme(enabledGenerators)
+	scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
 	if err != nil {
 		setupLog.Error(err, "unable to create scheme")
 		os.Exit(1)

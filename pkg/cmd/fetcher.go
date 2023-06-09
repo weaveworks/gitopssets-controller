@@ -8,15 +8,14 @@ import (
 	"strings"
 
 	"github.com/fluxcd/pkg/tar"
-	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // NewProxyArchiveFetcher creates and returns a new ProxyArchiveFetcher ready for
 // use.
-func NewProxyArchiveFetcher(cl *kubernetes.Clientset) *ProxyArchiveFetcher {
+func NewProxyArchiveFetcher(cl corev1.ServicesGetter) *ProxyArchiveFetcher {
 	return &ProxyArchiveFetcher{
-		Clientset: cl,
-
+		Client:       cl,
 		maxUntarSize: tar.UnlimitedUntarSize,
 	}
 }
@@ -24,7 +23,7 @@ func NewProxyArchiveFetcher(cl *kubernetes.Clientset) *ProxyArchiveFetcher {
 // ProxyArchiveFetcher uses a Kubernetes Client to make a "proxy" request
 // via a Kubernetes Service to fetch the archiveURL.
 type ProxyArchiveFetcher struct {
-	*kubernetes.Clientset
+	Client corev1.ServicesGetter
 
 	// TODO allow configuring this.
 	maxUntarSize int
@@ -38,7 +37,7 @@ func (p *ProxyArchiveFetcher) Fetch(archiveURL, checksum, dir string) error {
 		return err
 	}
 
-	responseWrapper := p.Clientset.CoreV1().Services(parsed.namespace).ProxyGet(parsed.scheme, parsed.name, parsed.port, parsed.path, nil)
+	responseWrapper := p.Client.Services(parsed.namespace).ProxyGet(parsed.scheme, parsed.name, parsed.port, parsed.path, nil)
 	b, err := responseWrapper.DoRaw(context.TODO())
 	if err != nil {
 		return err
