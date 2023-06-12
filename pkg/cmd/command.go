@@ -36,42 +36,15 @@ func NewGenerateCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "generate [filename]",
-		Short: "Render GitOpsSets from the CLI",
+		Short: "Render GitOpsSet from the CLI",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
-			if err != nil {
-				return err
-			}
-
-			gitOpsSet, err := readFileAsGitOpsSet(scheme, args[0])
-			if err != nil {
-				return err
-			}
-
-			logger, err := newLogger()
-			if err != nil {
-				return err
-			}
-
-			services, cl, err := makeClients(disableClusterAccess, scheme)
-			if err != nil {
-				return err
-			}
-
-			factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), http.DefaultClient)
-			gens := instantiateGenerators(factories, logger, cl)
-			generated, err := templates.Render(context.Background(), gitOpsSet, gens)
-			if err != nil {
-				return err
-			}
-
-			return outputResources(generated)
+			return renderGitOpsSet(args[0], enabledGenerators, disableClusterAccess, os.Stdout)
 		},
 	}
 
 	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable")
-	cmd.Flags().BoolVar(&disableClusterAccess, "disable-cluster-access", false, "Disable cluster access - no access to Cluster resources will occur")
+	cmd.Flags().BoolVarP(&disableClusterAccess, "disable-cluster-access", "d", false, "Disable cluster access - no access to Cluster resources will occur")
 
 	return cmd
 }
@@ -99,12 +72,12 @@ func makeClients(fakeClients bool, scheme *runtime.Scheme) (corev1.ServicesGette
 
 }
 
-func outputResources(resources []*unstructured.Unstructured) error {
+func outputResources(out io.Writer, resources []*unstructured.Unstructured) error {
 	for _, r := range resources {
-		if _, err := fmt.Fprintln(os.Stdout, "---"); err != nil {
+		if _, err := fmt.Fprintln(out, "---"); err != nil {
 			return err
 		}
-		if err := marshalOutput(os.Stdout, r); err != nil {
+		if err := marshalOutput(out, r); err != nil {
 			return err
 		}
 	}
@@ -112,8 +85,8 @@ func outputResources(resources []*unstructured.Unstructured) error {
 	return nil
 }
 
-func marshalOutput(out io.Writer, output runtime.Object) error {
-	data, err := yaml.Marshal(output)
+func marshalOutput(out io.Writer, obj runtime.Object) error {
+	data, err := yaml.Marshal(obj)
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %v", err)
 	}
@@ -173,4 +146,35 @@ func bytesToGitOpsSet(scheme *runtime.Scheme, b []byte) (*templatesv1.GitOpsSet,
 	}
 
 	return newObj.(*templatesv1.GitOpsSet), scheme.Convert(u, newObj, nil)
+}
+
+func renderGitOpsSet(filename string, enabledGenerators []string, disableClusterAccess bool, out io.Writer) error {
+	scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
+	if err != nil {
+		return err
+	}
+
+	gitOpsSet, err := readFileAsGitOpsSet(scheme, filename)
+	if err != nil {
+		return err
+	}
+
+	logger, err := newLogger()
+	if err != nil {
+		return err
+	}
+
+	services, cl, err := makeClients(disableClusterAccess, scheme)
+	if err != nil {
+		return err
+	}
+
+	factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), http.DefaultClient)
+	gens := instantiateGenerators(factories, logger, cl)
+	generated, err := templates.Render(context.Background(), gitOpsSet, gens)
+	if err != nil {
+		return err
+	}
+
+	return outputResources(out, generated)
 }
