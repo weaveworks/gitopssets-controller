@@ -9,7 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	git "github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,19 +17,24 @@ import (
 type GitRepositoryGenerator struct {
 	client.Client
 	logr.Logger
+
+	Fetcher parser.ArchiveFetcher
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the GitRepositoryGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
-	return NewGenerator(l, c)
+func GeneratorFactory(fetcher parser.ArchiveFetcher) generators.GeneratorFactory {
+	return func(l logr.Logger, c client.Client) generators.Generator {
+		return NewGenerator(l, c, fetcher)
+	}
 }
 
 // NewGenerator creates and returns a new GitRepository generator.
-func NewGenerator(l logr.Logger, c client.Client) *GitRepositoryGenerator {
+func NewGenerator(l logr.Logger, c client.Client, fetcher parser.ArchiveFetcher) *GitRepositoryGenerator {
 	return &GitRepositoryGenerator{
-		Client: c,
-		Logger: l,
+		Client:  c,
+		Logger:  l,
+		Fetcher: fetcher,
 	}
 }
 
@@ -74,7 +79,7 @@ func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context,
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
 		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
 
-	parser := git.NewRepositoryParser(g.Logger)
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
 
 	return parser.GenerateFromFiles(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.GitRepository.Files)
 }
@@ -95,7 +100,7 @@ func (g *GitRepositoryGenerator) generateParamsFromGitDirectories(ctx context.Co
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
 		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
 
-	parser := git.NewRepositoryParser(g.Logger)
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
 
 	return parser.GenerateFromDirectories(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.GitRepository.Directories)
 }

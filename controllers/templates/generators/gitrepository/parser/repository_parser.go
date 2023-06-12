@@ -1,4 +1,4 @@
-package git
+package parser
 
 import (
 	"context"
@@ -7,31 +7,28 @@ import (
 	"path/filepath"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/fluxcd/pkg/http/fetch"
-	"github.com/fluxcd/pkg/tar"
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
 )
 
-type archiveFetcher interface {
+// ArchiveFetcher implementations should get the URL, validate the contents
+// against the checksum and leave the unpacked version in the dir.
+type ArchiveFetcher interface {
 	Fetch(archiveURL, checksum, dir string) error
 }
-
-// retries is the number of retries to make when fetching artifacts.
-const retries = 9
 
 // RepositoryParser fetches archives from a GitRepository and parses the
 // resources from them.
 type RepositoryParser struct {
-	fetcher archiveFetcher
+	fetcher ArchiveFetcher
 	logr.Logger
 }
 
 // NewRepositoryParser creates and returns a RepositoryParser.
-func NewRepositoryParser(logger logr.Logger) *RepositoryParser {
-	return &RepositoryParser{fetcher: fetch.NewArchiveFetcher(retries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""), Logger: logger}
+func NewRepositoryParser(logger logr.Logger, fetcher ArchiveFetcher) *RepositoryParser {
+	return &RepositoryParser{fetcher: fetcher, Logger: logger}
 }
 
 // GenerateFromFiles extracts the archive and processes the files.

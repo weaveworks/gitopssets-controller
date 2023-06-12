@@ -1,69 +1,40 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
-	"golang.org/x/exp/slices"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/http/fetch"
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/fluxcd/pkg/tar"
 	flag "github.com/spf13/pflag"
-	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1alpha1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/weaveworks/gitopssets-controller/controllers"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
 
 const controllerName = "GitOpsSet"
 
-var allGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix"}
-var defaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix"}
-
-func initScheme(enabledGenerators []string) {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(sourcev1.AddToScheme(scheme))
-	utilruntime.Must(templatesv1alpha1.AddToScheme(scheme))
-
-	if isGeneratorEnabled(enabledGenerators, "Cluster") {
-		utilruntime.Must(clustersv1.AddToScheme(scheme))
-	}
-
-	if isGeneratorEnabled(enabledGenerators, "ImagePolicy") {
-		utilruntime.Must(imagev1.AddToScheme(scheme))
-	}
-	//+kubebuilder:scaffold:scheme
-}
+// retries is the number of retries to make when fetching artifacts.
+// TODO: Make this configurable?
+const retries = 9
 
 func main() {
 	var (
@@ -87,21 +58,25 @@ func main() {
 	flag.BoolVar(&watchAllNamespaces, "watch-all-namespaces", true,
 		"Watch for custom resources in all namespaces, if set to false it will only watch the runtime namespace.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
-	flag.StringSliceVar(&enabledGenerators, "enabled-generators", defaultGenerators, "Generators to enable.")
+	flag.StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable.")
 
 	logOptions.BindFlags(flag.CommandLine)
 	clientOptions.BindFlags(flag.CommandLine)
 
 	flag.Parse()
 
-	err := validateEnabledGenerators(enabledGenerators)
+	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {
 		setupLog.Error(err, "invalid enabled generators")
 		os.Exit(1)
 	}
 	setupLog.Info("Enabled generators", "generators", enabledGenerators)
 
-	initScheme(enabledGenerators)
+	scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
+	if err != nil {
+		setupLog.Error(err, "unable to create scheme")
+		os.Exit(1)
+	}
 
 	watchNamespace := ""
 	if !watchAllNamespaces {
@@ -156,15 +131,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	fetcher := fetch.NewArchiveFetcher(retries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
+
 	if err = (&controllers.GitOpsSetReconciler{
 		Client:                mgr.GetClient(),
 		DefaultServiceAccount: defaultServiceAccount,
 		Config:                mgr.GetConfig(),
 		Scheme:                mgr.GetScheme(),
 		Mapper:                mapper,
-		Generators:            getGenerators(enabledGenerators),
-		Metrics:               metricsH,
-		EventRecorder:         eventRecorder,
+		// TODO: Figure how to configure the DefaultClient.
+		Generators:    setup.GetGenerators(enabledGenerators, fetcher, http.DefaultClient),
+		Metrics:       metricsH,
+		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", controllerName)
 		os.Exit(1)
@@ -185,50 +163,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func validateEnabledGenerators(enabledGenerators []string) error {
-	for _, generator := range enabledGenerators {
-		if !slices.Contains(allGenerators, generator) {
-			return fmt.Errorf("invalid generator %q. valid values: %q", generator, allGenerators)
-		}
-	}
-	return nil
-}
-
-func getGenerators(enabledGenerators []string) map[string]generators.GeneratorFactory {
-	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
-		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
-		"PullRequests":  pullrequests.GeneratorFactory,
-		"Cluster":       cluster.GeneratorFactory,
-		"ImagePolicy":   imagepolicy.GeneratorFactory,
-		// TODO: Figure out how to configure the client
-		"APIClient": apiclient.GeneratorFactory(http.DefaultClient),
-	})
-
-	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
-		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
-		"PullRequests":  pullrequests.GeneratorFactory,
-		"Cluster":       cluster.GeneratorFactory,
-		// TODO: Figure out how to configure the client
-		"APIClient":   apiclient.GeneratorFactory(http.DefaultClient),
-		"ImagePolicy": imagepolicy.GeneratorFactory,
-		"Matrix":      matrix.GeneratorFactory(matrixGenerators),
-	})
-}
-
-func filterEnabledGenerators(enabledGenerators []string, gens map[string]generators.GeneratorFactory) map[string]generators.GeneratorFactory {
-	newGenerators := make(map[string]generators.GeneratorFactory)
-	for generatorName := range gens {
-		if isGeneratorEnabled(enabledGenerators, generatorName) {
-			newGenerators[generatorName] = gens[generatorName]
-		}
-	}
-	return newGenerators
-}
-
-func isGeneratorEnabled(enabledGenerators []string, generatorName string) bool {
-	return slices.Contains(enabledGenerators, generatorName)
 }

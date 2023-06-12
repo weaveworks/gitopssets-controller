@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: gitopssets-controller
   name: gitopsset-serviceaccount
+  namespace: default
 spec:
   serviceAccountName: demo-sa
   generators:

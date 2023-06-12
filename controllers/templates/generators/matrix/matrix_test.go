@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/pkg/http/fetch"
+	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
@@ -226,7 +228,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewGenerator(logr.Discard(), newFakeClient(t, tt.objects...), map[string]generators.GeneratorFactory{
 				"List":          list.GeneratorFactory,
-				"GitRepository": gitrepository.GeneratorFactory,
+				"GitRepository": gitrepository.GeneratorFactory(fetch.NewArchiveFetcher(1, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")),
 			})
 			matrix, err := g.Generate(context.TODO(), tt.sg, tt.ks)
 			test.AssertErrorMatch(t, tt.expectedErrorStr, err)
@@ -278,7 +280,7 @@ func TestDisabledGenerators(t *testing.T) {
 func TestInterval(t *testing.T) {
 	gen := NewGenerator(logr.Discard(), nil, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
-		"GitRepository": gitrepository.GeneratorFactory,
+		"GitRepository": gitrepository.GeneratorFactory(nil),
 		"PullRequests":  pullrequests.GeneratorFactory,
 	})
 

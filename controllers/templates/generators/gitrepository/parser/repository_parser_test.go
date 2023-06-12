@@ -1,4 +1,4 @@
-package git
+package parser
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fluxcd/pkg/http/fetch"
+	"github.com/fluxcd/pkg/tar"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -47,7 +49,7 @@ func TestGenerateFromFiles(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 	for _, tt := range fetchTests {
 		t.Run(tt.description, func(t *testing.T) {
-			parser := NewRepositoryParser(logr.Discard())
+			parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 			parsed, err := parser.GenerateFromFiles(context.TODO(), srv.URL+tt.filename, strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
 			if err != nil {
 				t.Fatal(err)
@@ -61,7 +63,7 @@ func TestGenerateFromFiles(t *testing.T) {
 }
 
 func TestGenerateFromFiles_bad_yaml(t *testing.T) {
-	parser := NewRepositoryParser(logr.Discard())
+	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/bad_files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/bad_files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/dev.yaml"}})
@@ -71,7 +73,7 @@ func TestGenerateFromFiles_bad_yaml(t *testing.T) {
 }
 
 func TestGenerateFromFiles_missing_file(t *testing.T) {
-	parser := NewRepositoryParser(logr.Discard())
+	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
@@ -81,7 +83,7 @@ func TestGenerateFromFiles_missing_file(t *testing.T) {
 }
 
 func TestGenerateFromFiles_missing_url(t *testing.T) {
-	parser := NewRepositoryParser(logr.Discard())
+	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
@@ -161,7 +163,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 	for _, tt := range fetchTests {
 		t.Run(tt.description, func(t *testing.T) {
-			parser := NewRepositoryParser(logr.Discard())
+			parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 			parsed, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+tt.filename,
 				strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
 			if err != nil {
@@ -177,7 +179,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 }
 
 func TestGenerateFromDirectories_missing_dir(t *testing.T) {
-	parser := NewRepositoryParser(logr.Discard())
+	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	generated, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/directories.tar.gz",
@@ -192,7 +194,7 @@ func TestGenerateFromDirectories_missing_dir(t *testing.T) {
 }
 
 func TestGenerateFromDirectories_missing_url(t *testing.T) {
-	parser := NewRepositoryParser(logr.Discard())
+	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")),
