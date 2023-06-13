@@ -1067,6 +1067,35 @@ data:
   version: 1.0.0
 ```
 
+#### LabelSelector
+
+Alternatively, you can configure the Config generator:
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: config-sample
+spec:
+  generators:
+    - config:
+        kind: ConfigMap
+        selector:
+          matchLabels:
+            "com.example/testing": "label"
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .Element.name }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.name }}"
+        data:
+          generatedValue: "{{ .Element.demo }}"
+```
+This will select all `ConfigMap` resources in the same namespace as the GitOpsSet with the matching set of labels, a template _per_ matching ConfigMap will be rendered.
+
 ## Templating functions
 
 Currently, the [Sprig](http://masterminds.github.io/sprig/) functions are available in the templating, with some functions removed[^sprig] for security reasons.

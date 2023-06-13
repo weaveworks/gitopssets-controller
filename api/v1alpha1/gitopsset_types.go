@@ -41,8 +41,14 @@ type ConfigGenerator struct {
 	Kind string `json:"kind"`
 
 	// Name of the referent.
-	// +required
-	Name string `json:"name"`
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Label selector for resources.
+	// All Secrets and ConfigMaps matching this selector in the same namespace
+	// as the GitOpsSet will be used for generation.
+	// +optional
+	Selector *metav1.LabelSelector `json:"clusterSelector,omitempty"`
 }
 
 // ListGenerator generates from a hard-coded list.

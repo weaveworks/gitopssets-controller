@@ -2,14 +2,18 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 )
 
 // ConfigGenerator generates a single resource from a referenced ConfigMap or
@@ -41,24 +45,34 @@ func (g *ConfigGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsSe
 	if sg.Config == nil {
 		return nil, nil
 	}
+
+	if sg.Config.Selector == nil && sg.Config.Name == "" {
+		return nil, errors.New("name or labelSelector must be provided")
+	}
+
+	selector, err := metav1.LabelSelectorAsSelector(sg.Config.Selector)
+	if err != nil {
+		return nil, err
+	}
+
 	g.Logger.Info("generating params from Config generator")
 
 	var paramsList []map[string]any
 
 	switch sg.Config.Kind {
 	case "ConfigMap":
-		data, err := configMapToParams(ctx, g.Client, client.ObjectKey{Name: sg.Config.Name, Namespace: ks.GetNamespace()})
+		data, err := configMapToParams(ctx, g.Client, client.ObjectKey{Name: sg.Config.Name, Namespace: ks.GetNamespace()}, selector)
 		if err != nil {
 			return nil, err
 		}
-		paramsList = append(paramsList, data)
+		paramsList = data
 
 	case "Secret":
-		data, err := secretToParams(ctx, g.Client, client.ObjectKey{Name: sg.Config.Name, Namespace: ks.GetNamespace()})
+		data, err := secretToParams(ctx, g.Client, client.ObjectKey{Name: sg.Config.Name, Namespace: ks.GetNamespace()}, selector)
 		if err != nil {
 			return nil, err
 		}
-		paramsList = append(paramsList, data)
+		paramsList = data
 
 	default:
 		return nil, fmt.Errorf("unknown Config Kind %q %q", sg.Config.Kind, sg.Config.Name)
@@ -72,31 +86,61 @@ func (g *ConfigGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Dura
 	return generators.NoRequeueInterval
 }
 
-func configMapToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey) (map[string]any, error) {
-	var configMap corev1.ConfigMap
+func configMapToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey, selector labels.Selector) ([]map[string]any, error) {
+	data := []map[string]string{}
 
-	if err := k8sClient.Get(ctx, key, &configMap); err != nil {
+	if key.Name != "" {
+		var configMap corev1.ConfigMap
+		if err := k8sClient.Get(ctx, key, &configMap); err != nil {
+			return nil, err
+		}
+		data = append(data, configMap.Data)
+	}
+
+	configMaps := corev1.ConfigMapList{}
+	if err := k8sClient.List(ctx, &configMaps, &client.ListOptions{LabelSelector: selector}); err != nil {
 		return nil, err
 	}
 
-	return mapToAnyMap(configMap.Data), nil
+	for i := range configMaps.Items {
+		data = append(data, configMaps.Items[i].Data)
+	}
+
+	return mapToAnyMaps(data), nil
 }
 
-func secretToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey) (map[string]any, error) {
-	var secret corev1.Secret
+func secretToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey, selector labels.Selector) ([]map[string]any, error) {
+	data := []map[string][]byte{}
 
-	if err := k8sClient.Get(ctx, key, &secret); err != nil {
+	if key.Name != "" {
+		var secret corev1.Secret
+		if err := k8sClient.Get(ctx, key, &secret); err != nil {
+			return nil, err
+		}
+		data = append(data, secret.Data)
+	}
+
+	secrets := corev1.SecretList{}
+	if err := k8sClient.List(ctx, &secrets, &client.ListOptions{LabelSelector: selector}); err != nil {
 		return nil, err
 	}
 
-	return mapToAnyMap(secret.Data), nil
+	for i := range secrets.Items {
+		data = append(data, secrets.Items[i].Data)
+	}
+
+	return mapToAnyMaps(data), nil
 }
 
-func mapToAnyMap[V any](m map[string]V) map[string]any {
-	result := map[string]any{}
+func mapToAnyMaps[V any](maps []map[string]V) []map[string]any {
+	result := []map[string]any{}
 
-	for k, v := range m {
-		result[k] = v
+	for _, m := range maps {
+		newMap := map[string]any{}
+		for k, v := range m {
+			newMap[k] = v
+		}
+		result = append(result, newMap)
 	}
 
 	return result

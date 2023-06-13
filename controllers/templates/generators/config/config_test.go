@@ -81,6 +81,33 @@ func TestConfigGenerator_Generate_with_errors(t *testing.T) {
 			},
 			wantErr: `unknown Config Kind "Database" "test-database"`,
 		},
+		{
+			name: "generator not referencing any resources",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Config: &templatesv1.ConfigGenerator{
+					Kind: "ConfigMap",
+				},
+			},
+			wantErr: "name or labelSelector must be provided",
+		},
+		{
+			name: "generator with invalid label selector",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Config: &templatesv1.ConfigGenerator{
+					Kind: "ConfigMap",
+					Selector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "com.example/team",
+								Operator: "notine",
+								Values:   []string{"testing"},
+							},
+						},
+					},
+				},
+			},
+			wantErr: `"notine" is not a valid label selector operator`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -154,6 +181,62 @@ func TestConfigGenerator_Generate(t *testing.T) {
 				{
 					"test-key1": []byte("test-value1"),
 					"test-key2": []byte("test-value2"),
+				},
+			},
+		},
+		{
+			name: "generator selecting by label",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Config: &templatesv1.ConfigGenerator{
+					Kind: "Secret",
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"test-label": "test",
+						},
+					},
+				},
+			},
+			objects: []runtime.Object{
+				test.NewSecret(func(cm *corev1.Secret) {
+					cm.ObjectMeta.Name = "test-secret-1"
+					cm.ObjectMeta.Namespace = "testing"
+					cm.ObjectMeta.Labels = map[string]string{
+						"test-label": "test",
+					}
+					cm.Data = map[string][]byte{
+						"test-key1": []byte("test-value"),
+						"test-key2": []byte("test-value"),
+					}
+				}),
+				test.NewSecret(func(cm *corev1.Secret) {
+					cm.ObjectMeta.Name = "test-secret-2"
+					cm.ObjectMeta.Labels = map[string]string{
+						"test-label": "test",
+					}
+					cm.ObjectMeta.Namespace = "testing"
+					cm.Data = map[string][]byte{
+						"test-key3": []byte("test-value"),
+						"test-key4": []byte("test-value"),
+					}
+				}),
+				// This Secret does not have the matching labels.
+				test.NewSecret(func(cm *corev1.Secret) {
+					cm.ObjectMeta.Name = "test-secret-3"
+					cm.ObjectMeta.Namespace = "testing"
+					cm.Data = map[string][]byte{
+						"test-key5": []byte("test-value"),
+						"test-key6": []byte("test-value"),
+					}
+				}),
+			},
+			want: []map[string]any{
+				{
+					"test-key1": []byte("test-value"),
+					"test-key2": []byte("test-value"),
+				},
+				{
+					"test-key3": []byte("test-value"),
+					"test-key4": []byte("test-value"),
 				},
 			},
 		},
