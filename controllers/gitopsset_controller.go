@@ -15,13 +15,13 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -45,6 +45,8 @@ var accessor = meta.NewAccessor()
 const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
 	imagePolicyIndexKey   string = ".metadata.imagePolicy"
+	configMapIndexKey     string = ".metadata.configMap"
+	secretIndexKey        string = ".metadata.secret"
 )
 
 type eventRecorder interface {
@@ -308,12 +310,30 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("failed setting index fields: %w", err)
 	}
 
+	if err := mgr.GetCache().IndexField(
+		context.TODO(), &templatesv1.GitOpsSet{}, configMapIndexKey, indexConfig("ConfigMap")); err != nil {
+		return fmt.Errorf("failed setting index fields: %w", err)
+	}
+
+	if err := mgr.GetCache().IndexField(
+		context.TODO(), &templatesv1.GitOpsSet{}, secretIndexKey, indexConfig("Secret")); err != nil {
+		return fmt.Errorf("failed setting index fields: %w", err)
+	}
+
 	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &sourcev1.GitRepository{}},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.configMapToGitOpsSet),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(r.secretToGitOpsSet),
 		)
 
 	// Only watch for GitopsCluster objects if the Cluster generator is enabled.
@@ -360,7 +380,7 @@ func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconc
 	var result []reconcile.Request
 	for _, v := range list.Items {
 		if matchCluster(gitOpsCluster, &v) {
-			result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+			result = append(result, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&v)})
 		}
 	}
 
@@ -439,39 +459,37 @@ func selectorMatchesCluster(labelSelector metav1.LabelSelector, cluster *cluster
 func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
 	// TODO: Store the applied version of GitRepositories in the Status, and don't
 	// retrigger if the commit-id isn't different.
+	return r.queryIndexedGitOpsSets(gitRepositoryIndexKey, obj)
+}
+
+func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(imagePolicyIndexKey, obj)
+}
+
+func (r *GitOpsSetReconciler) queryIndexedGitOpsSets(key string, obj client.Object) []reconcile.Request {
 	ctx := context.Background()
 	var list templatesv1.GitOpsSetList
 
-	if err := r.List(ctx, &list, client.MatchingFields{
-		gitRepositoryIndexKey: client.ObjectKeyFromObject(obj).String(),
-	}); err != nil {
+	if err := r.List(ctx, &list,
+		client.MatchingFields{key: client.ObjectKeyFromObject(obj).String()},
+		client.InNamespace(obj.GetNamespace())); err != nil {
 		return nil
 	}
 
 	result := []reconcile.Request{}
-	for _, v := range list.Items {
-		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
+	for i := range list.Items {
+		result = append(result, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&list.Items[i])})
 	}
 
 	return result
 }
 
-func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
-	ctx := context.Background()
-	var list templatesv1.GitOpsSetList
+func (r *GitOpsSetReconciler) configMapToGitOpsSet(obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(configMapIndexKey, obj)
+}
 
-	if err := r.List(ctx, &list, client.MatchingFields{
-		imagePolicyIndexKey: client.ObjectKeyFromObject(obj).String(),
-	}); err != nil {
-		return nil
-	}
-
-	result := []reconcile.Request{}
-	for _, v := range list.Items {
-		result = append(result, reconcile.Request{NamespacedName: types.NamespacedName{Name: v.GetName(), Namespace: v.GetNamespace()}})
-	}
-
-	return result
+func (r *GitOpsSetReconciler) secretToGitOpsSet(obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(secretIndexKey, obj)
 }
 
 func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
@@ -514,6 +532,40 @@ func indexGitRepositories(o client.Object) []string {
 	}
 
 	return referencedNames
+}
+
+func indexConfig(kind string) func(o client.Object) []string {
+	return func(o client.Object) []string {
+		ks, ok := o.(*templatesv1.GitOpsSet)
+		if !ok {
+			panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+		}
+
+		referencedResources := []*templatesv1.ConfigGenerator{}
+		for _, gen := range ks.Spec.Generators {
+			if gen.Config != nil && gen.Config.Kind == kind {
+				referencedResources = append(referencedResources, gen.Config)
+			}
+			if gen.Matrix != nil && gen.Matrix.Generators != nil {
+				for _, matrixGen := range gen.Matrix.Generators {
+					if matrixGen.Config != nil && matrixGen.Config.Kind == kind {
+						referencedResources = append(referencedResources, matrixGen.Config)
+					}
+				}
+			}
+		}
+
+		if len(referencedResources) == 0 {
+			return nil
+		}
+
+		referencedNames := []string{}
+		for _, grg := range referencedResources {
+			referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.Name))
+		}
+
+		return referencedNames
+	}
 }
 
 func indexImagePolicies(o client.Object) []string {

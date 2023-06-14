@@ -1,0 +1,27 @@
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: config-sample
+spec:
+  generators:
+    - config:
+        kind: ConfigMap
+        name: test-cm
+  templates:
+    - content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .Element.name }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.name }}"
+        data:
+          generatedValue: "{{ .Element.value }}"

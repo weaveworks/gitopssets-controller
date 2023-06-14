@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"regexp"
 	"sort"
 	"testing"
 
@@ -90,19 +91,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
-	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		updated := &templatesv1.GitOpsSet{}
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		return cond.Message == "1 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
 
 	// Create a second GitopsCluster object and ensure it is created, then check the status of the GitOpsSet
 	gc2 := makeTestGitopsCluster(nsn("default", "test-gc2"), func(g *clustersv1.GitopsCluster) {
@@ -115,18 +104,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc2)))
 	defer deleteObject(t, testEnv, gc2)
 
-	g.Eventually(func() bool {
-		updated := &templatesv1.GitOpsSet{}
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		return cond.Message == "2 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
 }
 
 func TestGenerateNamespace(t *testing.T) {
@@ -161,27 +139,14 @@ func TestGenerateNamespace(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
-	updated := &templatesv1.GitOpsSet{}
-	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		t.Log(updated.Status.Inventory)
-
-		return cond.Message == "2 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
 
 	want := []runtime.Object{
 		test.NewNamespace("engineering-prod-ns"),
 		test.NewNamespace("engineering-preprod-ns"),
 	}
-	test.AssertInventoryHasItems(t, updated, want...)
+	test.AssertInventoryHasItems(t, gs, want...)
 
 	// Namespaces cannot be deleted from envtest
 	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
@@ -224,19 +189,7 @@ func TestReconcilingWithAnnotationChange(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
-	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		updated := &templatesv1.GitOpsSet{}
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		return cond.Message == "2 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
 
 	var cm corev1.ConfigMap
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm))
@@ -256,6 +209,7 @@ func TestReconcilingWithAnnotationChange(t *testing.T) {
 	}
 	test.AssertNoError(t, testEnv.Update(ctx, gs))
 
+	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
 		return testEnv.Get(ctx, client.ObjectKey{Name: "engineering-prod-cm", Namespace: "default"}, &cm) == nil
 	}, timeout).Should(gomega.BeTrue())
@@ -308,19 +262,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	ip.Status.LatestImage = "testing/test:v0.30.0"
 	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
-	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		updated := &templatesv1.GitOpsSet{}
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		return cond.Message == "1 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
 
 	var cm corev1.ConfigMap
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, &cm))
@@ -390,19 +332,7 @@ func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
 	ip.Status.LatestImage = "testing/test:v0.30.0"
 	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
-	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
-		updated := &templatesv1.GitOpsSet{}
-		if err := testEnv.Get(ctx, client.ObjectKeyFromObject(gs), updated); err != nil {
-			return false
-		}
-		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
-		if cond == nil {
-			return false
-		}
-
-		return cond.Message == "2 resources created"
-	}, timeout).Should(gomega.BeTrue())
+	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
 
 	var cm corev1.ConfigMap
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-preprod-demo-cm", Namespace: "default"}, &cm))
@@ -482,18 +412,266 @@ func TestGitOpsSetUpdateOnGitRepoChange(t *testing.T) {
 	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-development-demo")))
 }
 
-func makeTestGitRepository(t *testing.T, archiveURL string) *sourcev1.GitRepository {
-	gr := &sourcev1.GitRepository{
+func TestReconcilingUpdatingConfigMap(t *testing.T) {
+	ctx := context.TODO()
+	src := test.NewConfigMap(func(cm *corev1.ConfigMap) {
+		cm.ObjectMeta.Name = "test-cm"
+		cm.Data = map[string]string{
+			"testKey": "testing",
+		}
+	})
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, src)))
+	defer deleteObject(t, testEnv, src)
+
+	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-git-repo",
+			Name:      "demo-set",
 			Namespace: "default",
 		},
-		Spec: sourcev1.GitRepositorySpec{
-			URL: archiveURL,
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Config: &templatesv1.ConfigGenerator{
+						Name: src.GetName(),
+						Kind: "ConfigMap",
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.testKey }}",
+							}
+						})),
+					},
+				},
+			},
 		},
 	}
 
-	return gr
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(src), src))
+	src.Data["testKey"] = "another-value"
+	test.AssertNoError(t, testEnv.Update(ctx, src))
+
+	want := map[string]string{
+		"testing": "another-value",
+	}
+	waitForConfigMap(t, testEnv, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, want)
+}
+
+func TestReconcilingUpdatingConfigMap_in_matrix(t *testing.T) {
+	ctx := context.TODO()
+	src := test.NewConfigMap(func(cm *corev1.ConfigMap) {
+		cm.ObjectMeta.Name = "test-cm"
+		cm.Data = map[string]string{
+			"testKey": "testing",
+		}
+	})
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, src)))
+	defer deleteObject(t, testEnv, src)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								Config: &templatesv1.ConfigGenerator{
+									Name: src.GetName(),
+									Kind: "ConfigMap",
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"team": "engineering-prod"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.testKey }}",
+								"team":    "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(src), src))
+	src.Data["testKey"] = "another-value"
+	test.AssertNoError(t, testEnv.Update(ctx, src))
+
+	want := map[string]string{
+		"testing": "another-value",
+		"team":    "engineering-prod",
+	}
+	waitForConfigMap(t, testEnv, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, want)
+}
+
+func TestReconcilingUpdatingSecret(t *testing.T) {
+	ctx := context.TODO()
+	src := test.NewSecret(func(s *corev1.Secret) {
+		s.ObjectMeta.Name = "test-secret"
+		s.Data = map[string][]byte{
+			"testKey": []byte("testing"),
+		}
+	})
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, src)))
+	defer deleteObject(t, testEnv, src)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Config: &templatesv1.ConfigGenerator{
+						Name: src.GetName(),
+						Kind: "Secret",
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.testKey | toString }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(src), src))
+	src.Data["testKey"] = []byte("another-value")
+	test.AssertNoError(t, testEnv.Update(ctx, src))
+
+	want := map[string]string{
+		"testing": "another-value",
+	}
+	waitForConfigMap(t, testEnv, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, want)
+}
+
+func TestReconcilingUpdatingSecret_in_matrix(t *testing.T) {
+	ctx := context.TODO()
+	src := test.NewConfigMap(func(cm *corev1.ConfigMap) {
+		cm.ObjectMeta.Name = "test-cm"
+		cm.Data = map[string]string{
+			"testKey": "testing",
+		}
+	})
+
+	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, src)))
+	defer deleteObject(t, testEnv, src)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								Config: &templatesv1.ConfigGenerator{
+									Name: src.GetName(),
+									Kind: "ConfigMap",
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"team": "engineering-prod"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.Data = map[string]string{
+								"testing": "{{ .Element.testKey | toString }}",
+								"team":    "{{ .Element.team }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(src), src))
+	src.Data["testKey"] = "another-value"
+	test.AssertNoError(t, testEnv.Update(ctx, src))
+
+	want := map[string]string{
+		"testing": "another-value",
+		"team":    "engineering-prod",
+	}
+	waitForConfigMap(t, testEnv, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, want)
+}
+
+func waitForConfigMap(t *testing.T, k8sClient client.Client, src client.ObjectKey, want map[string]string) {
+	g := gomega.NewWithT(t)
+	g.Eventually(func() map[string]string {
+		var cm corev1.ConfigMap
+		if err := testEnv.Get(ctx, src, &cm); err != nil {
+			return nil
+		}
+
+		return cm.Data
+	}, timeout).Should(gomega.Equal(want))
 }
 
 func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templatesv1.GitOpsSet, objs ...runtime.Object) {
@@ -516,6 +694,31 @@ func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templa
 		want := generateResourceInventory(objs)
 
 		return cmp.Diff(want, updated.Status.Inventory) == ""
+	}, timeout).Should(gomega.BeTrue())
+}
+
+func waitForGitOpsSetCondition(t *testing.T, k8sClient client.Client, gs *templatesv1.GitOpsSet, message string) {
+	t.Helper()
+	g := gomega.NewWithT(t)
+	g.Eventually(func() bool {
+		updated := &templatesv1.GitOpsSet{}
+		if err := k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(gs), updated); err != nil {
+			return false
+		}
+		cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition)
+		if cond == nil {
+			return false
+		}
+
+		match, err := regexp.MatchString(message, cond.Message)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !match {
+			t.Logf("failed to match %q to %q", message, cond.Message)
+		}
+		return match
 	}, timeout).Should(gomega.BeTrue())
 }
 
@@ -748,4 +951,18 @@ func nsn(namespace, name string) types.NamespacedName {
 		Name:      name,
 		Namespace: namespace,
 	}
+}
+
+func makeTestGitRepository(t *testing.T, archiveURL string) *sourcev1.GitRepository {
+	gr := &sourcev1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-git-repo",
+			Namespace: "default",
+		},
+		Spec: sourcev1.GitRepositorySpec{
+			URL: archiveURL,
+		},
+	}
+
+	return gr
 }

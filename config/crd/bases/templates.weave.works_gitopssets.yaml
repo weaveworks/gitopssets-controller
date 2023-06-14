@@ -166,6 +166,23 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                       type: object
+                    config:
+                      description: ConfigGenerator loads a referenced ConfigMap or
+                        Secret from the Cluster and makes it available as a resource.
+                      properties:
+                        kind:
+                          description: Kind of the referent.
+                          enum:
+                          - ConfigMap
+                          - Secret
+                          type: string
+                        name:
+                          description: Name of the referent.
+                          type: string
+                      required:
+                      - kind
+                      - name
+                      type: object
                     gitRepository:
                       description: GitRepositoryGenerator generates from files in
                         a Flux GitRepository resource.
@@ -356,6 +373,24 @@ spec:
                                         type: object
                                     type: object
                                     x-kubernetes-map-type: atomic
+                                type: object
+                              config:
+                                description: ConfigGenerator loads a referenced ConfigMap
+                                  or Secret from the Cluster and makes it available
+                                  as a resource.
+                                properties:
+                                  kind:
+                                    description: Kind of the referent.
+                                    enum:
+                                    - ConfigMap
+                                    - Secret
+                                    type: string
+                                  name:
+                                    description: Name of the referent.
+                                    type: string
+                                required:
+                                - kind
+                                - name
                                 type: object
                               gitRepository:
                                 description: GitRepositoryGenerator generates from
