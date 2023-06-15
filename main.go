@@ -63,6 +63,8 @@ func main() {
 
 	flag.Parse()
 
+	setupLog.Info("Starting up", "version", Version)
+
 	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {
 		setupLog.Error(err, "invalid enabled generators")

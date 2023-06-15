@@ -55,6 +55,10 @@ jobs:
           fetch-depth: 0 # for git describe
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Get version
+        id: get_version
+        run: echo "::set-output name=VERSION::$(make version)"
+
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
@@ -84,6 +88,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.get_version.outputs.VERSION }}
 
   build-push-helm-chart:
     runs-on: ubuntu-latest

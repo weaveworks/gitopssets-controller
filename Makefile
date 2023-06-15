@@ -74,7 +74,7 @@ e2e-tests: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/manager -ldflags "-X main.Version=${VERSION}" main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -85,12 +85,15 @@ vendor: ## Update vendor directory.
 	go mod tidy
 	go mod vendor
 
+version:
+	@echo $(VERSION)
+
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test vendor ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG} --build-arg VERSION=${VERSION} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
