@@ -71,6 +71,8 @@ func main() {
 
 	ctrl.SetLogger(logger.NewLogger(logOptions))
 
+	setupLog.Info("configuring manager", "version", version.Version)
+
 	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {
 		setupLog.Error(err, "invalid enabled generators")
@@ -158,7 +160,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager", "version", version.Version)
+	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
