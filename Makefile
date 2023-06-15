@@ -1,5 +1,7 @@
 
 VERSION ?= $(shell git describe --tags --always)
+# Strip off leading `v`: v0.12.0 -> 0.12.0
+# Seems to be idiomatic for chart versions: https://helm.sh/docs/topics/charts/#the-chart-file
 CHART_VERSION := $(shell echo $(VERSION) | sed 's/^v//')
 
 # Image URL to use all building/pushing image targets
