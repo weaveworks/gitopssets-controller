@@ -15,13 +15,16 @@ require (
 	github.com/fluxcd/source-controller/api v1.0.0-rc.1
 	github.com/gitops-tools/pkg v0.1.0
 	github.com/go-logr/logr v1.2.4
+	github.com/go-logr/zapr v1.2.3
 	github.com/google/go-cmp v0.5.9
 	github.com/imdario/mergo v0.3.13
 	github.com/jenkins-x/go-scm v1.13.4
 	github.com/onsi/gomega v1.27.5
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/weaveworks/cluster-controller v1.4.1
+	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
 	k8s.io/api v0.26.3
 	k8s.io/apiextensions-apiserver v0.26.3
@@ -51,7 +54,6 @@ require (
 	github.com/fluxcd/pkg/apis/kustomize v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
@@ -99,13 +101,11 @@ require (
 	github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.1.1 // indirect
 	go.starlark.net v0.0.0-20221028183056-acb66ad56dd2 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/oauth2 v0.2.0 // indirect

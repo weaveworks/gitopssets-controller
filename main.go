@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/weaveworks/gitopssets-controller/controllers"
+	"github.com/weaveworks/gitopssets-controller/pkg/version"
 )
 
 var (
@@ -63,7 +64,12 @@ func main() {
 
 	flag.Parse()
 
-	setupLog.Info("Starting up", "version", Version)
+	watchNamespace := ""
+	if !watchAllNamespaces {
+		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
+	}
+
+	ctrl.SetLogger(logger.NewLogger(logOptions))
 
 	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {
@@ -78,12 +84,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	watchNamespace := ""
-	if !watchAllNamespaces {
-		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
-	}
-
-	ctrl.SetLogger(logger.NewLogger(logOptions))
 	restConfig := runtimeclient.GetConfigOrDie(clientOptions)
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                 scheme,
@@ -158,7 +158,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting manager", "version", version.Version)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
