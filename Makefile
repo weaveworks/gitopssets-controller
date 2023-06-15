@@ -1,5 +1,7 @@
 
 VERSION ?= $(shell git describe --tags --always)
+CHART_VERSION := $(shell echo $(VERSION) | sed 's/^v//')
+
 # Image URL to use all building/pushing image targets
 IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -190,10 +192,10 @@ helm-chart: manifests kustomize helmify
 	echo "fullnameOverride: gitopssets" >> charts/gitopssets-controller/values.yaml
 	cp LICENSE charts/gitopssets-controller/LICENSE
 	helm lint charts/gitopssets-controller
-	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination /tmp/helm-repo
+	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(CHART_VERSION) --destination /tmp/helm-repo
 
 publish-helm-chart: helm-chart
-	helm push /tmp/helm-repo/gitopssets-controller-${VERSION}.tgz oci://${CHART_REGISTRY}
+	helm push /tmp/helm-repo/gitopssets-controller-${CHART_VERSION}.tgz oci://${CHART_REGISTRY}
 
 .PHONY: download-crds
 download-crds:
