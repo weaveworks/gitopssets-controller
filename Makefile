@@ -193,7 +193,7 @@ helm-chart: manifests kustomize helmify
 	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination /tmp/helm-repo
 
 publish-helm-chart: helm-chart
-	helm push ./helm-repo-tmp/gitopssets-controller-${VERSION}.tgz oci://${CHART_REGISTRY}
+	helm push /tmp/helm-repo/gitopssets-controller-${VERSION}.tgz oci://${CHART_REGISTRY}
 
 .PHONY: download-crds
 download-crds:
