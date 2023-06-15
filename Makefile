@@ -5,7 +5,7 @@ IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 GEN_API_REF_DOCS_VERSION ?= e327d0730470cbd61b06300f81c5fcf91c23c113
-
+CHART_REGISTRY ?= ghcr.io/weaveworks/charts
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -190,7 +190,10 @@ helm-chart: manifests kustomize helmify
 	echo "fullnameOverride: gitopssets" >> charts/gitopssets-controller/values.yaml
 	cp LICENSE charts/gitopssets-controller/LICENSE
 	helm lint charts/gitopssets-controller
-	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination ./helm-repo-tmp
+	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(VERSION) --destination /tmp/helm-repo
+
+publish-helm-chart: helm-chart
+	helm push ./helm-repo-tmp/gitopssets-controller-${VERSION}.tgz oci://${CHART_REGISTRY}
 
 .PHONY: download-crds
 download-crds:

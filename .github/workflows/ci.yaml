@@ -88,7 +88,7 @@ jobs:
   build-push-helm-chart:
     runs-on: ubuntu-latest
     # only run on tag
-    # if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
@@ -111,33 +111,6 @@ jobs:
           mv linux-amd64/helm /usr/local/bin/helm
           helm version
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1-node16
-        with:
-          aws-access-key-id: "${{ secrets.PUSH_HELM_CHART_S3_ACCESS_KEY_ID }}"
-          aws-secret-access-key: "${{ secrets.PUSH_HELM_CHART_S3_SECRET_ACCESS_KEY }}"
-          aws-region: eu-central-1
-
-      - name: Build helm chart
+      - name: Build and publish chart
         run: |
-          make helm-chart
-
-      - name: Push helm chart to S3
-        run: |
-          set -x
-
-          # By default (branch/main), push to a test helm repo
-          repo="branches/gitopssets/charts"
-
-          if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
-            # dev here is "owned by the dev team"..
-            repo="dev/charts"
-          fi
-
-          cd helm-repo-tmp
-          curl -O -f "https://artifacts.wge.dev.weave.works/${repo}/index.yaml" || echo "no index.yaml found"
-          helm repo index --merge index.yaml --url "https://artifacts.wge.dev.weave.works/${repo}" .
-
-          # copy all files to the bucket
-
-          aws s3 cp --recursive . "s3://weave-gitops-enterprise/${repo}"
+          make publish-helm-chart
