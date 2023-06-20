@@ -55,6 +55,7 @@ func TestGenerate(t *testing.T) {
 			[]map[string]any{
 				{
 					"latestImage":   "testing/test:v0.30.0",
+					"latestTag":     "v0.30.0",
 					"previousImage": "testing/test:v0.29.0",
 				},
 			},
@@ -115,6 +116,14 @@ func TestGenerate_errors(t *testing.T) {
 				PolicyRef: "test-policy",
 			},
 			wantErr: `could not load ImagePolicy: imagepolicies.image.toolkit.fluxcd.io "test-policy" not found`,
+		},
+		{
+			name: "invalid tag string in status",
+			generator: &templatesv1.ImagePolicyGenerator{
+				PolicyRef: "test-policy",
+			},
+			objects: []runtime.Object{test.NewImagePolicy(withImages("testing/test::", "testing/test:v0.29.0"))},
+			wantErr: "repository can only contain the characters `abcdefghijklmnopqrstuvwxyz0123456789_-.",
 		},
 	}
 
