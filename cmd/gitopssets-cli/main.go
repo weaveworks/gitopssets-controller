@@ -11,6 +11,6 @@ func main() {
 		Short: "GitOpsSets CLI",
 	}
 
-	rootCmd.AddCommand(cmd.NewGenerateCommand())
+	rootCmd.AddCommand(cmd.NewGenerateCommand("generate"))
 	cobra.CheckErr(rootCmd.Execute())
 }
