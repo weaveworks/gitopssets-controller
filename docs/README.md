@@ -1073,6 +1073,23 @@ data:
   version: 1.0.0
 ```
 
+**NOTE**: When using a secret, the values are not automatically converted to strings, you will need to convert them to strings if you want to use them as strings.
+
+For a `Secret` with 
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-secret
+  namespace: default
+data:
+  token: dGVzdGluZw==
+```
+To use the the `token` field in the data as a string using the Sprig function [toString](http://masterminds.github.io/sprig/conversion.html).
+
+`{{ .Element.token | toString }}`
+
 ## Templating functions
 
 Currently, the [Sprig](http://masterminds.github.io/sprig/) functions are available in the templating, with some functions removed[^sprig] for security reasons.
