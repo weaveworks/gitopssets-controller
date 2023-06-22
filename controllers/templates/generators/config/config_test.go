@@ -152,8 +152,8 @@ func TestConfigGenerator_Generate(t *testing.T) {
 			},
 			want: []map[string]any{
 				{
-					"test-key1": []byte("test-value1"),
-					"test-key2": []byte("test-value2"),
+					"test-key1": "test-value1",
+					"test-key2": "test-value2",
 				},
 			},
 		},
