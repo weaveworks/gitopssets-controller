@@ -92,11 +92,11 @@ func secretToParams(ctx context.Context, k8sClient client.Client, key client.Obj
 	return mapToAnyMap(secret.Data), nil
 }
 
-func mapToAnyMap[V any](m map[string]V) map[string]any {
+func mapToAnyMap[V string | []byte](m map[string]V) map[string]any {
 	result := map[string]any{}
 
 	for k, v := range m {
-		result[k] = v
+		result[k] = string(v)
 	}
 
 	return result
