@@ -9,6 +9,16 @@ Currently rendering templates operates in two phases:
 
 Please read the [security information](#security) below before using this.
 
+## General behaviour
+
+GitOpsSets can be suspended, by setting the `spec.suspend` flag to be true.
+
+When this is the case, updates will not be applied, no resources created _or_
+deleted.
+
+In addition, a manual reconciliation can be requested by annotating a GitOpsSet
+with the `reconcile.fluxcd.io/requestedAt` annotation.
+
 ## Generation
 
 The simplest generator is the `List` generator.
