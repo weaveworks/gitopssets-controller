@@ -41,3 +41,17 @@ func TestLocalObjectReader_Get_v1beta2GitRepository(t *testing.T) {
 		t.Fatalf("got Artifact URL %q, want %q", wantURL, gr.Status.Artifact.URL)
 	}
 }
+
+func TestLocalObjectReader_Get_v1beta2OCIRepository(t *testing.T) {
+	v := localObjectReader{logger: logr.Discard(), repositoryRoot: "testdata"}
+
+	gr := v1beta2.OCIRepository{}
+	test.AssertNoError(t, v.Get(context.TODO(), client.ObjectKey{Name: "demo-or", Namespace: "testing"}, &gr))
+
+	rootURL, err := filepath.Abs("testdata")
+	test.AssertNoError(t, err)
+	wantURL := "file://" + rootURL + "/demo-or"
+	if gr.Status.Artifact.URL != wantURL {
+		t.Fatalf("got Artifact URL %q, want %q", wantURL, gr.Status.Artifact.URL)
+	}
+}

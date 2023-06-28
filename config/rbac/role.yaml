@@ -59,6 +59,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - source.toolkit.fluxcd.io
+  resources:
+  - ocirepositories
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - templates.weave.works
   resources:
   - gitopssets

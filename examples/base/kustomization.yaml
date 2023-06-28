@@ -1,3 +1,4 @@
 resources:
   - go-demo-gitrepository.yaml
+  - go-demo-ocirepository.yaml
   - role.yaml

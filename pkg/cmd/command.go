@@ -27,7 +27,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
+	"github.com/weaveworks/gitopssets-controller/pkg/parser"
 	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 

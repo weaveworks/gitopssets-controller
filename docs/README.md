@@ -226,6 +226,7 @@ We currently provide these generators:
 - [list](#list-generator)
 - [pullRequests](#pullrequests-generator)
 - [gitRepository](#gitrepository-generator)
+- [ociRepository](#ocirepository-generator)
 - [matrix](#matrix-generator)
 - [apiClient](#apiclient-generator)
 - [cluster](#cluster-generator)
@@ -359,6 +360,48 @@ In this case, all directories that are subdirectories of `examples/kustomize/env
 **Note**: The directory tree detection is restricted to the same directory as the path, no recursion is done.
 
 In fact the path is treated as a [Glob](https://pkg.go.dev/path/filepath#Glob).
+
+### OCIRepository generator
+
+The `OCIRepository` generator operates on [Flux OCIRepositories](https://fluxcd.io/flux/components/source/ocirepositories/).
+
+When an `OCIRepository` is updated, this will trigger a regeneration of templates.
+
+The `OCIRepository` generator operates in exactly the same way as the [GitRepository generator](#gitrepository-generator), except it operates on OCIRepositories.
+
+#### Generation from files
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: oci-repository-sample
+spec:
+  generators:
+    - ociRepository:
+        repositoryRef: go-demo-oci-repo
+        files:
+          - path: examples/generation/dev.yaml
+          - path: examples/generation/production.yaml
+          - path: examples/generation/staging.yaml
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.env }}"
+            com.example/team: "{{ .Element.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.env }}"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+```
 
 ### PullRequests generator
 

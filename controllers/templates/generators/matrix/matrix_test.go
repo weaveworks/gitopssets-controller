@@ -30,7 +30,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 	gr := &templatesv1.GitRepositoryGenerator{
 		RepositoryRef: "test-repository",
-		Files: []templatesv1.GitRepositoryGeneratorFileItem{
+		Files: []templatesv1.RepositoryGeneratorFileItem{
 			{Path: "files/dev.yaml"},
 			{Path: "files/production.yaml"},
 			{Path: "files/staging.yaml"},

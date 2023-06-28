@@ -44,6 +44,7 @@ var accessor = meta.NewAccessor()
 
 const (
 	gitRepositoryIndexKey string = ".metadata.gitRepository"
+	ociRepositoryIndexKey string = ".metadata.ociRepository"
 	imagePolicyIndexKey   string = ".metadata.imagePolicy"
 	configMapIndexKey     string = ".metadata.configMap"
 	secretIndexKey        string = ".metadata.secret"
@@ -86,6 +87,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
+//+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=ocirepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=impersonate
@@ -308,17 +310,22 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Index the GitOpsSets by the GitRepository references they (may) point at.
 	if err := mgr.GetCache().IndexField(
 		context.TODO(), &templatesv1.GitOpsSet{}, gitRepositoryIndexKey, indexGitRepositories); err != nil {
-		return fmt.Errorf("failed setting index fields: %w", err)
+		return fmt.Errorf("failed setting index field for GitRepository: %w", err)
 	}
 
 	if err := mgr.GetCache().IndexField(
 		context.TODO(), &templatesv1.GitOpsSet{}, configMapIndexKey, indexConfig("ConfigMap")); err != nil {
-		return fmt.Errorf("failed setting index fields: %w", err)
+		return fmt.Errorf("failed setting index field for ConfigMap: %w", err)
 	}
 
 	if err := mgr.GetCache().IndexField(
 		context.TODO(), &templatesv1.GitOpsSet{}, secretIndexKey, indexConfig("Secret")); err != nil {
-		return fmt.Errorf("failed setting index fields: %w", err)
+		return fmt.Errorf("failed setting index field for Secret: %w", err)
+	}
+
+	if err := mgr.GetCache().IndexField(
+		context.TODO(), &templatesv1.GitOpsSet{}, ociRepositoryIndexKey, indexOCIRepositories); err != nil {
+		return fmt.Errorf("failed setting index field for OCIRepository: %w", err)
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).
@@ -337,6 +344,13 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		builder.Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.configMapToGitOpsSet),
+		)
+	}
+
+	if r.Generators["OCIRepository"] != nil {
+		builder.Watches(
+			&source.Kind{Type: &sourcev1.OCIRepository{}},
+			handler.EnqueueRequestsFromMapFunc(r.ociRepositoryToGitOpsSet),
 		)
 	}
 
@@ -466,6 +480,10 @@ func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reco
 	return r.queryIndexedGitOpsSets(gitRepositoryIndexKey, obj)
 }
 
+func (r *GitOpsSetReconciler) ociRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(ociRepositoryIndexKey, obj)
+}
+
 func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
 	return r.queryIndexedGitOpsSets(imagePolicyIndexKey, obj)
 }
@@ -533,6 +551,38 @@ func indexGitRepositories(o client.Object) []string {
 	referencedNames := []string{}
 	for _, grg := range referencedRepositories {
 		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.RepositoryRef))
+	}
+
+	return referencedNames
+}
+
+func indexOCIRepositories(o client.Object) []string {
+	ks, ok := o.(*templatesv1.GitOpsSet)
+	if !ok {
+		panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+	}
+
+	referencedRepositories := []*templatesv1.OCIRepositoryGenerator{}
+	for _, gen := range ks.Spec.Generators {
+		if gen.OCIRepository != nil {
+			referencedRepositories = append(referencedRepositories, gen.OCIRepository)
+		}
+		if gen.Matrix != nil && gen.Matrix.Generators != nil {
+			for _, matrixGen := range gen.Matrix.Generators {
+				if matrixGen.OCIRepository != nil {
+					referencedRepositories = append(referencedRepositories, matrixGen.OCIRepository)
+				}
+			}
+		}
+	}
+
+	if len(referencedRepositories) == 0 {
+		return nil
+	}
+
+	referencedNames := []string{}
+	for _, org := range referencedRepositories {
+		referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), org.RepositoryRef))
 	}
 
 	return referencedNames
