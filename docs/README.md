@@ -9,6 +9,16 @@ Currently rendering templates operates in two phases:
 
 Please read the [security information](#security) below before using this.
 
+## General behaviour
+
+GitOpsSets can be suspended, by setting the `spec.suspend` flag to be true.
+
+When this is the case, updates will not be applied, no resources created _or_
+deleted.
+
+In addition, a manual reconciliation can be requested by annotating a GitOpsSet
+with the `reconcile.fluxcd.io/requestedAt` annotation.
+
 ## Generation
 
 The simplest generator is the `List` generator.
@@ -863,6 +873,12 @@ spec:
 The `ImagePolicy` generator works with the [Flux Image Automation](https://fluxcd.io/flux/components/image/).
 
 When an `ImagePolicy` is updated, this will trigger a regeneration of templates.
+
+The generated elements have the following fields:
+
+* latestImage - the latest image from the status field on the `ImagePolicy`
+* latestTag - only the tag part of the latestImage, e.g. will be v0.1 for an image of "testing/image:v0.1"
+* previousImage - the previous image from the status field on the `ImagePolicy`
 
 This can be used simply, to create a deployment with an image...or, combined with a Matrix generator, to manage multiple workloads with the same image.
 

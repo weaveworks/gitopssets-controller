@@ -1,10 +1,19 @@
 # gitopssets-controller
 
-// TODO(user): Add simple overview of use/purpose
+GitOpsSets provide a way to declaratively generate resources in a Kubernetes cluster, generating the values to template resources from multiple sources.
 
 ## Description
 
-// TODO(user): An in-depth paragraph about your project and overview of use
+The gitopssets controller provides generators for creating the inputs to templates.
+
+The `GitOpsSet` CRD declares `generators` which are Go code which generates JSON objects from a set of input parameters.
+
+Creating of resources in the cluster is a two-phase process, _generate_ the template inputs and _render_ the templates with the inputs.
+
+Resources are created, updated and deleted when they are no longer rendered by the templating mechanism.
+
+There are plenty of examples in the [./examples](./examples) directory and full
+documentation in [./docs/](./docs).
 
 ## Getting Started
 
@@ -70,7 +79,7 @@ make run
 
 ## Contributing
 
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+Feel free to open issues against this repository https://github.com/weaveworks/gitopssets-controller
 
 ### How it works
 

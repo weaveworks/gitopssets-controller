@@ -7,6 +7,7 @@ import (
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	"github.com/go-logr/logr"
+	"github.com/google/go-containerregistry/pkg/name"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,10 +60,16 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		return result, nil
 	}
 
-	g.Logger.Info("image policy", "latestImage", repo.Status.LatestImage, "previousImage", repo.Status.ObservedPreviousImage)
+	latestTag, err := name.NewTag(repo.Status.LatestImage)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Logger.Info("image policy", "latestImage", repo.Status.LatestImage, "latestTag", latestTag.TagStr(), "previousImage", repo.Status.ObservedPreviousImage)
 
 	result = append(result, map[string]any{
 		"latestImage":   repo.Status.LatestImage,
+		"latestTag":     latestTag.TagStr(),
 		"previousImage": repo.Status.ObservedPreviousImage,
 	})
 

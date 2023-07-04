@@ -30,12 +30,12 @@ import (
 )
 
 // NewGenerateCommand creates and returns a new Command that renders GitOpsSets.
-func NewGenerateCommand() *cobra.Command {
+func NewGenerateCommand(name string) *cobra.Command {
 	var enabledGenerators []string
 	var disableClusterAccess bool
 
 	cmd := &cobra.Command{
-		Use:   "generate [filename]",
+		Use:   fmt.Sprintf("%s [filename]", name),
 		Short: "Render GitOpsSet from the CLI",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

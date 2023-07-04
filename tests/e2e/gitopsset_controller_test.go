@@ -569,7 +569,7 @@ func TestReconcilingUpdatingSecret(t *testing.T) {
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
 							c.Data = map[string]string{
-								"testing": "{{ .Element.testKey | toString }}",
+								"testing": "{{ .Element.testKey }}",
 							}
 						})),
 					},
@@ -637,7 +637,7 @@ func TestReconcilingUpdatingSecret_in_matrix(t *testing.T) {
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
 							c.Data = map[string]string{
-								"testing": "{{ .Element.testKey | toString }}",
+								"testing": "{{ .Element.testKey }}",
 								"team":    "{{ .Element.team }}",
 							}
 						})),
