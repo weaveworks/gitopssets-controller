@@ -116,9 +116,7 @@ jobs:
           mv linux-amd64/helm /usr/local/bin/helm
           helm version
 
-      - name: Log in to the Container registry
-        run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
-
       - name: Build and publish chart
         run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
           make publish-helm-chart
