@@ -1,3 +1,3 @@
-package version
+package main
 
 var Version = "dev"

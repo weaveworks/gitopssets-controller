@@ -23,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	"github.com/weaveworks/gitopssets-controller/controllers"
-	"github.com/weaveworks/gitopssets-controller/pkg/version"
 )
 
 var (
@@ -71,7 +70,7 @@ func main() {
 
 	ctrl.SetLogger(logger.NewLogger(logOptions))
 
-	setupLog.Info("configuring manager", "version", version.Version)
+	setupLog.Info("configuring manager", "version", Version)
 
 	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {

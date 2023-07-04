@@ -37,7 +37,7 @@ jobs:
       - name: Setup
         uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
+          go-version: 1.20.x
           cache: true
 
       - name: Test
@@ -93,7 +93,7 @@ jobs:
   build-push-helm-chart:
     runs-on: ubuntu-latest
     # only run on tag
-    if: startsWith(github.ref, 'refs/tags/v')
+    # if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
@@ -111,7 +111,7 @@ jobs:
 
       - name: Install Helm
         run: |
-          wget --no-verbose https://get.helm.sh/helm-v3.10.0-linux-amd64.tar.gz
+          wget --no-verbose https://get.helm.sh/helm-v3.12.1-linux-amd64.tar.gz
           tar -zxvf helm-v3.10.0-linux-amd64.tar.gz
           mv linux-amd64/helm /usr/local/bin/helm
           helm version
