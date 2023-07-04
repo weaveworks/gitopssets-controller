@@ -1,10 +1,15 @@
 
+VERSION ?= $(shell git describe --tags --always)
+# Strip off leading `v`: v0.12.0 -> 0.12.0
+# Seems to be idiomatic for chart versions: https://helm.sh/docs/topics/charts/#the-chart-file
+CHART_VERSION := $(shell echo $(VERSION) | sed 's/^v//')
+
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/weaveworks/gitopssets-controller:latest
+IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 GEN_API_REF_DOCS_VERSION ?= e327d0730470cbd61b06300f81c5fcf91c23c113
-
+CHART_REGISTRY ?= ghcr.io/weaveworks/charts
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -69,7 +74,7 @@ e2e-tests: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/manager -ldflags "-X main.Version=${VERSION}" main.go version.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -80,12 +85,15 @@ vendor: ## Update vendor directory.
 	go mod tidy
 	go mod vendor
 
+version:
+	@echo $(VERSION)
+
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test vendor ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG} --build-arg VERSION=${VERSION} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -181,6 +189,18 @@ helmify:
 .PHONY: helm
 helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir ../weave-gitops-enterprise/charts/gitopssets-controller
+
+.PHONY: helm-chart
+helm-chart: manifests kustomize helmify
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default | $(HELMIFY) -crd-dir charts/gitopssets-controller
+	echo "fullnameOverride: gitopssets" >> charts/gitopssets-controller/values.yaml
+	cp LICENSE charts/gitopssets-controller/LICENSE
+	helm lint charts/gitopssets-controller
+	helm package charts/gitopssets-controller --app-version $(VERSION) --version $(CHART_VERSION) --destination /tmp/helm-repo
+
+publish-helm-chart: helm-chart
+	helm push /tmp/helm-repo/gitopssets-controller-${CHART_VERSION}.tgz oci://${CHART_REGISTRY}
 
 .PHONY: download-crds
 download-crds:

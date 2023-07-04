@@ -63,6 +63,15 @@ func main() {
 
 	flag.Parse()
 
+	watchNamespace := ""
+	if !watchAllNamespaces {
+		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
+	}
+
+	ctrl.SetLogger(logger.NewLogger(logOptions))
+
+	setupLog.Info("configuring manager", "version", Version)
+
 	err := setup.ValidateEnabledGenerators(enabledGenerators)
 	if err != nil {
 		setupLog.Error(err, "invalid enabled generators")
@@ -76,12 +85,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	watchNamespace := ""
-	if !watchAllNamespaces {
-		watchNamespace = os.Getenv("RUNTIME_NAMESPACE")
-	}
-
-	ctrl.SetLogger(logger.NewLogger(logOptions))
 	restConfig := runtimeclient.GetConfigOrDie(clientOptions)
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme:                 scheme,
