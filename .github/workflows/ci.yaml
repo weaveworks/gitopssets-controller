@@ -118,5 +118,5 @@ jobs:
 
       - name: Build and publish chart
         run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password-stdin
+          echo ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }} | helm registry login ${{ env.REGISTRY }} --username ${{ secrets.BUILD_BOT_USER }} --password-stdin
           make publish-helm-chart
