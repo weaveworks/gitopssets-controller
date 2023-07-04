@@ -1,0 +1,39 @@
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: dynamic-memory-reservations
+  namespace: flux-system
+spec:
+  serviceAccountName: demo-sa
+  generators:
+    - apiClient:
+        interval: 24h
+        endpoint: http://weaveworks-prometheus-prometheus.prometheus:9090/api/v1/query?query=max%28max_over_time%28container_memory_usage_bytes%7Bcontainer%3D%22podinfod%22%2Cpod%3D~%22podinfo-.%2A%22%7D%5B30d%5D%29%29by%28container%29%2F1024
+        singleElement: true
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: podinfo
+          namespace: flux-system
+        spec:
+          patches:
+          - patch: |-
+              - op: replace
+                path: /spec/template/spec/containers/0/resources/limits/memory
+                value: {{ with index .Element.data.result 0}}{{ with index .value 1 }}{{ round (mulf . 1.20) 0 }}{{ end }}{{ end }}Ki
+              - op: replace
+                path: /spec/template/spec/containers/0/resources/requests/memory
+                value: {{ with index .Element.data.result 0}}{{ round (index .value 1) 0 }}{{ end }}Ki
+            target:
+              kind: Deployment
+          interval: 5m
+          path: ./apps/podinfo
+          targetNamespace: flux-system
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: flux-system
+            namespace: flux-system
