@@ -93,7 +93,7 @@ jobs:
   build-push-helm-chart:
     runs-on: ubuntu-latest
     # only run on tag
-    # if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read # for actions/checkout to fetch code
     steps:
