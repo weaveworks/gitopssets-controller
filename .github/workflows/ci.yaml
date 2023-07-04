@@ -116,7 +116,13 @@ jobs:
           mv linux-amd64/helm /usr/local/bin/helm
           helm version
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and publish chart
         run: |
-          echo ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }} | helm registry login ${{ env.REGISTRY }} --username ${{ secrets.BUILD_BOT_USER }} --password-stdin
           make publish-helm-chart
