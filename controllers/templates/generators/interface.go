@@ -11,7 +11,7 @@ import (
 )
 
 // GeneratorFactory is a way to create a per-reconciliation generator.
-type GeneratorFactory func(logr.Logger, client.Client) Generator
+type GeneratorFactory func(logr.Logger, client.Reader) Generator
 
 // Generator defines the interface implemented by all GitOpsSet generators.
 type Generator interface {
