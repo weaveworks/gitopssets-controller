@@ -3,6 +3,7 @@ module github.com/weaveworks/gitopssets-controller
 go 1.20
 
 require (
+	dario.cat/mergo v1.0.0
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/fluxcd/image-reflector-controller/api v0.27.1

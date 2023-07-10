@@ -181,6 +181,16 @@ type GitRepositoryGenerator struct {
 type MatrixGenerator struct {
 	// Generators is a list of generators to be combined.
 	Generators []GitOpsSetNestedGenerator `json:"generators,omitempty"`
+
+	// SingleElement means generate a single element with the result of the
+	// merged generator elements.
+	//
+	// When true, the matrix elements will be merged to a single element, with
+	// whatever prefixes they have.
+	// It's recommended that you use the Name field to separate out elements.
+	//
+	// +optional
+	SingleElement bool `json:"singleElement,omitempty"`
 }
 
 // GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.

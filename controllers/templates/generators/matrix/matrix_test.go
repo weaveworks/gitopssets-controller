@@ -75,9 +75,11 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 					},
 				},
 			},
-			ks:               nil,
-			expectedMatrix:   nil,
-			expectedErrorStr: "matrix generator needs two generators",
+			ks: nil,
+			expectedMatrix: []map[string]any{
+				{"key1": "value1"},
+				{"key2": "value2"},
+			},
 		},
 		{
 			name: "valid matrix",
@@ -222,6 +224,40 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "matrix generator in singleElement mode",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					SingleElement: true,
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							Name: "list1",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"key1": "value1"}`)},
+									{Raw: []byte(`{"key2": "value2"}`)},
+								},
+							},
+						},
+						{
+							Name: "list2",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"key3": "value3"}`)},
+									{Raw: []byte(`{"key4": "value4"}`)},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedMatrix: []map[string]any{
+				{
+					"list1": []map[string]any{{"key1": "value1"}, {"key2": "value2"}},
+					"list2": []map[string]any{{"key3": "value3"}, {"key4": "value4"}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -312,164 +348,134 @@ func TestInterval(t *testing.T) {
 	}
 }
 
-func TestCartesian(t *testing.T) {
+func TestSingleElement(t *testing.T) {
 	tests := []struct {
-		name     string
-		slices   [][]map[string]any
-		expected []map[string]any
+		name      string
+		generated []generatedElements
+		expected  []map[string]any
 	}{
 		{
-			name:     "empty slices",
-			slices:   [][]map[string]any{},
-			expected: nil,
-		},
-		{
-			name: "one empty slice",
-			slices: [][]map[string]any{
-				{
-					{"a": 1},
-					{"a": 2},
-				},
-			},
-			expected: nil,
-		},
-		{
-			name: "simple slices",
-			slices: [][]map[string]any{
-				{
-					{"eggs": 6},
-					{"milk": 2},
-					{"cheese": 1},
-				},
-				{
-					{"bag": 1},
-				},
-			},
-			expected: []map[string]any{
-				{"eggs": 6, "bag": 1},
-				{"milk": 2, "bag": 1},
-				{"cheese": 1, "bag": 1},
-			},
+			name:      "empty slices",
+			generated: []generatedElements{},
+			expected:  []map[string]any{},
 		},
 		{
 			name: "both slices have one element",
-			slices: [][]map[string]any{
+			generated: []generatedElements{
 				{
-					{"a": 1},
+					name: "staging",
+					elements: []map[string]any{
+						{"a": 1},
+					},
 				},
 				{
-					{"b": 2},
+					name: "production",
+					elements: []map[string]any{
+						{"b": 2},
+					},
 				},
 			},
 			expected: []map[string]any{
-				{"a": 1, "b": 2},
+				{
+					"production": []map[string]any{{"b": 2}},
+					"staging":    []map[string]any{{"a": 1}},
+				},
 			},
 		},
 		{
-			name: "both slices have multiple elements",
-			slices: [][]map[string]any{
+			name: "multiple unnamed generated sets",
+			generated: []generatedElements{
 				{
-					{"a": 1},
-					{"a": 2},
+					elements: []map[string]any{
+						{"name": "test1", "value": "value1"},
+						{"name": "test2", "value": "value2"},
+					},
 				},
 				{
-					{"b": 3},
-					{"b": 4},
+					elements: []map[string]any{
+						{"name": "test2", "value": "value3"},
+						{"name": "test1", "value": "value4"},
+					},
 				},
 			},
 			expected: []map[string]any{
-				{"a": 1, "b": 3},
-				{"a": 1, "b": 4},
-				{"a": 2, "b": 3},
-				{"a": 2, "b": 4},
+				{
+					"Matrix": []map[string]any{
+						{"name": "test1", "value": "value1"},
+						{"name": "test2", "value": "value2"},
+						{"name": "test2", "value": "value3"},
+						{"name": "test1", "value": "value4"},
+					},
+				},
 			},
 		},
 		{
-			name: "overlapping values and different ordering",
-			slices: [][]map[string]any{
+			name: "real-world example",
+			generated: []generatedElements{
 				{
-					{"name": "test1", "value": "value1"},
-					{"name": "test2", "value": "value2"},
+					name: "staging",
+					elements: []map[string]any{
+						{"ClusterAnnotations": map[string]string{}, "ClusterLabels": map[string]string{"env": "staging"}, "ClusterName": "staging-cluster1", "ClusterNamespace": "clusters"},
+						{"ClusterAnnotations": map[string]string{}, "ClusterLabels": map[string]string{"env": "staging"}, "ClusterName": "staging-cluster2", "ClusterNamespace": "clusters"},
+					},
 				},
 				{
-					{"name": "test2", "value": "value3"},
-					{"name": "test1", "value": "value4"},
-				},
-			},
-			expected: []map[string]any{
-				{"name": "test2", "value": "value3"},
-				{"name": "test1", "value": "value4"},
-			},
-		},
-		{
-			name: "nested maps",
-			slices: [][]map[string]any{
-				{
-					{"a": 1, "b": map[string]any{"c": 2, "d": 3}},
-					{"a": 4, "b": map[string]any{"c": 5, "d": 6}},
-				},
-				{
-					{"e": 7, "f": map[string]any{"g": 8, "h": 9}},
-					{"e": 10, "f": map[string]any{"g": 11, "h": 12}},
+					name: "production",
+					elements: []map[string]any{
+						{"ClusterAnnotations": map[string]string{}, "ClusterLabels": map[string]string{"env": "production"}, "ClusterName": "production-cluster1", "ClusterNamespace": "clusters"},
+						{"ClusterAnnotations": map[string]string{}, "ClusterLabels": map[string]string{"env": "production"}, "ClusterName": "production-cluster2", "ClusterNamespace": "clusters"},
+					},
 				},
 			},
 			expected: []map[string]any{
-				{"a": 1, "b": map[string]any{"c": 2, "d": 3}, "e": 7, "f": map[string]any{"g": 8, "h": 9}},
-				{"a": 1, "b": map[string]any{"c": 2, "d": 3}, "e": 10, "f": map[string]any{"g": 11, "h": 12}},
-				{"a": 4, "b": map[string]any{"c": 5, "d": 6}, "e": 7, "f": map[string]any{"g": 8, "h": 9}},
-				{"a": 4, "b": map[string]any{"c": 5, "d": 6}, "e": 10, "f": map[string]any{"g": 11, "h": 12}},
-			},
-		},
-		{
-			name: "three slices",
-			slices: [][]map[string]any{
 				{
-					{"a": 1},
+					"production": []map[string]any{
+						{
+							"ClusterAnnotations": map[string]string{},
+							"ClusterLabels": map[string]string{
+								"env": "production",
+							},
+							"ClusterName":      "production-cluster1",
+							"ClusterNamespace": "clusters",
+						},
+						{
+							"ClusterAnnotations": map[string]string{},
+							"ClusterLabels": map[string]string{
+								"env": "production",
+							},
+							"ClusterName":      "production-cluster2",
+							"ClusterNamespace": "clusters",
+						},
+					},
+					"staging": []map[string]any{
+						{
+							"ClusterAnnotations": map[string]string{},
+							"ClusterLabels": map[string]string{
+								"env": "staging",
+							},
+							"ClusterName":      "staging-cluster1",
+							"ClusterNamespace": "clusters",
+						},
+						{
+							"ClusterAnnotations": map[string]string{},
+							"ClusterLabels": map[string]string{
+								"env": "staging",
+							},
+							"ClusterName":      "staging-cluster2",
+							"ClusterNamespace": "clusters",
+						},
+					},
 				},
-				{
-					{"b": 2},
-				},
-				{
-					{"c": 3},
-				},
-			},
-			expected: []map[string]any{
-				{"a": 1, "b": 2, "c": 3},
-			},
-		},
-		{
-			name: "longer slices",
-			slices: [][]map[string]any{
-				{
-					{"b": 2},
-				},
-				{
-					{"a": 1},
-					{"aa": 1},
-					{"aaa": 1},
-					{"aaaa": 1},
-					{"aaaaa": 1},
-				},
-				{
-					{"c": 3},
-				},
-			},
-			expected: []map[string]any{
-				{"a": 1, "b": 2, "c": 3},
-				{"aa": 1, "b": 2, "c": 3},
-				{"aaa": 1, "b": 2, "c": 3},
-				{"aaaa": 1, "b": 2, "c": 3},
-				{"aaaaa": 1, "b": 2, "c": 3},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := cartesian(tt.slices)
+			result, err := singleElement(tt.generated)
 			test.AssertNoError(t, err)
 			if diff := cmp.Diff(tt.expected, result); diff != "" {
-				t.Errorf("cartesian mismatch (-want +got):\n%s", diff)
+				t.Errorf("singleElement mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

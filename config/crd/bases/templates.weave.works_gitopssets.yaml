@@ -539,6 +539,13 @@ spec:
                                 type: object
                             type: object
                           type: array
+                        singleElement:
+                          description: "SingleElement means generate a single element
+                            with the result of the merged generator elements. \n When
+                            true, the matrix elements will be merged to a single element,
+                            with whatever prefixes they have. It's recommended that
+                            you use the Name field to separate out elements."
+                          type: boolean
                       type: object
                     pullRequests:
                       description: PullRequestGenerator defines a generator that queries

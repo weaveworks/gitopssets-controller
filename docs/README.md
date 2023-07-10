@@ -603,6 +603,119 @@ The example above will yield:
     version: 1.0.0
 ```
 
+#### Single Element for Matrix
+
+A matrix generator will normally generate a cartesian result, but you can also
+generate a single result.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: single-element-matrix-sample
+spec:
+  generators:
+    - matrix:
+        singleElement: true
+        generators:
+        - name: staging
+          cluster:
+            selector:
+              matchLabels:
+                env: staging
+        - name: production
+          cluster:
+            selector:
+              matchLabels:
+                env: production
+```
+
+This would query for clusters matching the respective labels.
+
+The resulting output would look like this (in YAML):
+
+```yaml
+- production:
+  - ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster1
+    ClusterNamespace: clusters
+  - ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster2
+    ClusterNamespace: clusters
+  staging:
+  - ClusterAnnotations: {}
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster1
+    ClusterNamespace: clusters
+  - ClusterAnnotations: {}
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster2
+    ClusterNamespace: clusters
+```
+
+Compare this with the alternative without the `singleElement` flag:
+
+```yaml
+- production:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster1
+    ClusterNamespace: clusters
+  staging:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster1
+    ClusterNamespace: clusters
+- production:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster2
+    ClusterNamespace: clusters
+  staging:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster1
+    ClusterNamespace: clusters
+- production:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster1
+    ClusterNamespace: clusters
+  staging:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster2
+    ClusterNamespace: clusters
+- production:
+    ClusterAnnotations: {}
+    ClusterLabels:
+      env: production
+    ClusterName: production-cluster2
+    ClusterNamespace: clusters
+  staging:
+    ClusterAnnotations: # omitted
+    ClusterLabels:
+      env: staging
+    ClusterName: staging-cluster2
+    ClusterNamespace: clusters
+```
+
+In the `singleElement` case, there is only one generated element, only one template will be rendered for each content item.
+
+If the Matrix generators are unnamed, they will be grouped under a top-level `.Matrix` name.
+
 ### apiClient generator
 
 This generator is configured to poll an HTTP endpoint and parse the result as the generated values.
