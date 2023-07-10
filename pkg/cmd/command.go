@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -27,6 +26,7 @@ import (
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 
@@ -183,7 +183,7 @@ func renderGitOpsSet(filename string, enabledGenerators []string, disableCluster
 		return err
 	}
 
-	factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), http.DefaultClient)
+	factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), apiclient.DefaultClientFactory)
 	gens := instantiateGenerators(factories, logger, cl)
 
 	var generated []*unstructured.Unstructured

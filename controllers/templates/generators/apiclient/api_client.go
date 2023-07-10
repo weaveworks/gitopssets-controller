@@ -3,6 +3,8 @@ package apiclient
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,27 +19,40 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// This is used to create per API request http.Clients.
+type HTTPClientFactory func(*tls.Config) *http.Client
+
+// This is the default Client factory it returns a zero-value client.
+var DefaultClientFactory = func(config *tls.Config) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = config
+
+	return &http.Client{
+		Transport: transport,
+	}
+}
+
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the APIClientGenerator.
-func GeneratorFactory(httpClient *http.Client) generators.GeneratorFactory {
+func GeneratorFactory(factory HTTPClientFactory) generators.GeneratorFactory {
 	return func(l logr.Logger, c client.Client) generators.Generator {
-		return NewGenerator(l, c, httpClient)
+		return NewGenerator(l, c, factory)
 	}
 }
 
 // APIClientGenerator generates from an API endpoint.
 type APIClientGenerator struct {
 	client.Client
-	HTTPClient *http.Client
+	ClientFactory HTTPClientFactory
 	logr.Logger
 }
 
 // NewGenerator creates and returns a new API client generator.
-func NewGenerator(l logr.Logger, c client.Client, httpClient *http.Client) *APIClientGenerator {
+func NewGenerator(l logr.Logger, c client.Client, clientFactory HTTPClientFactory) *APIClientGenerator {
 	return &APIClientGenerator{
-		Client:     c,
-		Logger:     l,
-		HTTPClient: httpClient,
+		Client:        c,
+		Logger:        l,
+		ClientFactory: clientFactory,
 	}
 }
 
@@ -62,7 +77,14 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 		return nil, err
 	}
 
-	resp, err := g.HTTPClient.Do(req)
+	tlsConfig, err := g.createTLSConfig(ctx, sg.APIClient, gsg.GetNamespace())
+	if err != nil {
+		g.Logger.Error(err, "failed to configure api", "endpoint", sg.APIClient.Endpoint)
+	}
+
+	client := g.ClientFactory(tlsConfig)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		g.Logger.Error(err, "failed to fetch endpoint", "endpoint", sg.APIClient.Endpoint)
 		return nil, err
@@ -129,6 +151,32 @@ func (g *APIClientGenerator) createRequest(ctx context.Context, ac *templatesv1.
 	}
 
 	return req, nil
+}
+
+func (g *APIClientGenerator) createTLSConfig(ctx context.Context, ac *templatesv1.APIClientGenerator, namespace string) (*tls.Config, error) {
+	if ac.SecretRef == nil {
+		return nil, nil
+	}
+
+	var s corev1.Secret
+	name := client.ObjectKey{Name: ac.SecretRef.Name, Namespace: namespace}
+	if err := g.Client.Get(ctx, name, &s); err != nil {
+		return nil, fmt.Errorf("failed to load Secret for API Client Generator %s: %w", name, err)
+	}
+	caFile, ok := s.Data["caFile"]
+	if !ok {
+		return nil, fmt.Errorf("secret %s does not contain caFile key", name)
+	}
+
+	certPool := x509.NewCertPool()
+	ok = certPool.AppendCertsFromPEM(caFile)
+	if !ok {
+		return nil, fmt.Errorf("failed to configure certificate from caFile key in secret %s", name)
+	}
+
+	return &tls.Config{
+		RootCAs: certPool,
+	}, nil
 }
 
 func (g *APIClientGenerator) generateFromResponseBody(body []byte, endpoint string) ([]map[string]any, error) {

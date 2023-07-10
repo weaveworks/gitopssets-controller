@@ -252,6 +252,20 @@ single element, i.e. only one element will be generated containing the
 entire object.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>secretRef</code><br />
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#localobjectreference-v1-core">
+Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<p>Reference to Secret in same namespace with a field &ldquo;caFile&rdquo; which
+provides the Certificate Authority to trust when making API calls.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="templates.weave.works/v1alpha1.ClusterGenerator">ClusterGenerator
@@ -284,6 +298,47 @@ Kubernetes meta/v1.LabelSelector
 <em>(Optional)</em>
 <p>Selector is used to filter the clusters that you want to target.</p>
 <p>If no selector is provided, no clusters will be matched.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="templates.weave.works/v1alpha1.ConfigGenerator">ConfigGenerator
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+</p>
+<p>ConfigGenerator loads a referenced ConfigMap or
+Secret from the Cluster and makes it available as a resource.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kind</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Kind of the referent.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referent.</p>
 </td>
 </tr>
 </tbody>
@@ -381,6 +436,18 @@ APIClientGenerator
 <em>
 <a href="#templates.weave.works/v1alpha1.ImagePolicyGenerator">
 ImagePolicyGenerator
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code><br />
+<em>
+<a href="#templates.weave.works/v1alpha1.ConfigGenerator">
+ConfigGenerator
 </a>
 </em>
 </td>
@@ -485,6 +552,18 @@ APIClientGenerator
 <em>
 <a href="#templates.weave.works/v1alpha1.ImagePolicyGenerator">
 ImagePolicyGenerator
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code><br />
+<em>
+<a href="#templates.weave.works/v1alpha1.ConfigGenerator">
+ConfigGenerator
 </a>
 </em>
 </td>

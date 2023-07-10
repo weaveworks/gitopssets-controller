@@ -103,6 +103,17 @@ spec:
                           - GET
                           - POST
                           type: string
+                        secretRef:
+                          description: Reference to Secret in same namespace with
+                            a field "caFile" which provides the Certificate Authority
+                            to trust when making API calls.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
                         singleElement:
                           description: "SingleElement means generate a single element
                             with the result of the API call. \n When true, the response
@@ -305,6 +316,19 @@ spec:
                                     - GET
                                     - POST
                                     type: string
+                                  secretRef:
+                                    description: Reference to Secret in same namespace
+                                      with a field "caFile" which provides the Certificate
+                                      Authority to trust when making API calls.
+                                    properties:
+                                      name:
+                                        description: 'Name of the referent. More info:
+                                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Add other useful fields. apiVersion,
+                                          kind, uid?'
+                                        type: string
+                                    type: object
+                                    x-kubernetes-map-type: atomic
                                   singleElement:
                                     description: "SingleElement means generate a single
                                       element with the result of the API call. \n

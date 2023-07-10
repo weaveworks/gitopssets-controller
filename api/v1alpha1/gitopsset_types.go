@@ -70,6 +70,7 @@ type PullRequestGenerator struct {
 	// e.g. my-org/my-repo
 	// +required
 	Repo string `json:"repo"`
+
 	// Reference to Secret in same namespace with a field "password" which is an
 	// auth token that can query the Git Provider API.
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
@@ -133,6 +134,10 @@ type APIClientGenerator struct {
 	//
 	// +optional
 	SingleElement bool `json:"singleElement,omitempty"`
+
+	// Reference to Secret in same namespace with a field "caFile" which
+	// provides the Certificate Authority to trust when making API calls.
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for
