@@ -11,7 +11,7 @@ import (
 func TestRenderGitOpsSet(t *testing.T) {
 	var out strings.Builder
 
-	err := renderGitOpsSet("testdata/list_set.yaml", setup.DefaultGenerators, true, &out)
+	err := renderGitOpsSet("testdata/list_set.yaml", setup.DefaultGenerators, true, "", &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ spec:
 func TestRenderGitOpsSet_with_multiple_sets(t *testing.T) {
 	var out strings.Builder
 
-	err := renderGitOpsSet("testdata/list_sets.yaml", setup.DefaultGenerators, true, &out)
+	err := renderGitOpsSet("testdata/list_sets.yaml", setup.DefaultGenerators, true, "", &out)
 	if err != nil {
 		t.Fatal(err)
 	}

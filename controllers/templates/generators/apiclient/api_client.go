@@ -36,7 +36,7 @@ var DefaultClientFactory = func(config *tls.Config) *http.Client {
 // the APIClientGenerator.
 func GeneratorFactory(factory HTTPClientFactory) generators.GeneratorFactory {
 	return func(l logr.Logger, c client.Reader) generators.Generator {
-		return NewGenerator(l, c, httpClient)
+		return NewGenerator(l, c, factory)
 	}
 }
 

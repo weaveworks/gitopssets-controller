@@ -27,6 +27,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
 	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 
@@ -34,24 +35,30 @@ import (
 func NewGenerateCommand(name string) *cobra.Command {
 	var enabledGenerators []string
 	var disableClusterAccess bool
+	var repositoryRoot string
 
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [filename]", name),
 		Short: "Render GitOpsSet from the CLI",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderGitOpsSet(args[0], enabledGenerators, disableClusterAccess, os.Stdout)
+			return renderGitOpsSet(args[0], enabledGenerators, disableClusterAccess, repositoryRoot, os.Stdout)
 		},
 	}
 
 	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable")
-	cmd.Flags().BoolVarP(&disableClusterAccess, "disable-cluster-access", "d", false, "Disable cluster access - no access to Cluster resources will occur")
+	cmd.Flags().BoolVarP(&disableClusterAccess, "disable-cluster-access", "d", true, "Disable cluster access - no access to Cluster resources will occur")
+	cmd.Flags().StringVar(&repositoryRoot, "repository-root", "", "When cluster access is disabled GitRepository content is sourced relative to this path with the name of the GitRepository i.e. <repository-root>/<name of GitRepository>")
 
 	return cmd
 }
 
-func makeClients(fakeClients bool, scheme *runtime.Scheme) (corev1.ServicesGetter, client.Client, error) {
+func makeClients(fakeClients bool, repositoryRoot string, scheme *runtime.Scheme, logger logr.Logger) (corev1.ServicesGetter, client.Reader, error) {
 	if fakeClients {
+		if repositoryRoot != "" {
+			return fakeclientgo.NewSimpleClientset().CoreV1(), localObjectReader{repositoryRoot: repositoryRoot, logger: logger}, nil
+		}
+
 		return fakeclientgo.NewSimpleClientset().CoreV1(), fake.NewClientBuilder().WithScheme(scheme).Build(), nil
 	}
 
@@ -70,7 +77,6 @@ func makeClients(fakeClients bool, scheme *runtime.Scheme) (corev1.ServicesGette
 	}
 
 	return clientset.CoreV1(), cl, nil
-
 }
 
 func outputResources(out io.Writer, resources []*unstructured.Unstructured) error {
@@ -100,7 +106,7 @@ func marshalOutput(out io.Writer, obj runtime.Object) error {
 	return nil
 }
 
-func instantiateGenerators(factories map[string]generators.GeneratorFactory, log logr.Logger, cl client.Client) map[string]generators.Generator {
+func instantiateGenerators(factories map[string]generators.GeneratorFactory, log logr.Logger, cl client.Reader) map[string]generators.Generator {
 	instantiatedGenerators := map[string]generators.Generator{}
 	for k, factory := range factories {
 		instantiatedGenerators[k] = factory(log, cl)
@@ -162,7 +168,7 @@ func bytesToGitOpsSet(scheme *runtime.Scheme, b []byte) (*templatesv1.GitOpsSet,
 	return newObj.(*templatesv1.GitOpsSet), scheme.Convert(u, newObj, nil)
 }
 
-func renderGitOpsSet(filename string, enabledGenerators []string, disableClusterAccess bool, out io.Writer) error {
+func renderGitOpsSet(filename string, enabledGenerators []string, disableClusterAccess bool, repositoryRoot string, out io.Writer) error {
 	scheme, err := setup.NewSchemeForGenerators(enabledGenerators)
 	if err != nil {
 		return err
@@ -178,12 +184,17 @@ func renderGitOpsSet(filename string, enabledGenerators []string, disableCluster
 		return err
 	}
 
-	services, cl, err := makeClients(disableClusterAccess, scheme)
+	services, cl, err := makeClients(disableClusterAccess, repositoryRoot, scheme, logger)
 	if err != nil {
 		return err
 	}
 
-	factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), apiclient.DefaultClientFactory)
+	var fetcher parser.ArchiveFetcher = NewProxyArchiveFetcher(services)
+	if repositoryRoot != "" {
+		fetcher = localFetcher{logger: logger}
+	}
+
+	factories := setup.GetGenerators(enabledGenerators, fetcher, apiclient.DefaultClientFactory)
 	gens := instantiateGenerators(factories, logger, cl)
 
 	var generated []*unstructured.Unstructured
