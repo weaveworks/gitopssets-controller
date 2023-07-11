@@ -48,7 +48,6 @@ spec:
   capiClusterRef:
     name: cluster-1-stage
 ```
-
 The `singleElement: true` value pulls all of the generators in the matrix element into a single context
 
 The GitOpsSet creates a kustomization and patches in each cluster
