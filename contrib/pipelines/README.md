@@ -33,7 +33,7 @@ This GitOpsSet uses the cluster generator to groups clusters into different envi
 
 
 
-The `singleElement: true` value pull all of the generators in the matrix element into a single context
+The `singleElement: true` value pulls all of the generators in the matrix element into a single context
 
 The GitOpsSet create a kustomization and patches in each cluster
 
