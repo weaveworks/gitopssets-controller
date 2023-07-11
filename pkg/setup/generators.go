@@ -2,7 +2,6 @@ package setup
 
 import (
 	"fmt"
-	"net/http"
 
 	"golang.org/x/exp/slices"
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -77,14 +76,14 @@ func ValidateEnabledGenerators(enabledGenerators []string) error {
 
 // GetGenenerators returns a set of generator factories for the set of enabled
 // generators.
-func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, httpClient *http.Client) map[string]generators.GeneratorFactory {
+func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, clientFactory apiclient.HTTPClientFactory) map[string]generators.GeneratorFactory {
 	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
 		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
-		"APIClient":     apiclient.GeneratorFactory(httpClient),
+		"APIClient":     apiclient.GeneratorFactory(clientFactory),
 	})
 
 	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
@@ -92,7 +91,7 @@ func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, ht
 		"GitRepository": gitrepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
-		"APIClient":     apiclient.GeneratorFactory(httpClient),
+		"APIClient":     apiclient.GeneratorFactory(clientFactory),
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
 		"Matrix":        matrix.GeneratorFactory(matrixGenerators),
 	})

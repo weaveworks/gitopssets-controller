@@ -784,7 +784,6 @@ metadata:
     app.kubernetes.io/name: gitopsset
     app.kubernetes.io/instance: gitopsset-sample
     app.kubernetes.io/part-of: gitopssets-controller
-    app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: gitopssets-controller
   name: api-client-sample
 spec:
@@ -798,6 +797,46 @@ spec:
 Whatever result is parsed from the API endpoint will be returned as a map in a single element.
 
 For generation, you might need to use the `repeat` mechanism to generate repeating results.
+
+#### APIClient Custom CA
+
+If the API endpoint you are accessing requires a custom CA you can provide this
+via the secret field.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: api-client-sample
+spec:
+  generators:
+    - apiClient:
+        singleElement: true
+        interval: 5m
+        endpoint: https://api.example.com/demo
+        secretRef:
+          name: https-ca-credentials
+```
+
+This secret should look like this:
+
+```yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: https-ca-credentials
+type: Opaque
+data:
+  caFile: <BASE64>
+```
+
+The request will be made with the custom CA.
 
 ### Cluster generator
 

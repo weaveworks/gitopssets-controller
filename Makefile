@@ -78,7 +78,7 @@ build: manifests generate fmt vet ## Build manager binary.
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go ${RUN_ARGS}
+	go run ./main.go ./version.go ${RUN_ARGS}
 
 .PHONY: vendor
 vendor: ## Update vendor directory.

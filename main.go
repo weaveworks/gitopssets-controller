@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -15,6 +14,7 @@ import (
 	"github.com/fluxcd/pkg/runtime/logger"
 	"github.com/fluxcd/pkg/tar"
 	flag "github.com/spf13/pflag"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -141,7 +141,7 @@ func main() {
 		Scheme:                mgr.GetScheme(),
 		Mapper:                mapper,
 		// TODO: Figure how to configure the DefaultClient.
-		Generators:    setup.GetGenerators(enabledGenerators, fetcher, http.DefaultClient),
+		Generators:    setup.GetGenerators(enabledGenerators, fetcher, apiclient.DefaultClientFactory),
 		Metrics:       metricsH,
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(mgr); err != nil {

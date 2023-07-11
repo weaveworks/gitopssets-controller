@@ -2,7 +2,10 @@ package apiclient
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +30,7 @@ import (
 var _ generators.Generator = (*APIClientGenerator)(nil)
 
 func TestGenerate_with_no_generator(t *testing.T) {
-	gen := GeneratorFactory(http.DefaultClient)(logr.Discard(), nil)
+	gen := GeneratorFactory(DefaultClientFactory)(logr.Discard(), nil)
 	_, err := gen.Generate(context.TODO(), nil, nil)
 
 	if err != generators.ErrEmptyGitOpsSet {
@@ -36,7 +39,7 @@ func TestGenerate_with_no_generator(t *testing.T) {
 }
 
 func TestGenerate_with_no_config(t *testing.T) {
-	gen := GeneratorFactory(http.DefaultClient)(logr.Discard(), nil)
+	gen := GeneratorFactory(DefaultClientFactory)(logr.Discard(), nil)
 	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
@@ -51,11 +54,20 @@ func TestGenerate(t *testing.T) {
 	ts := httptest.NewTLSServer(newTestMux(t))
 	defer ts.Close()
 
+	cert, err := x509.ParseCertificate(ts.TLS.Certificates[0].Certificate[0])
+	test.AssertNoError(t, err)
+	block := pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}
+	testServerCA := pem.EncodeToMemory(&block)
+
 	testCases := []struct {
-		name      string
-		apiClient *templatesv1.APIClientGenerator
-		objs      []runtime.Object
-		want      []map[string]any
+		name          string
+		apiClient     *templatesv1.APIClientGenerator
+		clientFactory HTTPClientFactory
+		objs          []runtime.Object
+		want          []map[string]any
 	}{
 		{
 			name: "simple API endpoint with get request",
@@ -173,11 +185,49 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "access API with custom CA",
+			apiClient: &templatesv1.APIClientGenerator{
+				Endpoint: ts.URL + "/api/get-testing",
+				Method:   http.MethodGet,
+				SecretRef: &corev1.LocalObjectReference{
+					Name: "https-ca-credentials",
+				},
+			},
+			objs: []runtime.Object{newTestSecret(func(s *corev1.Secret) {
+				s.ObjectMeta.Name = "https-ca-credentials"
+				s.Data = map[string][]byte{
+					"caFile": testServerCA,
+				}
+			})},
+			clientFactory: func(config *tls.Config) *http.Client {
+				return &http.Client{
+					Transport: &http.Transport{
+						TLSClientConfig: config,
+					},
+				}
+			},
+			want: []map[string]any{
+				{
+					"name": "testing1",
+				},
+				{
+					"name": "testing2",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := GeneratorFactory(ts.Client())(logr.Discard(), newFakeClient(t, tt.objs...))
+			factory := func(_ *tls.Config) *http.Client {
+				return ts.Client()
+			}
+			if tt.clientFactory != nil {
+				factory = tt.clientFactory
+			}
+
+			gen := GeneratorFactory(factory)(logr.Discard(), newFakeClient(t, tt.objs...))
 
 			gsg := templatesv1.GitOpsSetGenerator{
 				APIClient: tt.apiClient,
@@ -293,7 +343,10 @@ func TestGenerate_errors(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			gen := GeneratorFactory(ts.Client())(logr.Discard(), newFakeClient(t, tt.objs...))
+			factory := func(_ *tls.Config) *http.Client {
+				return ts.Client()
+			}
+			gen := GeneratorFactory(factory)(logr.Discard(), newFakeClient(t, tt.objs...))
 
 			gsg := templatesv1.GitOpsSetGenerator{
 				APIClient: tt.apiClient,
@@ -319,7 +372,7 @@ func TestGenerate_errors(t *testing.T) {
 
 func TestAPIClientGenerator_GetInterval(t *testing.T) {
 	interval := time.Minute * 10
-	gen := NewGenerator(logr.Discard(), fake.NewFakeClient(), http.DefaultClient)
+	gen := NewGenerator(logr.Discard(), fake.NewFakeClient(), DefaultClientFactory)
 	sg := &templatesv1.GitOpsSetGenerator{
 		APIClient: &templatesv1.APIClientGenerator{
 			Endpoint: "https://example.com/testing",
