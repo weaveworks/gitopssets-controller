@@ -31,6 +31,25 @@ This GitOpsSet uses the cluster generator to groups clusters into different envi
                 env: prdgroup2
 ```
 
+These clusters match on the label `env`
+
+For example, here is a staging cluster with a label `env: stage`
+
+```yaml
+apiVersion: gitops.weave.works/v1alpha1
+kind: GitopsCluster
+metadata:
+  generation: 1
+  labels:
+    env: stage
+  name: cluster-1-stage
+  namespace: default
+spec:
+  capiClusterRef:
+    name: cluster-1-stage
+```
+
+
 
 
 The `singleElement: true` value pulls all of the generators in the matrix element into a single context
