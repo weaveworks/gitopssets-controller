@@ -97,7 +97,7 @@ The GitOpsSet create a kustomization and patches in each cluster
 ```
 
 
-The Kustomization applies the folling manifest
+The Kustomization applies the following manifest
 ```yaml
 apiVersion: pipelines.weave.works/v1alpha1
 kind: Pipeline
