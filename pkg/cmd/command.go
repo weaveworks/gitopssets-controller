@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -119,13 +120,26 @@ func newLogger() (logr.Logger, error) {
 	return zapr.NewLogger(zapLog), nil
 }
 
-func readFileAsGitOpsSet(scheme *runtime.Scheme, filename string) (*templatesv1.GitOpsSet, error) {
+func readFileAsGitOpsSet(scheme *runtime.Scheme, filename string) ([]*templatesv1.GitOpsSet, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	return bytesToGitOpsSet(scheme, b)
+	result := []*templatesv1.GitOpsSet{}
+
+	for _, doc := range bytes.Split(b, []byte("---")) {
+		if t := bytes.TrimSpace(doc); len(t) > 0 {
+			set, err := bytesToGitOpsSet(scheme, doc)
+			if err != nil {
+				return nil, err
+			}
+
+			result = append(result, set)
+		}
+	}
+
+	return result, nil
 }
 
 func bytesToGitOpsSet(scheme *runtime.Scheme, b []byte) (*templatesv1.GitOpsSet, error) {
@@ -154,7 +168,7 @@ func renderGitOpsSet(filename string, enabledGenerators []string, disableCluster
 		return err
 	}
 
-	gitOpsSet, err := readFileAsGitOpsSet(scheme, filename)
+	gitOpsSets, err := readFileAsGitOpsSet(scheme, filename)
 	if err != nil {
 		return err
 	}
@@ -171,9 +185,16 @@ func renderGitOpsSet(filename string, enabledGenerators []string, disableCluster
 
 	factories := setup.GetGenerators(enabledGenerators, NewProxyArchiveFetcher(services), http.DefaultClient)
 	gens := instantiateGenerators(factories, logger, cl)
-	generated, err := templates.Render(context.Background(), gitOpsSet, gens)
-	if err != nil {
-		return err
+
+	var generated []*unstructured.Unstructured
+
+	for _, set := range gitOpsSets {
+		rendered, err := templates.Render(context.Background(), set, gens)
+		if err != nil {
+			return err
+		}
+
+		generated = append(generated, rendered...)
 	}
 
 	return outputResources(out, generated)
