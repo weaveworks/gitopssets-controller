@@ -49,10 +49,9 @@ spec:
     name: cluster-1-stage
 ```
 
-
 The `singleElement: true` value pulls all of the generators in the matrix element into a single context
 
-The GitOpsSet create a kustomization and patches in each cluster
+The GitOpsSet creates a kustomization and patches in each cluster
 
 ```yaml
       apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
@@ -112,7 +111,6 @@ The GitOpsSet create a kustomization and patches in each cluster
           kind: GitRepository
           name: flux-system
 ```
-
 
 The Kustomization applies the following manifest
 ```yaml
