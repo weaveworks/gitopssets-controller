@@ -50,8 +50,6 @@ spec:
 ```
 
 
-
-
 The `singleElement: true` value pulls all of the generators in the matrix element into a single context
 
 The GitOpsSet create a kustomization and patches in each cluster
