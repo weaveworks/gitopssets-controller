@@ -20,19 +20,19 @@ type clientFactoryFunc func(driver, serverURL, oauthToken string, opts ...factor
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the GitRepositoryGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
+func GeneratorFactory(l logr.Logger, c client.Reader) generators.Generator {
 	return NewGenerator(l, c)
 }
 
 // PullRequestGenerator generates from the open pull requests in a repository.
 type PullRequestGenerator struct {
-	client.Client
+	Client        client.Reader
 	clientFactory clientFactoryFunc
 	logr.Logger
 }
 
 // NewGenerator creates and returns a new pull request generator.
-func NewGenerator(l logr.Logger, c client.Client) *PullRequestGenerator {
+func NewGenerator(l logr.Logger, c client.Reader) *PullRequestGenerator {
 	return &PullRequestGenerator{
 		Client:        c,
 		Logger:        l,
@@ -60,7 +60,7 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		}
 
 		var secret corev1.Secret
-		if err := g.Get(ctx, secretName, &secret); err != nil {
+		if err := g.Client.Get(ctx, secretName, &secret); err != nil {
 			return nil, fmt.Errorf("failed to load repository generator credentials: %w", err)
 		}
 		// See https://github.com/fluxcd/source-controller/blob/main/pkg/git/options.go#L100

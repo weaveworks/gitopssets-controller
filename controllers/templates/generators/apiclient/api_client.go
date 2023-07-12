@@ -35,20 +35,20 @@ var DefaultClientFactory = func(config *tls.Config) *http.Client {
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the APIClientGenerator.
 func GeneratorFactory(factory HTTPClientFactory) generators.GeneratorFactory {
-	return func(l logr.Logger, c client.Client) generators.Generator {
+	return func(l logr.Logger, c client.Reader) generators.Generator {
 		return NewGenerator(l, c, factory)
 	}
 }
 
 // APIClientGenerator generates from an API endpoint.
 type APIClientGenerator struct {
-	client.Client
 	ClientFactory HTTPClientFactory
+	Client        client.Reader
 	logr.Logger
 }
 
 // NewGenerator creates and returns a new API client generator.
-func NewGenerator(l logr.Logger, c client.Client, clientFactory HTTPClientFactory) *APIClientGenerator {
+func NewGenerator(l logr.Logger, c client.Reader, clientFactory HTTPClientFactory) *APIClientGenerator {
 	return &APIClientGenerator{
 		Client:        c,
 		Logger:        l,
@@ -257,7 +257,7 @@ func (g *APIClientGenerator) generateFromJSONPath(body []byte, endpoint, jsonPat
 	return res, nil
 }
 
-func addHeadersFromSecretToRequest(ctx context.Context, k8sClient client.Client, req *http.Request, name client.ObjectKey) error {
+func addHeadersFromSecretToRequest(ctx context.Context, k8sClient client.Reader, req *http.Request, name client.ObjectKey) error {
 	var s corev1.Secret
 	if err := k8sClient.Get(ctx, name, &s); err != nil {
 		return fmt.Errorf("failed to load Secret for Request headers %s: %w", name, err)
@@ -270,7 +270,7 @@ func addHeadersFromSecretToRequest(ctx context.Context, k8sClient client.Client,
 	return nil
 }
 
-func addHeadersFromConfigMapToRequest(ctx context.Context, k8sClient client.Client, req *http.Request, name client.ObjectKey) error {
+func addHeadersFromConfigMapToRequest(ctx context.Context, k8sClient client.Reader, req *http.Request, name client.ObjectKey) error {
 	var configMap corev1.ConfigMap
 	if err := k8sClient.Get(ctx, name, &configMap); err != nil {
 		return fmt.Errorf("failed to load ConfigMap for Request headers %s: %w", name, err)

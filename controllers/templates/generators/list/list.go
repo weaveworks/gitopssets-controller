@@ -19,7 +19,7 @@ type ListGenerator struct {
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the ListGenerator.
-func GeneratorFactory(l logr.Logger, _ client.Client) generators.Generator {
+func GeneratorFactory(l logr.Logger, _ client.Reader) generators.Generator {
 	return NewGenerator(l)
 }
 

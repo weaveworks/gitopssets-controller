@@ -14,18 +14,18 @@ import (
 )
 
 type ClusterGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the ClusterGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
+func GeneratorFactory(l logr.Logger, c client.Reader) generators.Generator {
 	return NewGenerator(l, c)
 }
 
 // NewGenerator creates and returns a new cluster generator.
-func NewGenerator(l logr.Logger, c client.Client) *ClusterGenerator {
+func NewGenerator(l logr.Logger, c client.Reader) *ClusterGenerator {
 	return &ClusterGenerator{
 		Client: c,
 		Logger: l,

@@ -18,7 +18,7 @@ import (
 // MatrixGenerator is a generator that combines the results of multiple
 // generators into a single set of values.
 type MatrixGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 	generatorsMap map[string]generators.GeneratorFactory
 }
@@ -26,13 +26,13 @@ type MatrixGenerator struct {
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the MatrixGenerator.
 func GeneratorFactory(generatorsMap map[string]generators.GeneratorFactory) generators.GeneratorFactory {
-	return func(l logr.Logger, c client.Client) generators.Generator {
+	return func(l logr.Logger, c client.Reader) generators.Generator {
 		return NewGenerator(l, c, generatorsMap)
 	}
 }
 
 // NewGenerator creates and returns a new matrix generator.
-func NewGenerator(l logr.Logger, c client.Client, g map[string]generators.GeneratorFactory) *MatrixGenerator {
+func NewGenerator(l logr.Logger, c client.Reader, g map[string]generators.GeneratorFactory) *MatrixGenerator {
 	return &MatrixGenerator{
 		Client:        c,
 		Logger:        l,

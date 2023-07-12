@@ -15,18 +15,18 @@ import (
 
 // ImagePolicyGenerator extracts files from Flux ImagePolicy resources.
 type ImagePolicyGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the ImagePolicyGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
+func GeneratorFactory(l logr.Logger, c client.Reader) generators.Generator {
 	return NewGenerator(l, c)
 }
 
 // NewGenerator creates and returns a new ImagePolicy generator.
-func NewGenerator(l logr.Logger, c client.Client) *ImagePolicyGenerator {
+func NewGenerator(l logr.Logger, c client.Reader) *ImagePolicyGenerator {
 	return &ImagePolicyGenerator{
 		Client: c,
 		Logger: l,
