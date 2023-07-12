@@ -37,6 +37,7 @@ var templateFuncs template.FuncMap = makeTemplateFunctions()
 func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]*unstructured.Unstructured, error) {
 	rendered := []*unstructured.Unstructured{}
 
+	index := 0
 	for _, gen := range r.Spec.Generators {
 		generated, err := generate(ctx, gen, configuredGenerators, r)
 		if err != nil {
@@ -46,12 +47,13 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
-					res, err := renderTemplateParams(template, param, *r)
+					res, err := renderTemplateParams(index, template, param, *r)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
 
 					rendered = append(rendered, res...)
+					index++
 				}
 			}
 		}
@@ -60,11 +62,12 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return rendered, nil
 }
 
-func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {
+func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {
 	if tmpl.Repeat == "" {
 		return []map[string]any{
 			map[string]any{
-				"Element": params,
+				"Element":      params,
+				"ElementIndex": index,
 			},
 		}, nil
 	}
@@ -93,20 +96,22 @@ func repeat(tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[st
 	}
 
 	elements := []map[string]any{}
-	for _, v := range repeated {
+	for i, v := range repeated {
 		elements = append(elements, map[string]any{
-			"Element": params,
-			"Repeat":  v,
+			"Element":      params,
+			"ElementIndex": index,
+			"Repeat":       v,
+			"RepeatIndex":  i,
 		})
 	}
 
 	return elements, nil
 }
 
-func renderTemplateParams(tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
-	repeatedParams, err := repeat(tmpl, params)
+	repeatedParams, err := repeat(index, tmpl, params)
 	if err != nil {
 		return nil, err
 	}

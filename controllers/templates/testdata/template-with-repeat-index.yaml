@@ -1,0 +1,48 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: config-maps
+  namespace: wge
+spec:
+  generators:
+    - list:
+        elements:
+          - env: dev
+            team: dev-team
+            teams:
+              - name: "team1"
+              - name: "team2"
+            customers:
+              - name: "c1"
+              - name: "c2"
+          - env: staging
+            team: staging-team
+            teams:
+              - name: "team4"
+              - name: "team5"
+            customers:
+              - name: "c4"
+              - name: "c5"
+  templates:
+    - repeat: "{ .teams }"
+      content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .Repeat.name }}-team"
+        data:
+          shardId: "{{ .RepeatIndex }}"
+    - repeat: "{ .customers }"
+      content:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: "{{ .Repeat.name }}-customer"
+        data:
+          shardId: "{{ .RepeatIndex }}"
