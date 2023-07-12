@@ -1,3 +1,4 @@
 resources:
   - ../base
   - matrix-generator.yaml
+  - matrix-single-element.yaml
