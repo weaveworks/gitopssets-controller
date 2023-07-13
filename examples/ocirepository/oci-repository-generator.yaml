@@ -1,0 +1,37 @@
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: oci-repository-sample
+  namespace: default
+spec:
+  generators:
+    - ociRepository:
+        repositoryRef: go-demo-oci-repo
+        files:
+          - path: examples/generation/dev.yaml
+          - path: examples/generation/production.yaml
+          - path: examples/generation/staging.yaml
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "{{ .Element.env }}-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "{{ .Element.env }}"
+            com.example/team: "{{ .Element.team }}"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/{{ .Element.env }}"
+          prune: true
+          sourceRef:
+            kind: OCIRepository
+            name: go-demo-oci-repo

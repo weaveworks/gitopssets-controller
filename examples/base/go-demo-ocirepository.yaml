@@ -1,0 +1,11 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: OCIRepository
+metadata:
+  name: go-demo-oci-repo
+  namespace: default
+spec:
+  interval: 15m
+  url: oci://bigkevmcd/go-demo-oci
+  ref:
+    tag: v0.0.2

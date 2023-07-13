@@ -19,13 +19,13 @@ func TestGenerateFromFiles(t *testing.T) {
 	fetchTests := []struct {
 		description string
 		filename    string
-		items       []templatesv1.GitRepositoryGeneratorFileItem
+		items       []templatesv1.RepositoryGeneratorFileItem
 		want        []map[string]any
 	}{
 		{
 			description: "simple yaml files",
 			filename:    "/files.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorFileItem{
+			items: []templatesv1.RepositoryGeneratorFileItem{
 				{Path: "files/dev.yaml"}, {Path: "files/production.yaml"}, {Path: "files/staging.yaml"}},
 			want: []map[string]any{
 				{"environment": "dev", "instances": 2.0},
@@ -36,7 +36,7 @@ func TestGenerateFromFiles(t *testing.T) {
 		{
 			description: "simple json files",
 			filename:    "/json_files.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorFileItem{
+			items: []templatesv1.RepositoryGeneratorFileItem{
 				{Path: "files/dev.json"}, {Path: "files/production.json"}, {Path: "files/staging.json"}},
 			want: []map[string]any{
 				{"environment": "dev", "instances": 1.0},
@@ -66,7 +66,7 @@ func TestGenerateFromFiles_bad_yaml(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/bad_files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/bad_files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/dev.yaml"}})
+	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/bad_files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/bad_files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/dev.yaml"}})
 	if err.Error() != `failed to parse archive file "files/dev.yaml": error converting YAML to JSON: yaml: line 4: could not find expected ':'` {
 		t.Fatalf("got error %v", err)
 	}
@@ -76,7 +76,7 @@ func TestGenerateFromFiles_missing_file(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
+	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to read from archive file \"files/test.yaml\"") {
 		t.Fatalf("got error %v", err)
 	}
@@ -86,7 +86,7 @@ func TestGenerateFromFiles_missing_url(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
+	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to get archive URL") {
 		t.Fatalf("got error %v", err)
 	}
@@ -96,13 +96,13 @@ func TestGenerateFromDirectories(t *testing.T) {
 	fetchTests := []struct {
 		description string
 		filename    string
-		items       []templatesv1.GitRepositoryGeneratorDirectoryItem
+		items       []templatesv1.RepositoryGeneratorDirectoryItem
 		want        []map[string]any
 	}{
 		{
 			description: "simple path",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "applications/*"}},
 			want: []map[string]any{
 				{"Directory": "./applications/backend", "Base": "backend"},
@@ -113,7 +113,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 			// TODO: non-glob path
 			description: "rooted path",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "*"}},
 			want: []map[string]any{
 				{"Directory": "./applications", "Base": "applications"},
@@ -122,7 +122,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 		{
 			description: "non-glob path",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "/applications"}},
 			want: []map[string]any{
 				{"Directory": "./applications", "Base": "applications"},
@@ -131,7 +131,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 		{
 			description: "exclusion",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "applications/*"},
 				{Path: "applications/backend", Exclude: true}},
 			want: []map[string]any{
@@ -141,7 +141,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 		{
 			description: "exclusion different form",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "applications/*"},
 				{Path: "./applications/backend", Exclude: true}},
 			want: []map[string]any{
@@ -151,7 +151,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 		{
 			description: "exclusion different form",
 			filename:    "/directories.tar.gz",
-			items: []templatesv1.GitRepositoryGeneratorDirectoryItem{
+			items: []templatesv1.RepositoryGeneratorDirectoryItem{
 				{Path: "applications/*"},
 				{Path: "./applications/backend/", Exclude: true}},
 			want: []map[string]any{
@@ -183,7 +183,7 @@ func TestGenerateFromDirectories_missing_dir(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	generated, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/directories.tar.gz",
-		strings.TrimSpace(mustReadFile(t, "testdata/directories.tar.gz.sum")), []templatesv1.GitRepositoryGeneratorDirectoryItem{{Path: "files"}})
+		strings.TrimSpace(mustReadFile(t, "testdata/directories.tar.gz.sum")), []templatesv1.RepositoryGeneratorDirectoryItem{{Path: "files"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestGenerateFromDirectories_missing_url(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
 	_, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")),
-		[]templatesv1.GitRepositoryGeneratorDirectoryItem{{Path: "files/test.yaml"}})
+		[]templatesv1.RepositoryGeneratorDirectoryItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to get archive URL") {
 		t.Fatalf("got error %v", err)
 	}

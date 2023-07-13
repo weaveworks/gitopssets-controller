@@ -150,15 +150,15 @@ type HeadersReference struct {
 	Name string `json:"name"`
 }
 
-// GitRepositoryGeneratorFileItem defines a path to a file to be parsed when generating.
-type GitRepositoryGeneratorFileItem struct {
+// RepositoryGeneratorFileItem defines a path to a file to be parsed when generating.
+type RepositoryGeneratorFileItem struct {
 	// Path is the name of a file to read and generate from can be JSON or YAML.
 	Path string `json:"path"`
 }
 
-// GitRepositoryGeneratorDirectoryItem stores the information about a specific
+// RepositoryGeneratorDirectoryItem stores the information about a specific
 // directory to be generated from.
-type GitRepositoryGeneratorDirectoryItem struct {
+type RepositoryGeneratorDirectoryItem struct {
 	Path    string `json:"path"`
 	Exclude bool   `json:"exclude,omitempty"`
 }
@@ -169,11 +169,24 @@ type GitRepositoryGenerator struct {
 	RepositoryRef string `json:"repositoryRef,omitempty"`
 
 	// Files is a set of rules for identifying files to be parsed.
-	Files []GitRepositoryGeneratorFileItem `json:"files,omitempty"`
+	Files []RepositoryGeneratorFileItem `json:"files,omitempty"`
 
 	// Directories is a set of rules for identifying directories to be
 	// generated.
-	Directories []GitRepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
+	Directories []RepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
+}
+
+// OCIRepositoryGenerator generates from files in a Flux OCIRepository resource.
+type OCIRepositoryGenerator struct {
+	// RepositoryRef is the name of a OCIRepository resource to be generated from.
+	RepositoryRef string `json:"repositoryRef,omitempty"`
+
+	// Files is a set of rules for identifying files to be parsed.
+	Files []RepositoryGeneratorFileItem `json:"files,omitempty"`
+
+	// Directories is a set of rules for identifying directories to be
+	// generated.
+	Directories []RepositoryGeneratorDirectoryItem `json:"directories,omitempty"`
 }
 
 // MatrixGenerator defines a matrix that combines generators.
@@ -204,6 +217,7 @@ type GitOpsSetNestedGenerator struct {
 
 	List          *ListGenerator          `json:"list,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+	OCIRepository *OCIRepositoryGenerator `json:"ociRepository,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
@@ -222,6 +236,7 @@ type GitOpsSetGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
 	GitRepository *GitRepositoryGenerator `json:"gitRepository,omitempty"`
+	OCIRepository *OCIRepositoryGenerator `json:"ociRepository,omitempty"`
 	Matrix        *MatrixGenerator        `json:"matrix,omitempty"`
 	Cluster       *ClusterGenerator       `json:"cluster,omitempty"`
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`

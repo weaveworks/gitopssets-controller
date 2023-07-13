@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
@@ -100,8 +101,13 @@ func (l localObjectReader) Get(ctx context.Context, key client.ObjectKey, obj cl
 		v.Status.Artifact = &sourcev1.Artifact{
 			URL: "file://" + filepath.Join(base, key.Name),
 		}
+	case *sourcev1beta2.OCIRepository:
+		v.Status.Artifact = &sourcev1.Artifact{
+			URL: "file://" + filepath.Join(base, key.Name),
+		}
+
 	default:
-		return errors.New("not implemented")
+		return fmt.Errorf("filesystem access for %T not implemented", obj)
 	}
 
 	return nil

@@ -19,7 +19,7 @@ type ArchiveFetcher interface {
 	Fetch(archiveURL, checksum, dir string) error
 }
 
-// RepositoryParser fetches archives from a GitRepository and parses the
+// RepositoryParser fetches archives from a Repository and parses the
 // resources from them.
 type RepositoryParser struct {
 	fetcher ArchiveFetcher
@@ -32,7 +32,7 @@ func NewRepositoryParser(logger logr.Logger, fetcher ArchiveFetcher) *Repository
 }
 
 // GenerateFromFiles extracts the archive and processes the files.
-func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, checksum string, files []templatesv1.GitRepositoryGeneratorFileItem) ([]map[string]any, error) {
+func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, checksum string, files []templatesv1.RepositoryGeneratorFileItem) ([]map[string]any, error) {
 	tempDir, err := os.MkdirTemp("", "parsing")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporary directory when parsing artifacts: %w", err)
@@ -70,7 +70,7 @@ func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, ch
 }
 
 // GenerateFromDirectories extracts the archive and processes the directories.
-func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveURL, checksum string, dirs []templatesv1.GitRepositoryGeneratorDirectoryItem) ([]map[string]any, error) {
+func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveURL, checksum string, dirs []templatesv1.RepositoryGeneratorDirectoryItem) ([]map[string]any, error) {
 	tempDir, err := os.MkdirTemp("", "parsing")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temporary directory when parsing artifacts: %w", err)

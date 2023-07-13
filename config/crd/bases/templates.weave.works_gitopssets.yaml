@@ -202,8 +202,8 @@ spec:
                           description: Directories is a set of rules for identifying
                             directories to be generated.
                           items:
-                            description: GitRepositoryGeneratorDirectoryItem stores
-                              the information about a specific directory to be generated
+                            description: RepositoryGeneratorDirectoryItem stores the
+                              information about a specific directory to be generated
                               from.
                             properties:
                               exclude:
@@ -218,8 +218,8 @@ spec:
                           description: Files is a set of rules for identifying files
                             to be parsed.
                           items:
-                            description: GitRepositoryGeneratorFileItem defines a
-                              path to a file to be parsed when generating.
+                            description: RepositoryGeneratorFileItem defines a path
+                              to a file to be parsed when generating.
                             properties:
                               path:
                                 description: Path is the name of a file to read and
@@ -424,7 +424,7 @@ spec:
                                     description: Directories is a set of rules for
                                       identifying directories to be generated.
                                     items:
-                                      description: GitRepositoryGeneratorDirectoryItem
+                                      description: RepositoryGeneratorDirectoryItem
                                         stores the information about a specific directory
                                         to be generated from.
                                       properties:
@@ -440,9 +440,8 @@ spec:
                                     description: Files is a set of rules for identifying
                                       files to be parsed.
                                     items:
-                                      description: GitRepositoryGeneratorFileItem
-                                        defines a path to a file to be parsed when
-                                        generating.
+                                      description: RepositoryGeneratorFileItem defines
+                                        a path to a file to be parsed when generating.
                                       properties:
                                         path:
                                           description: Path is the name of a file
@@ -482,6 +481,47 @@ spec:
                                   generators, this allows multiple generators of the
                                   same type in a single Matrix generator.
                                 type: string
+                              ociRepository:
+                                description: OCIRepositoryGenerator generates from
+                                  files in a Flux OCIRepository resource.
+                                properties:
+                                  directories:
+                                    description: Directories is a set of rules for
+                                      identifying directories to be generated.
+                                    items:
+                                      description: RepositoryGeneratorDirectoryItem
+                                        stores the information about a specific directory
+                                        to be generated from.
+                                      properties:
+                                        exclude:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  files:
+                                    description: Files is a set of rules for identifying
+                                      files to be parsed.
+                                    items:
+                                      description: RepositoryGeneratorFileItem defines
+                                        a path to a file to be parsed when generating.
+                                      properties:
+                                        path:
+                                          description: Path is the name of a file
+                                            to read and generate from can be JSON
+                                            or YAML.
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  repositoryRef:
+                                    description: RepositoryRef is the name of a OCIRepository
+                                      resource to be generated from.
+                                    type: string
+                                type: object
                               pullRequests:
                                 description: PullRequestGenerator defines a generator
                                   that queries a Git hosting service for relevant
@@ -546,6 +586,46 @@ spec:
                             with whatever prefixes they have. It's recommended that
                             you use the Name field to separate out elements."
                           type: boolean
+                      type: object
+                    ociRepository:
+                      description: OCIRepositoryGenerator generates from files in
+                        a Flux OCIRepository resource.
+                      properties:
+                        directories:
+                          description: Directories is a set of rules for identifying
+                            directories to be generated.
+                          items:
+                            description: RepositoryGeneratorDirectoryItem stores the
+                              information about a specific directory to be generated
+                              from.
+                            properties:
+                              exclude:
+                                type: boolean
+                              path:
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        files:
+                          description: Files is a set of rules for identifying files
+                            to be parsed.
+                          items:
+                            description: RepositoryGeneratorFileItem defines a path
+                              to a file to be parsed when generating.
+                            properties:
+                              path:
+                                description: Path is the name of a file to read and
+                                  generate from can be JSON or YAML.
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        repositoryRef:
+                          description: RepositoryRef is the name of a OCIRepository
+                            resource to be generated from.
+                          type: string
                       type: object
                     pullRequests:
                       description: PullRequestGenerator defines a generator that queries

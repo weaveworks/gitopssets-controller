@@ -12,6 +12,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/parser"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -19,20 +20,20 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository/parser"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/ocirepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
 	//+kubebuilder:scaffold:imports
 )
 
 // AllGenerators contains the name of all possible Generators.
-var AllGenerators = []string{"GitRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix", "Config"}
+var AllGenerators = []string{"GitRepository", "OCIRepository", "Cluster", "PullRequests", "List", "APIClient", "ImagePolicy", "Matrix", "Config"}
 
 // DefaultGenerators contains the name of the default set of enabled Generators,
 // this leaves out generators that require optional dependencies.
-var DefaultGenerators = []string{"GitRepository", "PullRequests", "List", "APIClient", "Matrix", "Config"}
+var DefaultGenerators = []string{"GitRepository", "OCIRepository", "PullRequests", "List", "APIClient", "Matrix", "Config"}
 
 // NewSchemeForGenerators creates and returns a runtime.Scheme configured with
 // the correct schemes for the enabled generators.
@@ -80,6 +81,7 @@ func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, cl
 	matrixGenerators := filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
 		"GitRepository": gitrepository.GeneratorFactory(fetcher),
+		"OCIRepository": ocirepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
@@ -89,6 +91,7 @@ func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, cl
 	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
 		"List":          list.GeneratorFactory,
 		"GitRepository": gitrepository.GeneratorFactory(fetcher),
+		"OCIRepository": ocirepository.GeneratorFactory(fetcher),
 		"PullRequests":  pullrequests.GeneratorFactory,
 		"Cluster":       cluster.GeneratorFactory,
 		"APIClient":     apiclient.GeneratorFactory(clientFactory),
