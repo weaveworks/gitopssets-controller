@@ -1,0 +1,24 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ns-0-engineering-dev
+  labels:
+    templates.weave.works/name: namespaces-from-elements
+    templates.weave.works/namespace: wge
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ns-1-engineering-prod
+  labels:
+    templates.weave.works/name: namespaces-from-elements
+    templates.weave.works/namespace: wge
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: ns-2-engineering-preprod
+  labels:
+    templates.weave.works/name: namespaces-from-elements
+    templates.weave.works/namespace: wge

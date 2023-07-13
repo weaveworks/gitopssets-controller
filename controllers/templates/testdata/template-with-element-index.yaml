@@ -1,0 +1,24 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: namespaces-from-elements
+  namespace: wge
+spec:
+  generators:
+    - list:
+        elements:
+          - env: engineering-dev
+          - env: engineering-prod
+          - env: engineering-preprod
+  templates:
+    - content:
+        kind: Namespace
+        apiVersion: v1
+        metadata:
+          name: "ns-{{ .ElementIndex }}-{{ .Element.env }}"

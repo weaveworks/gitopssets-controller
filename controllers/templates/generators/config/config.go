@@ -15,18 +15,18 @@ import (
 // ConfigGenerator generates a single resource from a referenced ConfigMap or
 // Secret.
 type ConfigGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the ConfigGenerator.
-func GeneratorFactory(l logr.Logger, c client.Client) generators.Generator {
+func GeneratorFactory(l logr.Logger, c client.Reader) generators.Generator {
 	return NewGenerator(l, c)
 }
 
 // NewGenerator creates and returns a new config generator.
-func NewGenerator(l logr.Logger, c client.Client) *ConfigGenerator {
+func NewGenerator(l logr.Logger, c client.Reader) *ConfigGenerator {
 	return &ConfigGenerator{
 		Client: c,
 		Logger: l,
@@ -72,7 +72,7 @@ func (g *ConfigGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Dura
 	return generators.NoRequeueInterval
 }
 
-func configMapToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey) (map[string]any, error) {
+func configMapToParams(ctx context.Context, k8sClient client.Reader, key client.ObjectKey) (map[string]any, error) {
 	var configMap corev1.ConfigMap
 
 	if err := k8sClient.Get(ctx, key, &configMap); err != nil {
@@ -82,7 +82,7 @@ func configMapToParams(ctx context.Context, k8sClient client.Client, key client.
 	return mapToAnyMap(configMap.Data), nil
 }
 
-func secretToParams(ctx context.Context, k8sClient client.Client, key client.ObjectKey) (map[string]any, error) {
+func secretToParams(ctx context.Context, k8sClient client.Reader, key client.ObjectKey) (map[string]any, error) {
 	var secret corev1.Secret
 
 	if err := k8sClient.Get(ctx, key, &secret); err != nil {

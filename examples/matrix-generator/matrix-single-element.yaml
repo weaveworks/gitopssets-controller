@@ -1,0 +1,80 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  labels:
+    app.kubernetes.io/name: gitopsset
+    app.kubernetes.io/instance: gitopsset-sample
+    app.kubernetes.io/part-of: gitopssets-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: gitopssets-controller
+  name: single-element-matrix-sample
+spec:
+  generators:
+    - matrix:
+        singleElement: true
+        generators:
+          - name: staging
+            list:
+              elements:
+                - ClusterAnnotations: {}
+                  ClusterLabels:
+                    env: staging
+                  ClusterName: staging-cluster1
+                  ClusterNamespace: clusters
+                - ClusterAnnotations: {}
+                  ClusterLabels:
+                    env: staging
+                  ClusterName: staging-cluster2
+                  ClusterNamespace: clusters
+          - name: production
+            list:
+              elements:
+                - ClusterAnnotations: {}
+                  ClusterLabels:
+                    env: production
+                  ClusterName: production-cluster1
+                  ClusterNamespace: clusters
+                - ClusterAnnotations: {}
+                  ClusterLabels:
+                    env: production
+                  ClusterName: production-cluster2
+                  ClusterNamespace: clusters
+  templates:
+    - content:
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        kind: Kustomization
+        metadata:
+          name: 'podinfo-app-test'
+        spec:
+          interval: 5m
+          path: './kustomize/pipeline'
+          prune: true
+          patches:
+            - patch: |-
+                apiVersion: pipelines.weave.works/v1alpha1
+                kind: Pipeline
+                metadata:
+                  name: not-used
+                spec:
+                  environments:
+                    - name: staging
+                      targets:
+                      {{ range .Element.staging }}
+                      - clusterRef:
+                          kind: GitopsCluster
+                          name: {{ .ClusterName }}
+                        namespace: app-podinfo-staging
+                      {{ end }}
+                    - name: production
+                      targets:
+                      {{ range .Element.production }}
+                      - clusterRef:
+                          kind: GitopsCluster
+                          name: {{ .ClusterName }}
+                        namespace: app-podinfo-prodiction
+                      {{ end }}
+              target:
+                kind: Pipeline
+          sourceRef:
+            kind: GitRepository
+            name: flux-system

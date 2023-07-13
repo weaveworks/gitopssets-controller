@@ -15,7 +15,7 @@ import (
 
 // GitRepositoryGenerator extracts files from Flux GitRepository resources.
 type GitRepositoryGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 
 	Fetcher parser.ArchiveFetcher
@@ -24,13 +24,13 @@ type GitRepositoryGenerator struct {
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the GitRepositoryGenerator.
 func GeneratorFactory(fetcher parser.ArchiveFetcher) generators.GeneratorFactory {
-	return func(l logr.Logger, c client.Client) generators.Generator {
+	return func(l logr.Logger, c client.Reader) generators.Generator {
 		return NewGenerator(l, c, fetcher)
 	}
 }
 
 // NewGenerator creates and returns a new GitRepository generator.
-func NewGenerator(l logr.Logger, c client.Client, fetcher parser.ArchiveFetcher) *GitRepositoryGenerator {
+func NewGenerator(l logr.Logger, c client.Reader, fetcher parser.ArchiveFetcher) *GitRepositoryGenerator {
 	return &GitRepositoryGenerator{
 		Client:  c,
 		Logger:  l,

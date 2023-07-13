@@ -1,8 +1,10 @@
 package templates
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -12,12 +14,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
+	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 	"github.com/weaveworks/gitopssets-controller/test"
 )
 
@@ -429,6 +433,40 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestRender_files(t *testing.T) {
+	testGenerators := map[string]generators.Generator{
+		"List": list.NewGenerator(logr.Discard()),
+	}
+
+	generatorTests := []struct {
+		filename string
+		want     string
+	}{
+		{
+			filename: "testdata/template-with-repeat-index.yaml",
+			want:     "testdata/template-with-repeat-index-rendered.yaml",
+		},
+		{
+			filename: "testdata/template-with-element-index.yaml",
+			want:     "testdata/template-with-element-index-rendered.yaml",
+		},
+		{
+			filename: "testdata/template-with-top-level-elements.yaml",
+			want:     "testdata/template-with-top-level-elements-rendered.yaml",
+		},
+	}
+
+	for _, tt := range generatorTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			gset := readFixtureAsGitOpsSet(t, tt.filename)
+			objs, err := Render(context.TODO(), gset, testGenerators)
+			test.AssertNoError(t, err)
+
+			assertFixturesMatch(t, tt.want, objs)
+		})
+	}
+}
+
 func TestRender_errors(t *testing.T) {
 	templateTests := []struct {
 		name       string
@@ -628,5 +666,58 @@ func nsn(namespace, name string) types.NamespacedName {
 	return types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
+	}
+}
+
+func readFixtureAsGitOpsSet(t *testing.T, filename string) *templatesv1.GitOpsSet {
+	t.Helper()
+	scheme, err := setup.NewSchemeForGenerators(setup.DefaultGenerators)
+	test.AssertNoError(t, err)
+
+	b, err := os.ReadFile(filename)
+	test.AssertNoError(t, err)
+
+	m, _, err := yamlserializer.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(b, nil, nil)
+	test.AssertNoError(t, err)
+
+	raw, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
+	test.AssertNoError(t, err)
+
+	u := &unstructured.Unstructured{Object: raw}
+	newObj, err := scheme.New(u.GetObjectKind().GroupVersionKind())
+	test.AssertNoError(t, err)
+
+	set, err := newObj.(*templatesv1.GitOpsSet), scheme.Convert(u, newObj, nil)
+	test.AssertNoError(t, err)
+
+	return set
+}
+
+func assertFixturesMatch(t *testing.T, filename string, objs []*unstructured.Unstructured) {
+	// t.Helper()
+
+	fixture, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("failed to read fixture %s: %s", filename, err)
+	}
+
+	want := []*unstructured.Unstructured{}
+	for _, raw := range bytes.Split(fixture, []byte("---")) {
+		if t := bytes.TrimSpace(raw); len(t) == 0 {
+			continue
+		}
+
+		m, _, err := yamlserializer.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(raw, nil, nil)
+		test.AssertNoError(t, err)
+
+		raw, err := runtime.DefaultUnstructuredConverter.ToUnstructured(m)
+		test.AssertNoError(t, err)
+
+		u := &unstructured.Unstructured{Object: raw}
+		want = append(want, u)
+	}
+
+	if diff := cmp.Diff(want, objs); diff != "" {
+		t.Fatalf("failed to match fixtures:\n%s", diff)
 	}
 }

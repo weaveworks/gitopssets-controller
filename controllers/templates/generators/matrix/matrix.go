@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/go-logr/logr"
-	"github.com/imdario/mergo"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,7 +18,7 @@ import (
 // MatrixGenerator is a generator that combines the results of multiple
 // generators into a single set of values.
 type MatrixGenerator struct {
-	client.Client
+	Client client.Reader
 	logr.Logger
 	generatorsMap map[string]generators.GeneratorFactory
 }
@@ -26,13 +26,13 @@ type MatrixGenerator struct {
 // GeneratorFactory is a function for creating per-reconciliation generators for
 // the MatrixGenerator.
 func GeneratorFactory(generatorsMap map[string]generators.GeneratorFactory) generators.GeneratorFactory {
-	return func(l logr.Logger, c client.Client) generators.Generator {
+	return func(l logr.Logger, c client.Reader) generators.Generator {
 		return NewGenerator(l, c, generatorsMap)
 	}
 }
 
 // NewGenerator creates and returns a new matrix generator.
-func NewGenerator(l logr.Logger, c client.Client, g map[string]generators.GeneratorFactory) *MatrixGenerator {
+func NewGenerator(l logr.Logger, c client.Reader, g map[string]generators.GeneratorFactory) *MatrixGenerator {
 	return &MatrixGenerator{
 		Client:        c,
 		Logger:        l,
@@ -49,10 +49,6 @@ func (mg *MatrixGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 		return nil, nil
 	}
 
-	if len(sg.Matrix.Generators) < 2 {
-		return nil, generators.ErrIncorrectNumberOfGenerators
-	}
-
 	allGenerators := map[string]generators.Generator{}
 
 	for name, factory := range mg.generatorsMap {
@@ -63,6 +59,10 @@ func (mg *MatrixGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	generated, err := generate(ctx, *sg, allGenerators, ks)
 	if err != nil {
 		return nil, err
+	}
+
+	if sg.Matrix.SingleElement {
+		return singleElement(generated)
 	}
 
 	product, err := cartesian(generated)
@@ -116,9 +116,14 @@ func (g *MatrixGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Dura
 	return res[0]
 }
 
+type generatedElements struct {
+	name     string
+	elements []map[string]any
+}
+
 // generate generates the parameters for the matrix generator.
-func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([][]map[string]any, error) {
-	generated := [][]map[string]any{}
+func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, allGenerators map[string]generators.Generator, gitopsSet *templatesv1.GitOpsSet) ([]generatedElements, error) {
+	generated := []generatedElements{}
 
 	for _, mg := range generator.Matrix.Generators {
 		name := mg.Name
@@ -137,18 +142,7 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 				return nil, err
 			}
 
-			if name != "" {
-				prefixed := make([]map[string]any, len(res))
-				for i, g := range res {
-					prefixed[i] = map[string]any{
-						name: g,
-					}
-				}
-				generated = append(generated, prefixed)
-				continue
-			}
-
-			generated = append(generated, res)
+			generated = append(generated, generatedElements{name: name, elements: res})
 		}
 	}
 
@@ -175,13 +169,27 @@ func makeGitOpsSetGenerator(mg *templatesv1.GitOpsSetNestedGenerator) (*template
 
 // cartesian returns the cartesian product of a matrix with no
 // duplicates.
-func cartesian(slices [][]map[string]any) ([]map[string]any, error) {
-	if len(slices) < 2 {
-		return nil, nil
+func cartesian(generated []generatedElements) ([]map[string]any, error) {
+	if len(generated) == 0 {
+		return []map[string]any{}, nil
+	}
+
+	slices := [][]map[string]any{}
+	for _, res := range generated {
+		if res.name != "" {
+			prefixed := make([]map[string]any, len(res.elements))
+			for i, g := range res.elements {
+				prefixed[i] = map[string]any{
+					res.name: g,
+				}
+			}
+			slices = append(slices, prefixed)
+			continue
+		}
+		slices = append(slices, res.elements)
 	}
 
 	results := []map[string]any{}
-	// In this loop control
 	// make([]int, len(slices)) creates an slice with elements for all slice
 	// elements, with the default value 0.
 	//
@@ -245,7 +253,7 @@ func alreadyExists[T any](newMap T, existing []T) bool {
 // first item in slice 1 and each item from slice 2 i.e. [0 0], [0 1]
 // second item in slice 1 and each item from slice 2 [1 0], [1 1]
 // third item in slice 1 and each item from slice 2 [2 0], [2 1]
-// and finally the [3 0] case which lets us exit the cartesian calculator.
+// and finally the [3 0] case which lets us exit the calculator.
 func nextIndex[T any](ix []int, slices [][]T) {
 	for j := len(ix) - 1; j >= 0; j-- {
 		ix[j]++
@@ -256,4 +264,37 @@ func nextIndex[T any](ix []int, slices [][]T) {
 
 		ix[j] = 0
 	}
+}
+
+// singleElement flattens a set of generated elements into a single element.
+func singleElement(generated []generatedElements) ([]map[string]any, error) {
+	if len(generated) == 0 {
+		return []map[string]any{}, nil
+	}
+
+	result := map[string]any{}
+	for _, g := range generated {
+		if g.name != "" {
+			result[g.name] = []map[string]any{}
+		}
+	}
+
+	unnamed := []map[string]any{}
+
+	for _, generator := range generated {
+		for _, element := range generator.elements {
+			if generator.name == "" {
+				unnamed = append(unnamed, element)
+				continue
+			}
+
+			result[generator.name] = append(result[generator.name].([]map[string]any), element)
+		}
+	}
+
+	if len(unnamed) > 0 {
+		result["Matrix"] = unnamed
+	}
+
+	return []map[string]any{result}, nil
 }
