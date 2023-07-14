@@ -2,6 +2,7 @@ package test
 
 import (
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -72,4 +73,27 @@ func NewSecret(opts ...func(*corev1.Secret)) *corev1.Secret {
 	}
 
 	return cm
+}
+
+// NewGitRepository creates and returns a new GitRepository.
+func NewGitRepository(opts ...func(*sourcev1beta2.GitRepository)) *sourcev1beta2.GitRepository {
+	gr := &sourcev1beta2.GitRepository{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "source.toolkit.fluxcd.io/v1beta2",
+			Kind:       "GitRepository",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-repository",
+			Namespace: testNamespace,
+		},
+		Spec: sourcev1beta2.GitRepositorySpec{
+			URL: "https://github.com/weaveworks/gitopssets-controller",
+		},
+	}
+
+	for _, opt := range opts {
+		opt(gr)
+	}
+
+	return gr
 }

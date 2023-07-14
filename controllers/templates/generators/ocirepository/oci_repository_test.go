@@ -24,8 +24,6 @@ const testRetries int = 3
 
 var _ generators.Generator = (*OCIRepositoryGenerator)(nil)
 
-const testNamespace = "generation"
-
 var testFetcher = fetch.NewArchiveFetcher(testRetries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
 
 func TestGenerate_with_no_OCIRepository(t *testing.T) {
@@ -48,19 +46,6 @@ func TestGenerate(t *testing.T) {
 		objects   []runtime.Object
 		want      []map[string]any
 	}{
-		{
-			"no artifact in OCIRepository",
-			&templatesv1.OCIRepositoryGenerator{
-				RepositoryRef: "test-repository",
-				Files: []templatesv1.RepositoryGeneratorFileItem{
-					{Path: "files/dev.yaml"},
-					{Path: "files/production.yaml"},
-					{Path: "files/staging.yaml"},
-				},
-			},
-			[]runtime.Object{newOCIRepository()},
-			[]map[string]any{},
-		},
 		{
 			"file list case",
 			&templatesv1.OCIRepositoryGenerator{
@@ -107,7 +92,7 @@ func TestGenerate(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -163,6 +148,19 @@ func TestGenerate_errors(t *testing.T) {
 			},
 			wantErr: "GitOpsSet is empty",
 		},
+		{
+			name: "no artifact in OCIRepository",
+			generator: &templatesv1.OCIRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Files: []templatesv1.RepositoryGeneratorFileItem{
+					{Path: "files/dev.yaml"},
+					{Path: "files/production.yaml"},
+					{Path: "files/staging.yaml"},
+				},
+			},
+			objects: []runtime.Object{newOCIRepository()},
+			wantErr: "no artifact for OCIRepository default/test-repository",
+		},
 	}
 
 	for _, tt := range testCases {
@@ -174,7 +172,7 @@ func TestGenerate_errors(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -203,7 +201,7 @@ func newOCIRepository(opts ...func(*sourcev1beta2.OCIRepository)) *sourcev1beta2
 	gr := &sourcev1beta2.OCIRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-repository",
-			Namespace: testNamespace,
+			Namespace: "default",
 		},
 	}
 

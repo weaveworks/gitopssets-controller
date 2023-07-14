@@ -24,8 +24,6 @@ const testRetries int = 3
 
 var _ generators.Generator = (*GitRepositoryGenerator)(nil)
 
-const testNamespace = "generation"
-
 var testFetcher = fetch.NewArchiveFetcher(testRetries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
 
 func TestGenerate_with_no_GitRepository(t *testing.T) {
@@ -49,19 +47,6 @@ func TestGenerate(t *testing.T) {
 		want      []map[string]any
 	}{
 		{
-			"no artifact in GitRepository",
-			&templatesv1.GitRepositoryGenerator{
-				RepositoryRef: "test-repository",
-				Files: []templatesv1.RepositoryGeneratorFileItem{
-					{Path: "files/dev.yaml"},
-					{Path: "files/production.yaml"},
-					{Path: "files/staging.yaml"},
-				},
-			},
-			[]runtime.Object{newGitRepository()},
-			[]map[string]any{},
-		},
-		{
 			"file list case",
 			&templatesv1.GitRepositoryGenerator{
 				RepositoryRef: "test-repository",
@@ -71,7 +56,7 @@ func TestGenerate(t *testing.T) {
 					{Path: "files/staging.yaml"},
 				},
 			},
-			[]runtime.Object{newGitRepository(
+			[]runtime.Object{test.NewGitRepository(
 				withArchiveURLAndChecksum(srv.URL+"/files.tar.gz",
 					"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
 			[]map[string]any{
@@ -88,7 +73,7 @@ func TestGenerate(t *testing.T) {
 					{Path: "applications/*"},
 				},
 			},
-			[]runtime.Object{newGitRepository(
+			[]runtime.Object{test.NewGitRepository(
 				withArchiveURLAndChecksum(srv.URL+"/directories.tar.gz",
 					"sha256:a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
 			[]map[string]any{
@@ -107,7 +92,7 @@ func TestGenerate(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -163,6 +148,19 @@ func TestGenerate_errors(t *testing.T) {
 			},
 			wantErr: "GitOpsSet is empty",
 		},
+		{
+			name: "no artifact in GitRepository",
+			generator: &templatesv1.GitRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Files: []templatesv1.RepositoryGeneratorFileItem{
+					{Path: "files/dev.yaml"},
+					{Path: "files/production.yaml"},
+					{Path: "files/staging.yaml"},
+				},
+			},
+			objects: []runtime.Object{test.NewGitRepository()},
+			wantErr: "no artifact for GitRepository default/test-repository",
+		},
 	}
 
 	for _, tt := range testCases {
@@ -174,7 +172,7 @@ func TestGenerate_errors(t *testing.T) {
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-generator",
-						Namespace: testNamespace,
+						Namespace: "default",
 					},
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
@@ -197,21 +195,6 @@ func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.GitR
 			Digest: xsum,
 		}
 	}
-}
-
-func newGitRepository(opts ...func(*sourcev1beta2.GitRepository)) *sourcev1beta2.GitRepository {
-	gr := &sourcev1beta2.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-repository",
-			Namespace: testNamespace,
-		},
-	}
-
-	for _, opt := range opts {
-		opt(gr)
-	}
-
-	return gr
 }
 
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {

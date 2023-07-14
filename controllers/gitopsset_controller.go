@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -164,6 +165,16 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 
 	if err != nil {
+		// We can return here because when the resource artifact is updated, this
+		// will trigger a reconciliation.
+		if errors.As(err, &generators.NoArtifactError{}) {
+			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, "waiting for artifact")
+			if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+				logger.Error(err, "failed to reconcile")
+			}
+			return ctrl.Result{}, nil
+		}
+
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
