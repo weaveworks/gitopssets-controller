@@ -9,8 +9,8 @@ import (
 
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
-	apiv1 "github.com/fluxcd/source-controller/api/v1"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/onsi/gomega"
@@ -355,7 +355,7 @@ func TestGitOpsSetUpdateOnGitRepoChange(t *testing.T) {
 	gRepo := makeTestGitRepository(t, srv.URL+"/files.tar.gz")
 	test.AssertNoError(t, testEnv.Create(ctx, gRepo))
 
-	gRepo.Status = getGitRepoStatusUpdate(t, srv.URL+"/files.tar.gz", "sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")
+	gRepo.Status.Artifact = newArtifact(srv.URL+"/files.tar.gz", "sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")
 
 	test.AssertNoError(t, testEnv.Status().Update(ctx, gRepo))
 
@@ -373,7 +373,7 @@ func TestGitOpsSetUpdateOnGitRepoChange(t *testing.T) {
 							{
 								GitRepository: &templatesv1.GitRepositoryGenerator{
 									RepositoryRef: "my-git-repo",
-									Files: []templatesv1.GitRepositoryGeneratorFileItem{
+									Files: []templatesv1.RepositoryGeneratorFileItem{
 										{Path: "files/dev.yaml"},
 									},
 								},
@@ -405,9 +405,74 @@ func TestGitOpsSetUpdateOnGitRepoChange(t *testing.T) {
 	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-dev-demo")))
 
 	// Update the GitRepository to point to a new archive.
-	gRepo.Status = getGitRepoStatusUpdate(t, srv.URL+"/files-develop.tar.gz", "sha256:14cc05e5d1206860b56630b41676dbfed05533011177e123c5dd48c72b959cdc")
-
+	gRepo.Status.Artifact = newArtifact(srv.URL+"/files-develop.tar.gz", "sha256:14cc05e5d1206860b56630b41676dbfed05533011177e123c5dd48c72b959cdc")
 	test.AssertNoError(t, testEnv.Status().Update(ctx, gRepo))
+
+	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-development-demo")))
+}
+
+func TestGitOpsSetUpdateOnOCIRepoChange(t *testing.T) {
+	eventRecorder.Reset()
+	ctx := context.TODO()
+
+	// Create an OCIRepository with a fake archive server.
+	srv := test.StartFakeArchiveServer(t, "testdata/archive")
+	oRepo := makeTestOCIRepository(t, "oci://ghcr.io/stefanprodan/manifests/podinfo")
+	test.AssertNoError(t, testEnv.Create(ctx, oRepo))
+
+	oRepo.Status.Artifact = newArtifact(srv.URL+"/files.tar.gz", "sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8")
+
+	test.AssertNoError(t, testEnv.Status().Update(ctx, oRepo))
+
+	// Create a GitOpsSet that uses the OCIRepository.
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					Matrix: &templatesv1.MatrixGenerator{
+						Generators: []templatesv1.GitOpsSetNestedGenerator{
+							{
+								OCIRepository: &templatesv1.OCIRepositoryGenerator{
+									RepositoryRef: "my-oci-repo",
+									Files: []templatesv1.RepositoryGeneratorFileItem{
+										{Path: "files/dev.yaml"},
+									},
+								},
+							},
+							{
+								List: &templatesv1.ListGenerator{
+									Elements: []apiextensionsv1.JSON{
+										{Raw: []byte(`{"cluster": "eng-dev"}`)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("default", "eng-{{ .Element.environment }}-demo"))),
+					},
+				},
+			},
+		},
+	}
+
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-dev-demo")))
+
+	// Update the OCIRepository to point to a new archive.
+	oRepo.Status.Artifact = newArtifact(srv.URL+"/files-develop.tar.gz", "sha256:14cc05e5d1206860b56630b41676dbfed05533011177e123c5dd48c72b959cdc")
+
+	test.AssertNoError(t, testEnv.Status().Update(ctx, oRepo))
 
 	waitForGitOpsSetInventory(t, testEnv, gs, test.MakeTestKustomization(nsn("default", "eng-development-demo")))
 }
@@ -740,13 +805,11 @@ func generateResourceInventory(objs []runtime.Object) *templatesv1.ResourceInven
 	return &templatesv1.ResourceInventory{Entries: entries}
 }
 
-func getGitRepoStatusUpdate(t *testing.T, url, checksum string) sourcev1.GitRepositoryStatus {
-	return sourcev1.GitRepositoryStatus{
-		Artifact: &apiv1.Artifact{
-			URL:            url,
-			Digest:         checksum,
-			LastUpdateTime: metav1.Now(),
-		},
+func newArtifact(url, checksum string) *sourcev1.Artifact {
+	return &sourcev1.Artifact{
+		URL:            url,
+		Digest:         checksum,
+		LastUpdateTime: metav1.Now(),
 	}
 }
 
@@ -953,14 +1016,28 @@ func nsn(namespace, name string) types.NamespacedName {
 	}
 }
 
-func makeTestGitRepository(t *testing.T, archiveURL string) *sourcev1.GitRepository {
-	gr := &sourcev1.GitRepository{
+func makeTestGitRepository(t *testing.T, archiveURL string) *sourcev1beta2.GitRepository {
+	gr := &sourcev1beta2.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-git-repo",
 			Namespace: "default",
 		},
-		Spec: sourcev1.GitRepositorySpec{
+		Spec: sourcev1beta2.GitRepositorySpec{
 			URL: archiveURL,
+		},
+	}
+
+	return gr
+}
+
+func makeTestOCIRepository(t *testing.T, repoURL string) *sourcev1beta2.OCIRepository {
+	gr := &sourcev1beta2.OCIRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-oci-repo",
+			Namespace: "default",
+		},
+		Spec: sourcev1beta2.OCIRepositorySpec{
+			URL: repoURL,
 		},
 	}
 

@@ -28,6 +28,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/ocirepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
 	// +kubebuilder:scaffold:imports
 )
@@ -69,14 +70,16 @@ func TestMain(m *testing.M) {
 			"Matrix": matrix.GeneratorFactory(map[string]generators.GeneratorFactory{
 				"List":          list.GeneratorFactory,
 				"GitRepository": gitrepository.GeneratorFactory(fetcher),
+				"OCIRepository": ocirepository.GeneratorFactory(fetcher),
 				"PullRequests":  pullrequests.GeneratorFactory,
 				"ImagePolicy":   imagepolicy.GeneratorFactory,
 				"Config":        config.GeneratorFactory,
 			}),
-			"PullRequests": pullrequests.GeneratorFactory,
-			"Cluster":      cluster.GeneratorFactory,
-			"ImagePolicy":  imagepolicy.GeneratorFactory,
-			"Config":       config.GeneratorFactory,
+			"PullRequests":  pullrequests.GeneratorFactory,
+			"OCIRepository": ocirepository.GeneratorFactory(fetcher),
+			"Cluster":       cluster.GeneratorFactory,
+			"ImagePolicy":   imagepolicy.GeneratorFactory,
+			"Config":        config.GeneratorFactory,
 		},
 		EventRecorder: eventRecorder,
 	}).SetupWithManager(testEnv); err != nil {
