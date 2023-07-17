@@ -47,7 +47,7 @@ func NewGenerateCommand(name string) *cobra.Command {
 	}
 
 	cmd.Flags().StringSliceVar(&enabledGenerators, "enabled-generators", setup.DefaultGenerators, "Generators to enable")
-	cmd.Flags().BoolVarP(&disableClusterAccess, "disable-cluster-access", "d", true, "Disable cluster access - no access to Cluster resources will occur")
+	cmd.Flags().BoolVarP(&disableClusterAccess, "disable-cluster-access", "d", false, "Disable cluster access - no access to Cluster resources will occur")
 	cmd.Flags().StringVar(&repositoryRoot, "repository-root", "", "When cluster access is disabled GitRepository content is sourced relative to this path with the name of the GitRepository i.e. <repository-root>/<name of GitRepository>")
 
 	return cmd
