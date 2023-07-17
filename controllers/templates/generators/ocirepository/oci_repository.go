@@ -73,7 +73,7 @@ func (g *OCIRepositoryGenerator) generateParamsFromOCIFiles(ctx context.Context,
 	// No artifact? nothing to generate...
 	if gr.Status.Artifact == nil {
 		g.Logger.Info("OCIRepository does not have an artifact", "repository", repoName)
-		return []map[string]any{}, nil
+		return nil, generators.ArtifactError("OCIRepository", repoName)
 	}
 
 	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,

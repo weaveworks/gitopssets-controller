@@ -11,6 +11,7 @@ import (
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +33,7 @@ import (
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
 	"github.com/weaveworks/gitopssets-controller/test"
 )
@@ -54,6 +56,7 @@ func TestReconciliation(t *testing.T) {
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
 			"testdata/crds",
+			"../tests/e2e/testdata/crds",
 		},
 	}
 	testEnv.ControlPlane.GetAPIServer().Configure().Append("--authorization-mode=RBAC")
@@ -73,6 +76,7 @@ func TestReconciliation(t *testing.T) {
 	// Kustomizations.
 	test.AssertNoError(t, clientgoscheme.AddToScheme(scheme))
 	test.AssertNoError(t, templatesv1.AddToScheme(scheme))
+	test.AssertNoError(t, sourcev1beta2.AddToScheme(scheme))
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	test.AssertNoError(t, err)
@@ -86,7 +90,8 @@ func TestReconciliation(t *testing.T) {
 		Scheme:                scheme,
 		DefaultServiceAccount: "",
 		Generators: map[string]generators.GeneratorFactory{
-			"List": list.GeneratorFactory,
+			"List":          list.GeneratorFactory,
+			"GitRepository": gitrepository.GeneratorFactory(nil),
 		},
 		Config:        cfg,
 		EventRecorder: eventRecorder,
@@ -200,7 +205,7 @@ func TestReconciliation(t *testing.T) {
 			}
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
-		defer cleanupResource(t, k8sClient, test.ToUnstructured(t, devKS))
+		defer deleteObject(t, k8sClient, test.ToUnstructured(t, devKS))
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
@@ -731,6 +736,37 @@ func TestReconciliation(t *testing.T) {
 		assertNoKustomizationsExistInNamespace(t, k8sClient, "default")
 	})
 
+	t.Run("reconciling when gitrepository has no artifact", func(t *testing.T) {
+		ctx := context.TODO()
+		emptyGR := test.NewGitRepository()
+		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, emptyGR)))
+		defer deleteObject(t, k8sClient, emptyGR)
+
+		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
+				{
+					GitRepository: &templatesv1.GitRepositoryGenerator{
+						RepositoryRef: "test-repository",
+						Files: []templatesv1.RepositoryGeneratorFileItem{
+							{Path: "files/dev.yaml"},
+							{Path: "files/production.yaml"},
+							{Path: "files/staging.yaml"},
+						},
+					},
+				},
+			}
+		}))
+		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+		assertInventoryHasNoItems(t, gs)
+		assertNoKustomizationsExistInNamespace(t, k8sClient, "default")
+		assertGitOpsSetCondition(t, gs, meta.ReadyCondition, "waiting for artifact")
+	})
+
 	t.Run("error conditions - existing resource", func(t *testing.T) {
 		ctx := context.TODO()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
@@ -760,7 +796,7 @@ func TestReconciliation(t *testing.T) {
 			}
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
-		defer cleanupResource(t, k8sClient, gs)
+		defer deleteObject(t, k8sClient, gs)
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
@@ -1098,7 +1134,7 @@ func assertInventoryHasNoItems(t *testing.T, gs *templatesv1.GitOpsSet) {
 	}
 }
 
-func cleanupResource(t *testing.T, cl client.Client, obj client.Object) {
+func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
 	if err := cl.Delete(context.TODO(), obj); err != nil {
 		t.Fatal(err)
@@ -1226,7 +1262,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 		t.Fatalf("failed to write role: %s", err)
 	}
 	t.Cleanup(func() {
-		cleanupResource(t, cl, role)
+		deleteObject(t, cl, role)
 	})
 	binding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1248,7 +1284,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 		t.Fatalf("failed to write role-binding: %s", err)
 	}
 	t.Cleanup(func() {
-		cleanupResource(t, cl, binding)
+		deleteObject(t, cl, binding)
 	})
 }
 func deleteGitOpsSetAndFinalize(t *testing.T, cl client.Client, reconciler *GitOpsSetReconciler, gs *templatesv1.GitOpsSet) {

@@ -31,9 +31,8 @@ type Generator interface {
 // ErrEmptyGitOpsSetGenerator is returned when GitOpsSet is
 // empty.
 var ErrEmptyGitOpsSet = errors.New("GitOpsSet is empty")
-var NoRequeueInterval time.Duration
 
-var ErrIncorrectNumberOfGenerators = errors.New("matrix generator needs two generators")
+var NoRequeueInterval time.Duration
 
 // DefaultInterval is used when Interval is not specified, it
 // is the default time to wait before the next reconcile loop.
