@@ -245,6 +245,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 				{
 					Content: runtime.RawExtension{
 						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.ObjectMeta.Name = "demo-cm-testing-{{ .ElementIndex }}"
 							c.Data = map[string]string{
 								"testing": "{{ .Element.latestImage }}",
 							}
@@ -265,7 +266,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
 
 	var cm corev1.ConfigMap
-	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "demo-cm", Namespace: "default"}, &cm))
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "demo-cm-testing-0", Namespace: "default"}, &cm))
 
 	want := map[string]string{
 		"testing": "testing/test:v0.30.0",
