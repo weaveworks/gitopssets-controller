@@ -1,0 +1,90 @@
+---
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: pipeline-gitopssets
+  namespace: flux-system
+spec:
+  serviceAccountName: kustomize-controller
+  generators:
+    - matrix:
+        singleElement: true
+        generators:
+        - name: dev
+          cluster:
+            selector:
+              matchLabels:
+                env: dev
+        - name: stage
+          cluster:
+            selector:
+              matchLabels:
+                env: stage
+        - name: prdgroup1
+          cluster:
+            selector:
+              matchLabels:
+                env: prdgroup1
+        - name: prdgroup2
+          cluster:
+            selector:
+              matchLabels:
+                env: prdgroup2
+  templates:
+  - content:
+      apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+      kind: Kustomization
+      metadata:
+        name: 'podinfo-app-test'
+      spec:
+        interval: 5m
+        path: './kustomize/pipeline'
+        prune: true
+        patches:
+        - patch: |-
+            apiVersion: pipelines.weave.works/v1alpha1
+            kind: Pipeline
+            metadata:
+              name: not-used
+            spec:
+              environments:
+              
+              {{- if .Element.dev -}}
+              - name: dev
+                targets:
+                {{ range .Element.dev }}
+                - clusterRef:
+                    kind: GitopsCluster
+                    name: {{ .ClusterName }}
+                  namespace: app-podinfo-dev
+                {{ end }}
+              {{- end -}}
+              - name: stage
+                targets:
+                {{ range .Element.stage }}
+                - clusterRef:
+                    kind: GitopsCluster
+                    name: {{ .ClusterName }}
+                  namespace: app-podinfo-stage
+                {{ end }}
+              - name: prdgroup1
+                targets:
+                {{ range .Element.prdgroup1 }}
+                - clusterRef:
+                    kind: GitopsCluster
+                    name: {{ .ClusterName }}
+                  namespace: app-podinfo-prd
+                {{ end }}
+              - name: prdgroup2
+                targets:
+                {{ range .Element.prdgroup2 }}
+                - clusterRef:
+                    kind: GitopsCluster
+                    name: {{ .ClusterName }}
+                  namespace: app-podinfo-prd
+                {{ end }}
+          target:
+            kind: Pipeline
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
