@@ -8,6 +8,7 @@ import (
 	"time"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/runtime/testenv"
 	"github.com/fluxcd/pkg/tar"
@@ -48,6 +49,7 @@ func TestMain(m *testing.M) {
 	utilruntime.Must(clustersv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(kustomizev1.AddToScheme(scheme.Scheme))
 	fetcher := fetch.NewArchiveFetcher(1, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
 
 	testEnv = testenv.New(testenv.WithCRDPath(filepath.Join("..", "..", "config", "crd", "bases"),
