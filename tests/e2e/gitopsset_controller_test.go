@@ -42,8 +42,9 @@ func TestReconcilingNewCluster(t *testing.T) {
 	// Create a new GitopsCluster object and ensure it is created
 	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
 		g.ObjectMeta.Labels = map[string]string{
-			"env":  "dev",
-			"team": "engineering",
+			"env":                 "dev",
+			"team":                "engineering",
+			"example.com/testing": "tricky-label",
 		}
 	})
 
@@ -77,6 +78,7 @@ func TestReconcilingNewCluster(t *testing.T) {
 							ks.Labels = map[string]string{
 								"app.kubernetes.io/instance": "{{ .Element.ClusterName }}",
 								"com.example/team":           "{{ .Element.ClusterLabels.team }}",
+								"com.example/new":            `{{ get .Element.ClusterLabels "example.com/testing" }}`,
 							}
 							ks.Spec.Path = "./examples/kustomize/environments/{{ .Element.ClusterLabels.env }}"
 							ks.Spec.Force = true
@@ -105,6 +107,20 @@ func TestReconcilingNewCluster(t *testing.T) {
 	defer deleteObject(t, testEnv, gc2)
 
 	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
+
+	var kust kustomizev1.Kustomization
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "test-gc-demo", Namespace: "default"}, &kust))
+
+	wantLabels := map[string]string{
+		"app.kubernetes.io/instance":      "test-gc",
+		"com.example/new":                 "tricky-label",
+		"com.example/team":                "engineering",
+		"templates.weave.works/name":      "demo-set",
+		"templates.weave.works/namespace": "default",
+	}
+	if diff := cmp.Diff(wantLabels, kust.ObjectMeta.Labels); diff != "" {
+		t.Fatalf("failed to generate labels:\n%s", diff)
+	}
 }
 
 func TestGenerateNamespace(t *testing.T) {
