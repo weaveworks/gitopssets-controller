@@ -69,12 +69,18 @@ func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	return paramsList, nil
 }
 
-func mapOrEmptyMap(src map[string]string) map[string]string {
+func mapOrEmptyMap(src map[string]string) map[string]any {
 	if src == nil {
-		return map[string]string{}
+		return map[string]any{}
 	}
 
-	return src
+	result := map[string]any{}
+
+	for k, v := range src {
+		result[k] = v
+	}
+
+	return result
 }
 
 // Interval is an implementation of the Generator interface.

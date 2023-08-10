@@ -61,16 +61,16 @@ func TestClusterGenerator_Generate(t *testing.T) {
 			},
 			wantParams: []map[string]any{
 				{
-					"ClusterAnnotations": map[string]string{},
-					"ClusterLabels": map[string]string{
+					"ClusterAnnotations": map[string]any{},
+					"ClusterLabels": map[string]any{
 						"test1": "value",
 					},
 					"ClusterName":      "cluster1",
 					"ClusterNamespace": "ns1",
 				},
 				{
-					"ClusterAnnotations": map[string]string{},
-					"ClusterLabels": map[string]string{
+					"ClusterAnnotations": map[string]any{},
+					"ClusterLabels": map[string]any{
 						"test2": "value",
 					},
 					"ClusterName":      "cluster2",
@@ -111,8 +111,8 @@ func TestClusterGenerator_Generate(t *testing.T) {
 				{
 					"ClusterName":        "cluster2",
 					"ClusterNamespace":   "ns2",
-					"ClusterLabels":      map[string]string{"foo": "bar"},
-					"ClusterAnnotations": map[string]string{"key1": "value1", "key2": "value2"},
+					"ClusterLabels":      map[string]any{"foo": "bar"},
+					"ClusterAnnotations": map[string]any{"key1": "value1", "key2": "value2"},
 				},
 			},
 		},
