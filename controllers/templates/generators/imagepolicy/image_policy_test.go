@@ -51,12 +51,30 @@ func TestGenerate(t *testing.T) {
 			&templatesv1.ImagePolicyGenerator{
 				PolicyRef: "test-policy",
 			},
-			[]runtime.Object{test.NewImagePolicy(withImages("testing/test:v0.30.0", "testing/test:v0.29.0"))},
+			[]runtime.Object{test.NewImagePolicy(withImages("ghcr.io/testing/test:v0.30.0", "ghcr.io/testing/test:v0.29.0"))},
 			[]map[string]any{
 				{
-					"latestImage":   "testing/test:v0.30.0",
+					"image":         "ghcr.io/testing/test",
+					"latestImage":   "ghcr.io/testing/test:v0.30.0",
 					"latestTag":     "v0.30.0",
-					"previousImage": "testing/test:v0.29.0",
+					"previousImage": "ghcr.io/testing/test:v0.29.0",
+					"previousTag":   "v0.29.0",
+				},
+			},
+		},
+		{
+			"no previous image",
+			&templatesv1.ImagePolicyGenerator{
+				PolicyRef: "test-policy",
+			},
+			[]runtime.Object{test.NewImagePolicy(withImages("ghcr.io/testing/test:v0.30.0", ""))},
+			[]map[string]any{
+				{
+					"image":         "ghcr.io/testing/test",
+					"latestImage":   "ghcr.io/testing/test:v0.30.0",
+					"latestTag":     "v0.30.0",
+					"previousImage": "",
+					"previousTag":   "",
 				},
 			},
 		},
