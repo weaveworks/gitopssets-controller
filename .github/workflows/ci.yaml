@@ -43,6 +43,23 @@ jobs:
       - name: Test
         run: make test
 
+  build-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # for actions/checkout to fetch code
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # for git describe
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Build docs
+        run: |
+          make api-docs
+          # if any file in git has changed, fail
+          git diff --exit-code
+
   build:
     runs-on: ubuntu-latest
     permissions:
