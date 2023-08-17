@@ -142,7 +142,9 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 				return nil, err
 			}
 
-			generated = append(generated, generatedElements{name: name, elements: res})
+			if len(res) > 0 {
+				generated = append(generated, generatedElements{name: name, elements: res})
+			}
 		}
 	}
 
