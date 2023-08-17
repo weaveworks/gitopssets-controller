@@ -57,8 +57,13 @@ jobs:
       - name: Build docs
         run: |
           make api-docs
-          # if any file in git has changed, fail
-          git diff --exit-code
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "The following files have changed:"
+            git status --porcelain
+            echo "Please run 'make api-docs' and commit the changes."
+            echo "If it was something unrelated to the docs, that is strange... scope down this check or commit those files too?"
+            exit 1
+          fi
 
   build:
     runs-on: ubuntu-latest
