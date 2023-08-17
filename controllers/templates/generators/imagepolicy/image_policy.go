@@ -67,11 +67,28 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 
 	g.Logger.Info("image policy", "latestImage", repo.Status.LatestImage, "latestTag", latestTag.TagStr(), "previousImage", repo.Status.ObservedPreviousImage)
 
-	result = append(result, map[string]any{
+	// This stores empty strings the for the previous tag if it's empty because
+	// that saves users having to check for the existence of the fields in their
+	// templates.
+	previousTag := ""
+	if repo.Status.ObservedPreviousImage != "" {
+		parsedTag, err := name.NewTag(repo.Status.ObservedPreviousImage)
+		if err != nil {
+			return nil, err
+		}
+
+		previousTag = parsedTag.TagStr()
+	}
+
+	generated := map[string]any{
 		"latestImage":   repo.Status.LatestImage,
+		"image":         latestTag.Repository.Name(),
 		"latestTag":     latestTag.TagStr(),
 		"previousImage": repo.Status.ObservedPreviousImage,
-	})
+		"previousTag":   previousTag,
+	}
+
+	result = append(result, generated)
 
 	return result, nil
 }
