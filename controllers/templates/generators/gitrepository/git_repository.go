@@ -64,8 +64,44 @@ func (g *GitRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 }
 
 func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
+	repo, err := g.loadGitRepository(ctx, sg.GitRepository, ks)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", repo.Spec.URL, "artifactURL", repo.Status.Artifact.URL,
+		"digest", repo.Status.Artifact.Digest, "revision", repo.Status.Artifact.Revision)
+
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
+
+	return parser.GenerateFromFiles(ctx, repo.Status.Artifact.URL, repo.Status.Artifact.Digest, sg.GitRepository.Files)
+}
+
+func (g *GitRepositoryGenerator) generateParamsFromGitDirectories(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
+	repo, err := g.loadGitRepository(ctx, sg.GitRepository, ks)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", repo.Spec.URL, "artifactURL", repo.Status.Artifact.URL,
+		"digest", repo.Status.Artifact.Digest, "revision", repo.Status.Artifact.Revision)
+
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
+
+	return parser.GenerateFromDirectories(ctx, repo.Status.Artifact.URL, repo.Status.Artifact.Digest, sg.GitRepository.Directories)
+}
+
+// Interval is an implementation of the Generator interface.
+//
+// GitRepositoryGenerator is driven by watching a Flux GitRepository resource.
+func (g *GitRepositoryGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
+	return generators.NoRequeueInterval
+}
+
+func (g *GitRepositoryGenerator) loadGitRepository(ctx context.Context, gen *templatesv1.GitRepositoryGenerator, ks *templatesv1.GitOpsSet) (*sourcev1.GitRepository, error) {
+	repoName := client.ObjectKey{Name: gen.RepositoryRef, Namespace: ks.GetNamespace()}
+
 	var gr sourcev1.GitRepository
-	repoName := client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}
 	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
 		return nil, fmt.Errorf("could not load GitRepository: %w", err)
 	}
@@ -76,38 +112,5 @@ func (g *GitRepositoryGenerator) generateParamsFromGitFiles(ctx context.Context,
 		return nil, generators.ArtifactError("GitRepository", repoName)
 	}
 
-	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
-
-	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
-
-	return parser.GenerateFromFiles(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.GitRepository.Files)
-}
-
-func (g *GitRepositoryGenerator) generateParamsFromGitDirectories(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
-	var gr sourcev1.GitRepository
-	repoName := client.ObjectKey{Name: sg.GitRepository.RepositoryRef, Namespace: ks.GetNamespace()}
-	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
-		return nil, fmt.Errorf("could not load GitRepository: %w", err)
-	}
-
-	// No artifact? nothing to generate...
-	if gr.Status.Artifact == nil {
-		g.Logger.Info("GitRepository does not have an artifact", "repository", repoName)
-		return []map[string]any{}, nil
-	}
-
-	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
-
-	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
-
-	return parser.GenerateFromDirectories(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.GitRepository.Directories)
-}
-
-// Interval is an implementation of the Generator interface.
-//
-// GitRepositoryGenerator is driven by watching a Flux GitRepository resource.
-func (g *GitRepositoryGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
-	return generators.NoRequeueInterval
+	return &gr, nil
 }

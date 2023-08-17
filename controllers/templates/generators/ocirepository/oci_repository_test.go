@@ -161,6 +161,17 @@ func TestGenerate_errors(t *testing.T) {
 			objects: []runtime.Object{newOCIRepository()},
 			wantErr: "no artifact for OCIRepository default/test-repository",
 		},
+		{
+			name: "no artifact in OCIRepository with dirs",
+			generator: &templatesv1.OCIRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Directories: []templatesv1.RepositoryGeneratorDirectoryItem{
+					{Path: "files/*"},
+				},
+			},
+			objects: []runtime.Object{newOCIRepository()},
+			wantErr: "no artifact for OCIRepository default/test-repository",
+		},
 	}
 
 	for _, tt := range testCases {

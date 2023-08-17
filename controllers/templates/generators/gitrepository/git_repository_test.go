@@ -161,6 +161,17 @@ func TestGenerate_errors(t *testing.T) {
 			objects: []runtime.Object{test.NewGitRepository()},
 			wantErr: "no artifact for GitRepository default/test-repository",
 		},
+		{
+			name: "no artifact in GitRepository with dirs",
+			generator: &templatesv1.GitRepositoryGenerator{
+				RepositoryRef: "test-repository",
+				Directories: []templatesv1.RepositoryGeneratorDirectoryItem{
+					{Path: "applications/*"},
+				},
+			},
+			objects: []runtime.Object{test.NewGitRepository()},
+			wantErr: "no artifact for GitRepository default/test-repository",
+		},
 	}
 
 	for _, tt := range testCases {

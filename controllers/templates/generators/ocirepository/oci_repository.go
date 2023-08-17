@@ -64,45 +64,48 @@ func (g *OCIRepositoryGenerator) Generate(ctx context.Context, sg *templatesv1.G
 }
 
 func (g *OCIRepositoryGenerator) generateParamsFromOCIFiles(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
-	var gr sourcev1.OCIRepository
-	repoName := client.ObjectKey{Name: sg.OCIRepository.RepositoryRef, Namespace: ks.GetNamespace()}
-	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
+	repo, err := g.loadOCIRepository(ctx, sg.OCIRepository, ks)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", repo.Spec.URL, "artifactURL", repo.Status.Artifact.URL,
+		"digest", repo.Status.Artifact.Digest, "revision", repo.Status.Artifact.Revision)
+
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
+
+	return parser.GenerateFromFiles(ctx, repo.Status.Artifact.URL, repo.Status.Artifact.Digest, sg.OCIRepository.Files)
+}
+
+func (g *OCIRepositoryGenerator) generateParamsFromOCIDirectories(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
+	repo, err := g.loadOCIRepository(ctx, sg.OCIRepository, ks)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Logger.Info("fetching archive URL", "repoURL", repo.Spec.URL, "artifactURL", repo.Status.Artifact.URL,
+		"digest", repo.Status.Artifact.Digest, "revision", repo.Status.Artifact.Revision)
+
+	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
+
+	return parser.GenerateFromDirectories(ctx, repo.Status.Artifact.URL, repo.Status.Artifact.Digest, sg.OCIRepository.Directories)
+}
+
+func (g *OCIRepositoryGenerator) loadOCIRepository(ctx context.Context, gen *templatesv1.OCIRepositoryGenerator, ks *templatesv1.GitOpsSet) (*sourcev1.OCIRepository, error) {
+	repoName := client.ObjectKey{Name: gen.RepositoryRef, Namespace: ks.GetNamespace()}
+
+	var or sourcev1.OCIRepository
+	if err := g.Client.Get(ctx, repoName, &or); err != nil {
 		return nil, fmt.Errorf("could not load OCIRepository: %w", err)
 	}
 
 	// No artifact? nothing to generate...
-	if gr.Status.Artifact == nil {
+	if or.Status.Artifact == nil {
 		g.Logger.Info("OCIRepository does not have an artifact", "repository", repoName)
 		return nil, generators.ArtifactError("OCIRepository", repoName)
 	}
 
-	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
-
-	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
-
-	return parser.GenerateFromFiles(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.OCIRepository.Files)
-}
-
-func (g *OCIRepositoryGenerator) generateParamsFromOCIDirectories(ctx context.Context, sg *templatesv1.GitOpsSetGenerator, ks *templatesv1.GitOpsSet) ([]map[string]any, error) {
-	var gr sourcev1.OCIRepository
-	repoName := client.ObjectKey{Name: sg.OCIRepository.RepositoryRef, Namespace: ks.GetNamespace()}
-	if err := g.Client.Get(ctx, repoName, &gr); err != nil {
-		return nil, fmt.Errorf("could not load OCIRepository: %w", err)
-	}
-
-	// No artifact? nothing to generate...
-	if gr.Status.Artifact == nil {
-		g.Logger.Info("OCIRepository does not have an artifact", "repository", repoName)
-		return []map[string]any{}, nil
-	}
-
-	g.Logger.Info("fetching archive URL", "repoURL", gr.Spec.URL, "artifactURL", gr.Status.Artifact.URL,
-		"digest", gr.Status.Artifact.Digest, "revision", gr.Status.Artifact.Revision)
-
-	parser := parser.NewRepositoryParser(g.Logger, g.Fetcher)
-
-	return parser.GenerateFromDirectories(ctx, gr.Status.Artifact.URL, gr.Status.Artifact.Digest, sg.OCIRepository.Directories)
+	return &or, nil
 }
 
 // Interval is an implementation of the Generator interface.
