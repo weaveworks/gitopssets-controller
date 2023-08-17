@@ -43,6 +43,30 @@ jobs:
       - name: Test
         run: make test
 
+  build-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # for actions/checkout to fetch code
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # for git describe
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Build docs
+        run: |
+          make api-docs
+          if [[ -n $(git status --porcelain) ]]; then
+            echo ""
+            echo "Docs are out of date!"
+            echo "The following files have changed:"
+            git status --porcelain
+            echo "Please run 'make api-docs' and commit the changes."
+            echo "If it was something unrelated to the docs, that is strange... scope down this check or commit those files too?"
+            exit 1
+          fi
+
   build:
     runs-on: ubuntu-latest
     permissions:

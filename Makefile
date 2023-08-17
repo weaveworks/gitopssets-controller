@@ -46,7 +46,7 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: api-docs controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
@@ -216,9 +216,10 @@ gen-crd-api-reference-docs: ## Download gen-crd-api-reference-docs locally if ne
 
 api-docs: gen-crd-api-reference-docs  ## Generate API reference documentation
 	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1alpha1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/template -out-file=./docs/api/gitopsset.md
-	@sed -i '' -e 's/<namespace><em><name><\/em><group>_<kind>/namespace_name_group_kind/g' docs/api/gitopsset.md
-
-
+	@uname -s | grep -q Darwin && \
+	sed -i '' -e 's/<namespace><em><name><\/em><group>_<kind>/namespace_name_group_kind/g' docs/api/gitopsset.md || \
+	sed -i -e 's/<namespace><em><name><\/em><group>_<kind>/namespace_name_group_kind/g' docs/api/gitopsset.md
+	
 user-guide: api-docs
 	cp ./docs/README.md ../weave-gitops/website/docs/gitopssets/guide.mdx
 	cp ./docs/api/gitopsset.md ../weave-gitops/website/docs/gitopssets/_api.mdx
