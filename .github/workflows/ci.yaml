@@ -58,6 +58,8 @@ jobs:
         run: |
           make api-docs
           if [[ -n $(git status --porcelain) ]]; then
+            echo ""
+            echo "Docs are out of date!"
             echo "The following files have changed:"
             git status --porcelain
             echo "Please run 'make api-docs' and commit the changes."
