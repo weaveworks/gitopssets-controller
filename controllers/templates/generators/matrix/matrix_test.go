@@ -137,6 +137,73 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 			expectedErrorStr: "",
 		},
 		{
+			name: "valid matrix - one generator generates 0 elements",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"cluster": "cluster","url": "url"}`)},
+								},
+							},
+						},
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{},
+							},
+						},
+					},
+				},
+			},
+			ks: &templatesv1.GitOpsSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-generator",
+					Namespace: testNamespace,
+				},
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{},
+				},
+			},
+			expectedMatrix: []map[string]any{
+				{
+					"cluster": "cluster",
+					"url":     "url",
+				},
+			},
+			expectedErrorStr: "",
+		},
+		{
+			name: "valid matrix - all generators generates no elements",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{},
+							},
+						},
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{},
+							},
+						},
+					},
+				},
+			},
+			ks: &templatesv1.GitOpsSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-generator",
+					Namespace: testNamespace,
+				},
+				Spec: templatesv1.GitOpsSetSpec{
+					Generators: []templatesv1.GitOpsSetGenerator{},
+				},
+			},
+			expectedMatrix:   []map[string]any{},
+			expectedErrorStr: "",
+		},
+		{
 			name: "naming nested elements",
 			sg: &templatesv1.GitOpsSetGenerator{
 				Matrix: &templatesv1.MatrixGenerator{
