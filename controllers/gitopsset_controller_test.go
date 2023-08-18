@@ -653,9 +653,7 @@ func TestReconciliation(t *testing.T) {
 		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 		test.AssertErrorMatch(t, `update Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
 
-		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, `update Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
-
+		// Switch the permissions to allow updating.
 		var role rbacv1.Role
 		if err := k8sClient.Get(ctx, client.ObjectKey{Name: "test-role", Namespace: "default"}, &role); err != nil {
 			t.Fatal(err)

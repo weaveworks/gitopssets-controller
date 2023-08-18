@@ -95,12 +95,12 @@ func outputResources(out io.Writer, resources []*unstructured.Unstructured) erro
 func marshalOutput(out io.Writer, obj runtime.Object) error {
 	data, err := yaml.Marshal(obj)
 	if err != nil {
-		return fmt.Errorf("failed to marshal data: %v", err)
+		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
 	_, err = fmt.Fprintf(out, "%s", data)
 	if err != nil {
-		return fmt.Errorf("failed to write data: %v", err)
+		return fmt.Errorf("failed to write data: %w", err)
 	}
 
 	return nil
