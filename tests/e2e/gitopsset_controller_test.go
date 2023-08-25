@@ -19,7 +19,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -120,6 +119,70 @@ func TestReconcilingNewCluster(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantLabels, kust.ObjectMeta.Labels); diff != "" {
 		t.Fatalf("failed to generate labels:\n%s", diff)
+	}
+}
+
+func TestReconcilingPartialApply(t *testing.T) {
+	ctx := context.TODO()
+
+	prodCM := test.NewConfigMap(func(c *corev1.ConfigMap) {
+		c.SetName("engineering-prod-cm")
+		c.Data = map[string]string{
+			"testing": "testing-element",
+		}
+	})
+	test.AssertNoError(t, testEnv.Create(ctx, prodCM))
+	defer deleteObject(t, testEnv, prodCM)
+
+	gs := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-set",
+			Namespace: "default",
+		},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{
+				{
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"name": "engineering-prod"}`)},
+							{Raw: []byte(`{"name": "engineering-dev"}`)},
+						},
+					},
+				},
+			},
+			Templates: []templatesv1.GitOpsSetTemplate{
+				{
+					Content: runtime.RawExtension{
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.SetName("{{ .Element.name }}-cm")
+
+							c.Data = map[string]string{
+								"testing": "{{ .Element.name }}",
+							}
+						})),
+					},
+				},
+			},
+		},
+	}
+	test.AssertNoError(t, testEnv.Create(ctx, gs))
+	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
+
+	waitForGitOpsSetCondition(t, testEnv, gs, `failed to create Resource: configmaps \"engineering-prod-cm\" already exists`)
+
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
+	if l := len(gs.Status.Inventory.Entries); l != 1 {
+		t.Errorf("didn't record created resources correctly, got %d, want 1", l)
+	}
+
+	var cm corev1.ConfigMap
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-dev-cm", Namespace: "default"}, &cm))
+
+	want := map[string]string{
+		"testing": "engineering-dev",
+	}
+	if diff := cmp.Diff(want, cm.Data); diff != "" {
+		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
 	}
 }
 
@@ -830,17 +893,6 @@ func newArtifact(url, checksum string) *sourcev1.Artifact {
 	}
 }
 
-func deleteAllKustomizations(t *testing.T, cl client.Client) {
-	t.Helper()
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(kustomizationGVK)
-
-	err := cl.DeleteAllOf(context.TODO(), u, client.InNamespace("default"))
-	if client.IgnoreNotFound(err) != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestEventsWithReconciling(t *testing.T) {
 	eventRecorder.Reset()
 	ctx := context.TODO()
@@ -914,71 +966,60 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	eventRecorder.Reset()
 	ctx := context.TODO()
 
-	// Create a new GitopsCluster object and ensure it is created
-	gc := makeTestGitopsCluster(nsn("default", "test-gc"), func(g *clustersv1.GitopsCluster) {
-		g.ObjectMeta.Labels = map[string]string{
-			"env":  "dev",
-			"team": "engineering",
+	prodCM := test.NewConfigMap(func(c *corev1.ConfigMap) {
+		c.SetName("engineering-prod-cm")
+		c.Data = map[string]string{
+			"testing": "testing-element",
 		}
 	})
-
-	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, gc)))
-	defer deleteObject(t, testEnv, gc)
+	test.AssertNoError(t, testEnv.Create(ctx, prodCM))
+	defer deleteObject(t, testEnv, prodCM)
 
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-set",
 			Namespace: "default",
 		},
-
 		Spec: templatesv1.GitOpsSetSpec{
 			Generators: []templatesv1.GitOpsSetGenerator{
 				{
-					Cluster: &templatesv1.ClusterGenerator{
-						Selector: metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"env":  "dev",
-								"team": "engineering",
-							},
+					List: &templatesv1.ListGenerator{
+						Elements: []apiextensionsv1.JSON{
+							{Raw: []byte(`{"name": "engineering-prod"}`)},
+							{Raw: []byte(`{"name": "engineering-dev"}`)},
 						},
 					},
 				},
 			},
-
 			Templates: []templatesv1.GitOpsSetTemplate{
 				{
 					Content: runtime.RawExtension{
-						Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("default", "go-demo"), func(ks *kustomizev1.Kustomization) {
-							ks.Name = "{{ .Element.ClusterName }}-demo"
-							ks.Labels = map[string]string{
-								"app.kubernetes.io/instance": "{{ .Element.ClusterName }}",
-								"com.example/team":           "{{ .Element.ClusterLabels.team }}",
+						Raw: mustMarshalJSON(t, test.NewConfigMap(func(c *corev1.ConfigMap) {
+							c.SetName("{{ .Element.name }}-cm")
+
+							c.Data = map[string]string{
+								"testing": "{{ .Element.name }}",
 							}
-							ks.Spec.Path = "./examples/kustomize/environments/{{ .Element.ClusterLabels.env }}"
-							ks.Spec.Force = true
-						},
-						)),
+						})),
 					},
 				},
 			},
-			ServiceAccountName: "test-sa",
 		},
 	}
-
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() bool {
-		// reconciliation should fail because the service account does not have permissions
+		// reconciliation should fail because there is an existing resource.
 		want := []*test.EventData{
 			{
 				EventType: "Error",
 				Reason:    "ReconciliationFailed",
 			},
 		}
-		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 
+		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
 	}, timeout).Should(gomega.BeTrue())
 }
 

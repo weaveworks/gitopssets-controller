@@ -52,7 +52,7 @@ const (
 )
 
 type eventRecorder interface {
-	Event(object runtime.Object, eventtype, reason, message string)
+	Event(object runtime.Object, eventType, reason, message string)
 }
 
 // GitOpsSetReconciler reconciles a GitOpsSet object
@@ -76,12 +76,12 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 		reason = severity
 	}
 
-	eventtype := "Normal"
+	eventType := "Normal"
 	if severity == eventv1.EventSeverityError {
-		eventtype = "Error"
+		eventType = "Error"
 	}
 
-	r.EventRecorder.Event(obj, eventtype, reason, msg)
+	r.EventRecorder.Event(obj, eventType, reason, msg)
 }
 
 //+kubebuilder:rbac:groups=templates.weave.works,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -167,15 +167,16 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err != nil {
 		// We can return here because when the resource artifact is updated, this
 		// will trigger a reconciliation.
+
 		if errors.As(err, &generators.NoArtifactError{}) {
-			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, "waiting for artifact")
+			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, "waiting for artifact")
 			if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 				logger.Error(err, "failed to reconcile")
 			}
 			return ctrl.Result{}, nil
 		}
 
-		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 		}
@@ -186,14 +187,15 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if inventory != nil {
-		templatesv1.SetReadyWithInventory(&gitOpsSet, inventory, templatesv1.ReconciliationSucceededReason,
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionTrue, templatesv1.ReconciliationSucceededReason,
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
 
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
-			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			logger.Error(err, "failed to reconcile")
+			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
 			msg := "Status and inventory update failed after reconciliation"
 			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
+
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
 	}
@@ -210,12 +212,12 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 
 	inventory, err := r.renderAndReconcile(ctx, logger, k8sClient, gitOpsSet, instantiatedGenerators)
 	if err != nil {
-		return nil, generators.NoRequeueInterval, err
+		return inventory, generators.NoRequeueInterval, err
 	}
 
 	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
 	if err != nil {
-		return nil, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
+		return inventory, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
 	}
 
 	return inventory, requeueAfter, nil
@@ -228,6 +230,8 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	}
 	logger.Info("rendered templates", "resourceCount", len(resources))
 
+	var inventoryErr error
+
 	existingEntries := sets.New[templatesv1.ResourceRef]()
 	if gitOpsSet.Status.Inventory != nil {
 		existingEntries.Insert(gitOpsSet.Status.Inventory.Entries...)
@@ -237,52 +241,65 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	for _, newResource := range resources {
 		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update inventory: %w", err)
+			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to update inventory: %w", err))
+			continue
 		}
-		entries.Insert(ref)
 
 		if existingEntries.Has(ref) {
 			existing, err := unstructuredFromResourceRef(ref)
 			if err != nil {
-				return nil, fmt.Errorf("failed to convert resource for update: %w", err)
+				inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to convert resource for update: %w", err))
+				continue
 			}
+			// We can add the entry because we know it exists
+			entries.Insert(ref)
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
 			if err == nil {
 				newResource = copyUnstructuredContent(existing, newResource)
 				if err := k8sClient.Patch(ctx, newResource, client.MergeFrom(existing)); err != nil {
-					return nil, fmt.Errorf("failed to update Resource: %w", err)
+					inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to update Resource: %w", err))
 				}
 				continue
 			}
 
 			if !apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to load existing Resource: %w", err)
+				inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to load existing Resource: %w", err))
+				continue
 			}
 		}
 
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
-			return nil, err
+			inventoryErr = errors.Join(inventoryErr, err)
+			continue
 		}
 
 		if err := k8sClient.Create(ctx, newResource); err != nil {
-			return nil, fmt.Errorf("failed to create Resource: %w", err)
+			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to create Resource: %w", err))
+			if apierrors.IsAlreadyExists(err) {
+				if err := logResourceMessage(logger, "resource already exists", newResource); err != nil {
+					inventoryErr = errors.Join(inventoryErr, err)
+				}
+			}
+			continue
 		}
+
+		entries.Insert(ref)
 	}
 
 	if gitOpsSet.Status.Inventory == nil {
 		return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 			return x.ID < y.ID
-		})}, nil
+		})}, inventoryErr
 
 	}
 	objectsToRemove := existingEntries.Difference(entries)
 	if err := r.removeResourceRefs(ctx, k8sClient, objectsToRemove.List()); err != nil {
-		return nil, err
+		inventoryErr = errors.Join(inventoryErr, err)
 	}
 
 	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 		return x.ID < y.ID
-	})}, nil
+	})}, inventoryErr
 }
 
 func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request, newStatus templatesv1.GitOpsSetStatus) error {

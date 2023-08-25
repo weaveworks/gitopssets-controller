@@ -17,7 +17,15 @@ const (
 )
 
 // SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.
-func SetGitOpsSetReadiness(set *GitOpsSet, status metav1.ConditionStatus, reason, message string) {
+func SetGitOpsSetReadiness(set *GitOpsSet, inventory *ResourceInventory, status metav1.ConditionStatus, reason, message string) {
+	if inventory != nil {
+		set.Status.Inventory = inventory
+
+		if len(inventory.Entries) == 0 {
+			set.Status.Inventory = nil
+		}
+	}
+
 	set.Status.ObservedGeneration = set.ObjectMeta.Generation
 	newCondition := metav1.Condition{
 		Type:    meta.ReadyCondition,
@@ -26,18 +34,6 @@ func SetGitOpsSetReadiness(set *GitOpsSet, status metav1.ConditionStatus, reason
 		Message: message,
 	}
 	apimeta.SetStatusCondition(&set.Status.Conditions, newCondition)
-}
-
-// SetReadyWithInventory updates the GitOpsSet to reflect the new readiness and
-// store the current inventory.
-func SetReadyWithInventory(set *GitOpsSet, inventory *ResourceInventory, reason, message string) {
-	set.Status.Inventory = inventory
-
-	if len(inventory.Entries) == 0 {
-		set.Status.Inventory = nil
-	}
-
-	SetGitOpsSetReadiness(set, metav1.ConditionTrue, reason, message)
 }
 
 // GetGitOpsSetReadiness returns the readiness condition of the GitOpsSet.
