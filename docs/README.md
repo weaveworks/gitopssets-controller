@@ -1409,6 +1409,28 @@ For example to enable only the `List` and `GitRepository` generators:
 
 When a GitOpsSet that uses disabled generators is created, the disabled generators will be silently ignored.
 
+## Kubernetes Process Limits
+
+GitOpsSets can be memory-hungry, for example, the Matrix generator will generate a cartesian result with multiple copies of data.
+
+The OCI and GitRepository generators will extract tarballs, the API Generator queries upstream APIs and parses the JSON, and the Config generators will load `Secret` and `ConfigMap` resources, all these can lead to using significant amounts of memory.
+
+Extracting tarballs can also prove to be CPU intensive, especially where there are lots of files, and you have a very frequent regeneration period.
+
+To this end, you will need to monitor the controller metrics, and maybe increase the limits available to the controller.
+
+For example, to increase the amount of memory available to the controller:
+
+```yaml
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+```
+
 ## Notifications
 
 Events are enabled which will trigger Kubernetes events when successful reconciliation occurs with a `Normal` event or when reconciliation fails with an `Error` event. Fluxcd's [Events](https://pkg.go.dev/github.com/fluxcd/pkg/runtime/events) package is used including the `EventRecorder` to record these events.
