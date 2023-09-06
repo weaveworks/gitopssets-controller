@@ -28,10 +28,10 @@ require (
 	github.com/weaveworks/cluster-controller v1.4.1
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
-	k8s.io/api v0.26.3
-	k8s.io/apiextensions-apiserver v0.26.3
-	k8s.io/apimachinery v0.26.3
-	k8s.io/client-go v0.26.3
+	k8s.io/api v0.26.8
+	k8s.io/apiextensions-apiserver v0.26.8
+	k8s.io/apimachinery v0.26.8
+	k8s.io/client-go v0.26.8
 	sigs.k8s.io/cli-utils v0.34.0
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/yaml v1.3.0
@@ -122,7 +122,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.25.4 // indirect
-	k8s.io/component-base v0.26.3 // indirect
+	k8s.io/component-base v0.26.8 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221110221610-a28e98eb7c70 // indirect
 	k8s.io/kubectl v0.25.4 // indirect
