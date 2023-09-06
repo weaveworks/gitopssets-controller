@@ -28,7 +28,7 @@ Then go to generate a token
 The two permissions are the Pull requests access which was added, and the mandatory Metadata access
 
 ```shell
-$ kubectl create secret generic github-secret --from-literal=secret=<insert secret>
+$ kubectl create secret generic github-secret --from-literal=password=<insert token>
 ```
 
 Then apply the following YAML...
