@@ -251,6 +251,14 @@ func makeTemplateFunctions() template.FuncMap {
 
 		return def
 	}
+	f["toYaml"] = func(v interface{}) string {
+		data, err := syaml.Marshal(v)
+		if err != nil {
+			// Swallow errors inside of a template.
+			return ""
+		}
+		return strings.TrimSuffix(string(data), "\n")
+	}
 
 	return f
 }
