@@ -1,0 +1,40 @@
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  annotations:
+    templates.weave.works/delimiters: "((,))"
+  labels:
+    app.kubernetes.io/name: gitopsset
+  name: gitopsset-sample
+spec:
+  generators:
+  - list:
+      elements:
+      - env: dev
+        team: dev-team
+        depends:
+        - name: testing
+      - env: production
+        team: ops-team
+        depends: []
+      - env: staging
+        team: ops-team
+        depends: []
+  templates:
+    - content:
+        kind: Kustomization
+        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        metadata:
+          name: "(( .Element.env ))-demo"
+          labels:
+            app.kubernetes.io/name: go-demo
+            app.kubernetes.io/instance: "(( .Element.env ))"
+            com.example/team: "(( .Element.team ))"
+        spec:
+          interval: 5m
+          path: "./examples/kustomize/environments/(( .Element.env ))"
+          prune: true
+          sourceRef:
+            kind: GitRepository
+            name: go-demo-repo
+          dependsOn: (( .Element.depends | toYaml | nindent 8))

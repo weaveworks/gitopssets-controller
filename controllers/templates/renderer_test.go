@@ -418,6 +418,56 @@ func TestRender(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "toYaml function",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env":"testing","depends":[{"name":"testing"}]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.ObjectMeta.Annotations = map[string]string{
+						"templates.weave.works/delimiters": "((,))",
+					}
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: []byte(`{"apiVersion":"kustomize.toolkit.fluxcd.io/v1beta2","kind":"Kustomization","metadata":{"name":"testing-demo"},"spec":{"dependsOn":"(( .Element.depends | toYaml | nindent 8 ))","interval":"5m","path":"./examples/kustomize/environments/(( .Element.env ))","prune":true,"sourceRef":{"kind":"GitRepository","name":"go-demo-repo"}}}`),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"apiVersion": "kustomize.toolkit.fluxcd.io/v1beta2",
+						"kind":       "Kustomization",
+						"metadata": map[string]interface{}{
+							"name":      "testing-demo",
+							"namespace": "demo",
+							"labels": map[string]interface{}{
+								"templates.weave.works/name":      "test-gitops-set",
+								"templates.weave.works/namespace": "demo",
+							},
+						},
+						"spec": map[string]interface{}{
+							"dependsOn": []any{
+								map[string]any{
+									"name": "testing",
+								},
+							},
+							"interval": "5m",
+							"path":     "./examples/kustomize/environments/testing",
+							"prune":    true,
+							"sourceRef": map[string]interface{}{
+								"kind": "GitRepository",
+								"name": "go-demo-repo",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range generatorTests {
