@@ -207,6 +207,34 @@ func TestRender(t *testing.T) {
 			},
 		},
 		{
+			name: "repeat elements with no elements does not error",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50","namespaces":null}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env}}-demo1", Namespace: testNS})),
+							},
+						},
+						{
+							Repeat: "{ $.namespaces }",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat.name }}-{{ .Element.env }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
+		{
 			name: "repeat elements with maps",
 			elements: []apiextensionsv1.JSON{
 				{Raw: []byte(`{"wge":{"mgmt-repo":"example-repo","gui":false},"template":{"name":"dynamic-v1","namespace":"default"},"aws":{"region":"us-west-2"},"vpcs":[{"name":"v1","mode":"create","cidr":"10.0.0.0/16","publicsubnets":3,"privatesubnets":3}],"clusters":[{"name":"nested-cluster","mode":"create","gui":true,"vpc_name":"v1","version":1.23,"apps":[{"name":"example","version":"0.0.4"},{"name":"testing"}]}]}`)},
