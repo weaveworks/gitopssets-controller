@@ -89,7 +89,10 @@ func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any
 			slice, ok := v.Interface().([]any)
 			if ok {
 				repeated = append(repeated, slice...)
-			} else {
+				continue
+			}
+
+			if !v.IsNil() {
 				repeated = append(repeated, v.Interface())
 			}
 		}
