@@ -496,6 +496,84 @@ func TestRender(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "repeat elements with cel",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50","namespaces":["testing1","testing2"]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env}}-demo1", Namespace: testNS})),
+							},
+						},
+						{
+							Repeat: "cel:Element.namespaces",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat }}-{{ .Element.env }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
+		{
+			name: "repeat elements with cel objects",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50","items":[{"namespace":"testing1"},{"namespace":"testing2"}]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Repeat: "cel:Element.items",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat.namespace }}-{{ .Element.env }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestNamespace("testing1-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
+		{
+			name: "repeat elements with cel filtering",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50","items":[{"namespace":"testing1"},{"namespace":"testing2"}]}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Repeat: "cel:Element.items.filter(x, x.namespace.endsWith('2'))",
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestNamespace("{{ .Repeat.namespace }}-{{ .Element.env }}")),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestNamespace("testing2-engineering-dev",
+					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
 	}
 
 	for _, tt := range generatorTests {

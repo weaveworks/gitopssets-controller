@@ -5,12 +5,19 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"text/template"
 
 	"dario.cat/mergo"
 	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
+	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
+	celext "github.com/google/cel-go/ext"
+	"google.golang.org/protobuf/types/known/structpb"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -30,7 +37,10 @@ import (
 // {{ and }}.
 const TemplateDelimiterAnnotation string = "templates.weave.works/delimiters"
 
-var templateFuncs template.FuncMap = makeTemplateFunctions()
+var (
+	templateFuncs template.FuncMap = makeTemplateFunctions()
+	listType                       = reflect.TypeOf(&structpb.ListValue{})
+)
 
 // Render parses the GitOpsSet and renders the template resources using
 // the configured generators and templates.
@@ -62,25 +72,16 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return rendered, nil
 }
 
-func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {
-	if tmpl.Repeat == "" {
-		return []map[string]any{
-			map[string]any{
-				"Element":      params,
-				"ElementIndex": index,
-			},
-		}, nil
-	}
-
+func repeatFromJSONPath(repeatString string, params map[string]any) ([]any, error) {
 	jp := jsonpath.New("repeat")
-	err := jp.Parse(tmpl.Repeat)
+	err := jp.Parse(repeatString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse repeat on template %q: %w", tmpl.Repeat, err)
+		return nil, fmt.Errorf("failed to parse repeat on template %q: %w", repeatString, err)
 	}
 
 	results, err := jp.FindResults(params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find results from expression %q: %w", tmpl.Repeat, err)
+		return nil, fmt.Errorf("failed to find results from expression %q: %w", repeatString, err)
 	}
 
 	var repeated []any
@@ -96,6 +97,74 @@ func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any
 				repeated = append(repeated, v.Interface())
 			}
 		}
+	}
+	return repeated, nil
+}
+
+func repeatFromCEL(repeatString string, params map[string]any) ([]any, error) {
+	env, err := makeCELEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	evalContext := map[string]interface{}{
+		"Element": params,
+	}
+
+	evaluated, err := evaluate(repeatString, env, evalContext)
+	if err != nil {
+		return nil, err
+	}
+
+	repeated := []any{}
+
+	switch v := evaluated.(type) {
+	case traits.Lister:
+		it := v.Iterator()
+		for it.HasNext().Value() == true {
+			repeatElement := it.Next()
+
+			switch repeatElement.(type) {
+			case traits.Mapper:
+				raw, err := repeatElement.ConvertToNative(reflect.TypeOf(map[string]any{}))
+				if err == nil {
+					repeated = append(repeated, raw.(map[string]any))
+				}
+			default:
+				repeated = append(repeated, repeatElement)
+			}
+		}
+	}
+
+	return repeated, nil
+}
+
+func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {
+	if tmpl.Repeat == "" {
+		return []map[string]any{
+			map[string]any{
+				"Element":      params,
+				"ElementIndex": index,
+			},
+		}, nil
+	}
+
+	var repeated []any
+
+	if strings.HasPrefix(tmpl.Repeat, "cel:") {
+		repeats, err := repeatFromCEL(strings.TrimPrefix(tmpl.Repeat, "cel:"), params)
+		if err != nil {
+			return nil, err
+		}
+
+		repeated = repeats
+	} else {
+		repeats, err := repeatFromJSONPath(tmpl.Repeat, params)
+		if err != nil {
+			return nil, err
+		}
+
+		repeated = repeats
 	}
 
 	elements := []map[string]any{}
@@ -274,4 +343,37 @@ func templateDelims(gs templatesv1.GitOpsSet) (string, string) {
 		}
 	}
 	return "{{", "}}"
+}
+
+func evaluate(expr string, env *cel.Env, data map[string]any) (ref.Val, error) {
+	parsed, issues := env.Parse(expr)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("failed to parse expression %#v: %w", expr, issues.Err())
+	}
+
+	checked, issues := env.Check(parsed)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("expression %#v check failed: %w", expr, issues.Err())
+	}
+
+	prg, err := env.Program(checked, cel.EvalOptions(cel.OptOptimize))
+	if err != nil {
+		return nil, fmt.Errorf("expression %#v failed to create a Program: %w", expr, err)
+	}
+
+	out, _, err := prg.Eval(data)
+	if err != nil {
+		return nil, fmt.Errorf("expression %#v failed to evaluate: %w", expr, err)
+	}
+	return out, nil
+}
+
+func makeCELEnv() (*cel.Env, error) {
+	mapStrDyn := decls.NewMapType(decls.String, decls.Dyn)
+	return cel.NewEnv(
+		celext.Strings(),
+		celext.Encoders(),
+		cel.Declarations(
+			decls.NewVar("Element", mapStrDyn),
+		))
 }
