@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/template"
 
+	"dario.cat/mergo"
 	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
-	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
