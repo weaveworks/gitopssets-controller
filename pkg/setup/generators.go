@@ -19,6 +19,7 @@ import (
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/config"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
@@ -86,6 +87,7 @@ func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, cl
 		"Cluster":       cluster.GeneratorFactory,
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
 		"APIClient":     apiclient.GeneratorFactory(clientFactory),
+		"Config":        config.GeneratorFactory,
 	})
 
 	return filterEnabledGenerators(enabledGenerators, map[string]generators.GeneratorFactory{
@@ -97,6 +99,7 @@ func GetGenerators(enabledGenerators []string, fetcher parser.ArchiveFetcher, cl
 		"APIClient":     apiclient.GeneratorFactory(clientFactory),
 		"ImagePolicy":   imagepolicy.GeneratorFactory,
 		"Matrix":        matrix.GeneratorFactory(matrixGenerators),
+		"Config":        config.GeneratorFactory,
 	})
 }
 
