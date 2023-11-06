@@ -44,6 +44,30 @@ func TestGenerateFromFiles(t *testing.T) {
 				{"environment": "staging", "instances": 5.0},
 			},
 		},
+		{
+			description: "wildcard directory",
+			filename:    "/json_files.tar.gz",
+			items: []templatesv1.RepositoryGeneratorFileItem{
+				{Path: "files/*.json", Wildcard: true},
+			},
+			want: []map[string]any{
+				{"environment": "dev", "instances": 1.0},
+				{"environment": "production", "instances": 10.0},
+				{"environment": "staging", "instances": 5.0},
+			},
+		},
+		{
+			description: "globbing directories",
+			filename:    "/subdirs.tar.gz",
+			items: []templatesv1.RepositoryGeneratorFileItem{
+				{Path: "files/**/*.yaml", Wildcard: true},
+			},
+			want: []map[string]any{
+				{"environment": "dev", "instances": 2.0},
+				{"environment": "production", "instances": 10.0},
+				{"environment": "staging", "instances": 5.0},
+			},
+		},
 	}
 
 	srv := test.StartFakeArchiveServer(t, "testdata")

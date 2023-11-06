@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/go-logr/logr"
@@ -47,20 +48,36 @@ func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, ch
 		return nil, fmt.Errorf("failed to get archive URL %s: %w", archiveURL, err)
 	}
 
-	result := []map[string]any{}
+	filesToRead := []string{}
 	for _, file := range files {
 		fullPath, err := securejoin.SecureJoin(tempDir, file.Path)
 		if err != nil {
 			return nil, err
 		}
-		b, err := os.ReadFile(fullPath)
+
+		if file.Wildcard {
+			matches, err := filepath.Glob(fullPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse wildcard path %q: %w", fullPath, err)
+			}
+
+			filesToRead = append(filesToRead, matches...)
+			continue
+		}
+
+		filesToRead = append(filesToRead, fullPath)
+	}
+
+	result := []map[string]any{}
+	for _, filename := range filesToRead {
+		b, err := os.ReadFile(filename)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read from archive file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("failed to read from archive file %q: %w", strings.TrimPrefix(filename, tempDir), err)
 		}
 
 		r := map[string]any{}
 		if err := yaml.Unmarshal(b, &r); err != nil {
-			return nil, fmt.Errorf("failed to parse archive file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("failed to parse archive file %q: %w", strings.TrimPrefix(filename, tempDir), err)
 		}
 
 		result = append(result, r)
