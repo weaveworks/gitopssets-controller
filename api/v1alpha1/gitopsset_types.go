@@ -154,6 +154,10 @@ type HeadersReference struct {
 type RepositoryGeneratorFileItem struct {
 	// Path is the name of a file to read and generate from can be JSON or YAML.
 	Path string `json:"path"`
+
+	// Wildcard indicates that the Path should be treated as a wildcard e.g.
+	// /files/*.yaml - this uses globbing semantics.
+	Wildcard bool `json:"wildcard"`
 }
 
 // RepositoryGeneratorDirectoryItem stores the information about a specific

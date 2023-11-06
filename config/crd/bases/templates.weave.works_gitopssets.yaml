@@ -225,8 +225,13 @@ spec:
                                 description: Path is the name of a file to read and
                                   generate from can be JSON or YAML.
                                 type: string
+                              wildcard:
+                                description: Wildcard indicates that the Path should
+                                  be treated as a wildcard e.g. /files/*.yaml
+                                type: boolean
                             required:
                             - path
+                            - wildcard
                             type: object
                           type: array
                         repositoryRef:
@@ -448,8 +453,14 @@ spec:
                                             to read and generate from can be JSON
                                             or YAML.
                                           type: string
+                                        wildcard:
+                                          description: Wildcard indicates that the
+                                            Path should be treated as a wildcard e.g.
+                                            /files/*.yaml
+                                          type: boolean
                                       required:
                                       - path
+                                      - wildcard
                                       type: object
                                     type: array
                                   repositoryRef:
@@ -513,8 +524,14 @@ spec:
                                             to read and generate from can be JSON
                                             or YAML.
                                           type: string
+                                        wildcard:
+                                          description: Wildcard indicates that the
+                                            Path should be treated as a wildcard e.g.
+                                            /files/*.yaml
+                                          type: boolean
                                       required:
                                       - path
+                                      - wildcard
                                       type: object
                                     type: array
                                   repositoryRef:
@@ -618,8 +635,13 @@ spec:
                                 description: Path is the name of a file to read and
                                   generate from can be JSON or YAML.
                                 type: string
+                              wildcard:
+                                description: Wildcard indicates that the Path should
+                                  be treated as a wildcard e.g. /files/*.yaml
+                                type: boolean
                             required:
                             - path
+                            - wildcard
                             type: object
                           type: array
                         repositoryRef:
