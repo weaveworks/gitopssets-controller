@@ -292,7 +292,31 @@ team: developers
 
 Changes pushed to the `GitRepository` will result in rereconciliation of the templates into the cluster.
 
-For security reasons, you need to explicitly list out the files that the generator should parse.
+#### Wildcard directories
+
+**WARNING**: this may introduce security issues as it will result in files that may not map into your templates being used to generate resources.
+
+You can also specify wildcard matches for the files.
+
+```yaml
+apiVersion: templates.weave.works/v1alpha1
+kind: GitOpsSet
+metadata:
+  name: repository-sample
+spec:
+  generators:
+    - gitRepository:
+        repositoryRef: go-demo-repo
+        files:
+          - path: examples/generation/*.yaml
+            wildcard: true
+```
+
+You can specify more than one object in the `files` list.
+
+When `wildcard` is true, the path will be used in a wildcard search, this uses [glob](https://en.wikipedia.org/wiki/Glob_(programming) to find the files, so things like `/files/**/*.yaml` and `files/*.yaml` will work.
+
+You could prohibit the wildcard mechanism using a policy mechanism.
 
 #### Generation from directories
 
