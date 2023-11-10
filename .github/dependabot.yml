@@ -6,3 +6,9 @@ updates:
       interval: "daily"
     reviewers:
       - "weaveworks/pesto"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    reviewers:
+      - "weaveworks/pesto"
