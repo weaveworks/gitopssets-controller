@@ -102,12 +102,12 @@ jobs:
           GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
         run: |
           git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
-          go mod vendor
           git config --global --list
 
       - name: list out config, did it make it?
         run: |
           git config --global --list
+          go mod vendor
 
       - name: Build and push Docker image
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
