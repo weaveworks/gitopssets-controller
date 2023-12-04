@@ -101,7 +101,6 @@ jobs:
           GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
           GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
         run: |
-          git config --global --list
           git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
           go mod vendor
           git config --global --list
