@@ -17,10 +17,10 @@ require (
 	github.com/gitops-tools/pkg v0.1.0
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/zapr v1.2.4
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.12.0
 	github.com/jenkins-x/go-scm v1.14.14
-	github.com/onsi/gomega v1.27.10
+	github.com/onsi/gomega v1.30.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
