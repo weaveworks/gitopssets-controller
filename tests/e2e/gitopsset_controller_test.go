@@ -362,6 +362,10 @@ func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
 	defer deleteObject(t, testEnv, ip)
 
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-set",
@@ -407,10 +411,6 @@ func TestReconcilingUpdatingImagePolicy_in_matrix(t *testing.T) {
 
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
-
-	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
-	ip.Status.LatestImage = "testing/test:v0.30.0"
-	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
 	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
 
