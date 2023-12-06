@@ -200,6 +200,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	logger.Info("reconciliation complete")
 	return ctrl.Result{RequeueAfter: requeue}, nil
 }
 
