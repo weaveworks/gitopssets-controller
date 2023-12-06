@@ -15,8 +15,8 @@ require (
 	github.com/fluxcd/pkg/tar v0.4.0
 	github.com/fluxcd/source-controller/api v1.0.0-rc.1
 	github.com/gitops-tools/pkg v0.1.0
-	github.com/go-logr/logr v1.2.4
-	github.com/go-logr/zapr v1.2.4
+	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.12.0
 	github.com/jenkins-x/go-scm v1.14.14
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/weaveworks/cluster-controller v1.4.1
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
 	k8s.io/api v0.26.8
 	k8s.io/apiextensions-apiserver v0.26.8
@@ -105,8 +105,7 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/zeebo/blake3 v0.1.1 // indirect
 	go.starlark.net v0.0.0-20221028183056-acb66ad56dd2 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
