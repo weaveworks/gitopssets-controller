@@ -306,6 +306,10 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
 	defer deleteObject(t, testEnv, ip)
 
+	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip.Status.LatestImage = "testing/test:v0.30.0"
+	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
+
 	gs := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-set",
@@ -339,7 +343,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
-	ip.Status.LatestImage = "testing/test:v0.30.0"
+	ip.Status.LatestImage = "testing/test:v0.31.0"
 	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
 	waitForGitOpsSetCondition(t, testEnv, gs, "1 resources created")
@@ -348,7 +352,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "test-configmap-0", Namespace: "default"}, &cm))
 
 	want := map[string]string{
-		"testing": "testing/test:v0.30.0",
+		"testing": "testing/test:v0.31.0",
 	}
 	if diff := cmp.Diff(want, cm.Data); diff != "" {
 		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
