@@ -7,6 +7,7 @@ import (
 	"sort"
 	"testing"
 
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
@@ -306,7 +307,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, test.ToUnstructured(t, ip)))
 	defer deleteObject(t, testEnv, ip)
 
-	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip = waitForResource[*imagev1.ImagePolicy](t, testEnv, ip)
 	ip.Status.LatestImage = "testing/test:v0.30.0"
 	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
@@ -342,7 +343,7 @@ func TestReconcilingUpdatingImagePolicy(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
-	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(ip), ip))
+	ip = waitForResource[*imagev1.ImagePolicy](t, testEnv, ip)
 	ip.Status.LatestImage = "testing/test:v0.31.0"
 	test.AssertNoError(t, testEnv.Status().Update(ctx, ip))
 
@@ -815,12 +816,21 @@ func waitForConfigMap(t *testing.T, k8sClient client.Client, src client.ObjectKe
 	g := gomega.NewWithT(t)
 	g.Eventually(func() map[string]string {
 		var cm corev1.ConfigMap
-		if err := testEnv.Get(ctx, src, &cm); err != nil {
+		if err := k8sClient.Get(ctx, src, &cm); err != nil {
 			return nil
 		}
 
 		return cm.Data
 	}, timeout).Should(gomega.Equal(want))
+}
+
+func waitForResource[T client.Object](t *testing.T, k8sClient client.Client, obj T) T {
+	g := gomega.NewWithT(t)
+	g.Eventually(func() error {
+		return k8sClient.Get(ctx, client.ObjectKeyFromObject(obj), obj)
+	}, timeout).Should(gomega.BeNil())
+
+	return obj
 }
 
 func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templatesv1.GitOpsSet, objs ...runtime.Object) {
