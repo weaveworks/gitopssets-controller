@@ -76,9 +76,9 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 		reason = severity
 	}
 
-	eventType := "Normal"
+	eventType := corev1.EventTypeNormal
 	if severity == eventv1.EventSeverityError {
-		eventType = "Error"
+		eventType = corev1.EventTypeWarning
 	}
 
 	r.EventRecorder.Event(obj, eventType, reason, msg)
