@@ -1028,7 +1028,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 		// reconciliation should fail because there is an existing resource.
 		want := []*test.EventData{
 			{
-				EventType: "Error",
+				EventType: corev1.EventTypeWarning,
 				Reason:    "ReconciliationFailed",
 			},
 		}
