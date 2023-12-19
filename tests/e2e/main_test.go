@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,7 +57,7 @@ func TestMain(m *testing.M) {
 		filepath.Join("..", "..", "controllers", "testdata", "crds"),
 		filepath.Join("testdata", "crds"),
 	))
-	mapper, err := apiutil.NewDynamicRESTMapper(testEnv.GetConfig())
+	mapper, err := apiutil.NewDynamicRESTMapper(testEnv.GetConfig(), http.DefaultClient)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create RESTMapper:  %v", err))
 	}

@@ -6,22 +6,28 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"github.com/fluxcd/pkg/http/fetch"
 	runtimeclient "github.com/fluxcd/pkg/runtime/client"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/events"
 	"github.com/fluxcd/pkg/runtime/logger"
+	"github.com/fluxcd/pkg/runtime/metrics"
+	"github.com/fluxcd/pkg/runtime/pprof"
 	"github.com/fluxcd/pkg/tar"
 	flag "github.com/spf13/pflag"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
 	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers"
 )
 
@@ -85,15 +91,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	restConfig := runtimeclient.GetConfigOrDie(clientOptions)
-	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
+	ctrlOptions := ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		Namespace:              watchNamespace,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "539e4b66.weave.works",
+		Metrics: metricsserver.Options{
+			BindAddress:   metricsAddr,
+			ExtraHandlers: pprof.GetHandlers(),
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -113,19 +119,37 @@ func main() {
 		// and this can mean caching all secrets and configmaps; when
 		// all that's required is the few that are referenced for
 		// objects of interest to this controller.
-		ClientDisableCacheFor: []ctrlclient.Object{&corev1.Secret{}, &corev1.ConfigMap{}},
-	})
+		Client: ctrlclient.Options{
+			Cache: &ctrlclient.CacheOptions{
+				DisableFor: []ctrlclient.Object{&corev1.Secret{}, &corev1.ConfigMap{}},
+			},
+		},
+	}
+	if watchNamespace != "" {
+		ctrlOptions.Cache.DefaultNamespaces = map[string]ctrlcache.Config{
+			watchNamespace: ctrlcache.Config{},
+		}
+	}
+
+	restConfig := runtimeclient.GetConfigOrDie(clientOptions)
+	mgr, err := ctrl.NewManager(restConfig, ctrlOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	mapper, err := apiutil.NewDynamicRESTMapper(restConfig)
+	httpClient, err := rest.HTTPClientFor(restConfig)
+	if err != nil {
+		setupLog.Error(err, "error creating httpClient using kubeconfig")
+		os.Exit(1)
+	}
+
+	mapper, err := apiutil.NewDynamicRESTMapper(restConfig, httpClient)
 	if err != nil {
 		setupLog.Error(err, "unable to create REST Mapper")
 		os.Exit(1)
 	}
-	metricsH := runtimeCtrl.MustMakeMetrics(mgr)
+	metricsH := runtimeCtrl.NewMetrics(mgr, metrics.MustMakeRecorder(), templatesv1.GitOpsSetFinalizer)
 	var eventRecorder *events.Recorder
 	if eventRecorder, err = events.NewRecorder(mgr, ctrl.Log, eventsAddr, controllerName); err != nil {
 		setupLog.Error(err, "unable to create event recorder")
