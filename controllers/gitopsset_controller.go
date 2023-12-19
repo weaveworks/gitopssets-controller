@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
@@ -360,24 +359,24 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&templatesv1.GitOpsSet{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, predicates.ReconcileRequestedPredicate{}))).
 		Watches(
-			&source.Kind{Type: &sourcev1.GitRepository{}},
+			&sourcev1.GitRepository{},
 			handler.EnqueueRequestsFromMapFunc(r.gitRepositoryToGitOpsSet),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.secretToGitOpsSet),
 		)
 
 	if r.Generators["Config"] != nil {
 		builder.Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.configMapToGitOpsSet),
 		)
 	}
 
 	if r.Generators["OCIRepository"] != nil {
 		builder.Watches(
-			&source.Kind{Type: &sourcev1.OCIRepository{}},
+			&sourcev1.OCIRepository{},
 			handler.EnqueueRequestsFromMapFunc(r.ociRepositoryToGitOpsSet),
 		)
 	}
@@ -385,7 +384,7 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Only watch for GitopsCluster objects if the Cluster generator is enabled.
 	if r.Generators["Cluster"] != nil {
 		builder.Watches(
-			&source.Kind{Type: &clustersv1.GitopsCluster{}},
+			&clustersv1.GitopsCluster{},
 			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
 		)
 	}
@@ -399,7 +398,7 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 
 		builder.Watches(
-			&source.Kind{Type: &imagev1.ImagePolicy{}},
+			&imagev1.ImagePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.imagePolicyToGitOpsSet),
 		)
 	}
@@ -409,13 +408,12 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // gitOpsClusterToGitOpsSet maps a GitopsCluster object to its related GitOpsSet objects
 // and returns a list of reconcile requests for the GitOpsSets.
-func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(o client.Object) []reconcile.Request {
+func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(ctx context.Context, o client.Object) []reconcile.Request {
 	gitOpsCluster, ok := o.(*clustersv1.GitopsCluster)
 	if !ok {
 		return nil
 	}
 
-	ctx := context.Background()
 	list := &templatesv1.GitOpsSetList{}
 
 	err := r.List(ctx, list, &client.ListOptions{})
@@ -502,22 +500,21 @@ func selectorMatchesCluster(labelSelector metav1.LabelSelector, cluster *cluster
 	return selector.Matches(labelSet)
 }
 
-func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
+func (r *GitOpsSetReconciler) gitRepositoryToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
 	// TODO: Store the applied version of GitRepositories in the Status, and don't
 	// retrigger if the commit-id isn't different.
-	return r.queryIndexedGitOpsSets(gitRepositoryIndexKey, obj)
+	return r.queryIndexedGitOpsSets(ctx, gitRepositoryIndexKey, obj)
 }
 
-func (r *GitOpsSetReconciler) ociRepositoryToGitOpsSet(obj client.Object) []reconcile.Request {
-	return r.queryIndexedGitOpsSets(ociRepositoryIndexKey, obj)
+func (r *GitOpsSetReconciler) ociRepositoryToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(ctx, ociRepositoryIndexKey, obj)
 }
 
-func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(obj client.Object) []reconcile.Request {
-	return r.queryIndexedGitOpsSets(imagePolicyIndexKey, obj)
+func (r *GitOpsSetReconciler) imagePolicyToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(ctx, imagePolicyIndexKey, obj)
 }
 
-func (r *GitOpsSetReconciler) queryIndexedGitOpsSets(key string, obj client.Object) []reconcile.Request {
-	ctx := context.Background()
+func (r *GitOpsSetReconciler) queryIndexedGitOpsSets(ctx context.Context, key string, obj client.Object) []reconcile.Request {
 	var list templatesv1.GitOpsSetList
 
 	if err := r.List(ctx, &list,
@@ -534,12 +531,12 @@ func (r *GitOpsSetReconciler) queryIndexedGitOpsSets(key string, obj client.Obje
 	return result
 }
 
-func (r *GitOpsSetReconciler) configMapToGitOpsSet(obj client.Object) []reconcile.Request {
-	return r.queryIndexedGitOpsSets(configMapIndexKey, obj)
+func (r *GitOpsSetReconciler) configMapToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(ctx, configMapIndexKey, obj)
 }
 
-func (r *GitOpsSetReconciler) secretToGitOpsSet(obj client.Object) []reconcile.Request {
-	return r.queryIndexedGitOpsSets(secretIndexKey, obj)
+func (r *GitOpsSetReconciler) secretToGitOpsSet(ctx context.Context, obj client.Object) []reconcile.Request {
+	return r.queryIndexedGitOpsSets(ctx, secretIndexKey, obj)
 }
 
 func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountName string) (client.Client, error) {
