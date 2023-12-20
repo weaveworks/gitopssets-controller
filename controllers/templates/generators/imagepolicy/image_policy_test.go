@@ -39,14 +39,6 @@ func TestGenerate(t *testing.T) {
 		want      []map[string]any
 	}{
 		{
-			"no policy image",
-			&templatesv1.ImagePolicyGenerator{
-				PolicyRef: "test-policy",
-			},
-			[]runtime.Object{test.NewImagePolicy()},
-			[]map[string]any{},
-		},
-		{
 			"image policy in status",
 			&templatesv1.ImagePolicyGenerator{
 				PolicyRef: "test-policy",
@@ -128,6 +120,15 @@ func TestGenerate_errors(t *testing.T) {
 		objects   []runtime.Object
 		wantErr   string
 	}{
+		{
+			"no policy image",
+			&templatesv1.ImagePolicyGenerator{
+				PolicyRef: "test-policy",
+			},
+			[]runtime.Object{test.NewImagePolicy()},
+			`no artifact for ImagePolicy default/test-policy`,
+		},
+
 		{
 			name: "missing image policy resource",
 			generator: &templatesv1.ImagePolicyGenerator{
