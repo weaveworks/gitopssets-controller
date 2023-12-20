@@ -42,14 +42,14 @@ github.com/fluxcd/cli-utils v0.36.0-flux.2 h1:7nlXfAJ7iaDF34IdbyId+wBf7beL2qvzDB
 github.com/fluxcd/cli-utils v0.36.0-flux.2/go.mod h1:TQtgRf9OjQBzE5FJ9UDV6WNz9Po3pzAtk3NQmQEN5l8=
 github.com/fluxcd/image-reflector-controller/api v0.27.1 h1:5XD2mGsazYET1e+vC7Hd26G0NTZ5bauqp2Luz8kyCfk=
 github.com/fluxcd/image-reflector-controller/api v0.27.1/go.mod h1:TNn1Y3XuinlCRiohmjUtwvjWurTspPg0U0cCvMI5Q3E=
-github.com/fluxcd/kustomize-controller/api v1.0.0-rc.1 h1:HnPpGw9RhVyE4LsvOOMUcCo4jA+gSfnkM2Xe/vjlpHg=
-github.com/fluxcd/kustomize-controller/api v1.0.0-rc.1/go.mod h1:ql/HdV+pGzqnHaU5oNyvYR7lHPWc/me3HUPd4g7A9BI=
+github.com/fluxcd/kustomize-controller/api v1.2.1 h1:+WgQOU7jpqz9bA4djPWmaeYAp9cG7c/TdcIYku3Jrzk=
+github.com/fluxcd/kustomize-controller/api v1.2.1/go.mod h1:0Kgc4uYnr5jCm4H8JwArkR0v4WTmXeX/9KgoDbxluVc=
 github.com/fluxcd/pkg/apis/acl v0.1.0 h1:EoAl377hDQYL3WqanWCdifauXqXbMyFuK82NnX6pH4Q=
 github.com/fluxcd/pkg/apis/acl v0.1.0/go.mod h1:zfEZzz169Oap034EsDhmCAGgnWlcWmIObZjYMusoXS8=
 github.com/fluxcd/pkg/apis/event v0.6.0 h1:AUaeee1CGWb65BLqVximHXG8Gcu6vWuYONIq6tVpjgo=
 github.com/fluxcd/pkg/apis/event v0.6.0/go.mod h1:OEzWcX/oPbMmkCvC9QGoK27JXFvUZgBhLD+zgxZe47A=
-github.com/fluxcd/pkg/apis/kustomize v1.0.0 h1:5T2b/mRZiGWtP7fvSU8gZOApIc06H6SdLX3MlsE6LRo=
-github.com/fluxcd/pkg/apis/kustomize v1.0.0/go.mod h1:XaDYlKxrf9D2zZWcZ0BnSIqGtcm8mdNtJGzZWYjCnQo=
+github.com/fluxcd/pkg/apis/kustomize v1.2.0 h1:vkVs+OumxaWso0jNCqdgFFfMHdh+qtZhykTkjl7OgmA=
+github.com/fluxcd/pkg/apis/kustomize v1.2.0/go.mod h1:VF7tR/WuVFeum+HaMTHwp+eCtsHiiQlY6ihgqtAnW/M=
 github.com/fluxcd/pkg/apis/meta v1.2.0 h1:O766PzGAdMdQKybSflGL8oV0+GgCNIkdsxfalRyzeO8=
 github.com/fluxcd/pkg/apis/meta v1.2.0/go.mod h1:fU/Az9AoVyIxC0oI4ihG0NVMNnvrcCzdEym3wxjIQsc=
 github.com/fluxcd/pkg/http/fetch v0.7.0 h1:mfp3+UE8gsELRtcv5jYAu/LjOqHXWvm/HbgxdcGlcW4=
@@ -193,7 +193,7 @@ github.com/prometheus/common v0.45.0 h1:2BGz0eBc2hdMDLnO/8n0jeB3oPrt2D08CekT0lne
 github.com/prometheus/common v0.45.0/go.mod h1:YJmSTw9BoKxJplESWWxlbyttQR4uaEcGyv9MZjVOJsY=
 github.com/prometheus/procfs v0.12.0 h1:jluTpSng7V9hY0O2R9DzzJHYb2xULk9VTR1V1R/k6Bo=
 github.com/prometheus/procfs v0.12.0/go.mod h1:pcuDEFsWDnvcgNzo4EEweacyhjeA9Zk3cnaOZAZEfOo=
-github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
+github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
