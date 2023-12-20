@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -45,34 +46,38 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		return nil, nil
 	}
 
-	g.Logger.Info("generating params from ImagePolicy generator", "repo", sg.ImagePolicy.PolicyRef)
+	g.Logger.Info("generating params from ImagePolicy generator", "imagePolicy", sg.ImagePolicy.PolicyRef)
 
-	var repo imagev1.ImagePolicy
-	repoName := client.ObjectKey{Name: sg.ImagePolicy.PolicyRef, Namespace: ks.GetNamespace()}
-	if err := g.Client.Get(ctx, repoName, &repo); err != nil {
+	var imagePolicy imagev1.ImagePolicy
+	imagePolicyName := client.ObjectKey{Name: sg.ImagePolicy.PolicyRef, Namespace: ks.GetNamespace()}
+	if err := g.Client.Get(ctx, imagePolicyName, &imagePolicy); err != nil {
 		return nil, fmt.Errorf("could not load ImagePolicy: %w", err)
 	}
 
 	result := []map[string]any{}
 
-	if repo.Status.LatestImage == "" {
+	if imagePolicy.Status.LatestImage == "" {
 		g.Logger.Info("image policy has not calculated the latest image")
-		return result, nil
+		return nil, generators.ArtifactError("ImagePolicy",
+			types.NamespacedName{
+				Name:      imagePolicy.GetName(),
+				Namespace: imagePolicy.GetNamespace(),
+			})
 	}
 
-	latestTag, err := name.NewTag(repo.Status.LatestImage)
+	latestTag, err := name.NewTag(imagePolicy.Status.LatestImage)
 	if err != nil {
 		return nil, err
 	}
 
-	g.Logger.Info("image policy", "latestImage", repo.Status.LatestImage, "latestTag", latestTag.TagStr(), "previousImage", repo.Status.ObservedPreviousImage)
+	g.Logger.Info("image policy", "latestImage", imagePolicy.Status.LatestImage, "latestTag", latestTag.TagStr(), "previousImage", imagePolicy.Status.ObservedPreviousImage)
 
 	// This stores empty strings the for the previous tag if it's empty because
 	// that saves users having to check for the existence of the fields in their
 	// templates.
 	previousTag := ""
-	if repo.Status.ObservedPreviousImage != "" {
-		parsedTag, err := name.NewTag(repo.Status.ObservedPreviousImage)
+	if imagePolicy.Status.ObservedPreviousImage != "" {
+		parsedTag, err := name.NewTag(imagePolicy.Status.ObservedPreviousImage)
 		if err != nil {
 			return nil, err
 		}
@@ -81,10 +86,10 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 	}
 
 	generated := map[string]any{
-		"latestImage":   repo.Status.LatestImage,
+		"latestImage":   imagePolicy.Status.LatestImage,
 		"image":         latestTag.Repository.Name(),
 		"latestTag":     latestTag.TagStr(),
-		"previousImage": repo.Status.ObservedPreviousImage,
+		"previousImage": imagePolicy.Status.ObservedPreviousImage,
 		"previousTag":   previousTag,
 	}
 
