@@ -20,6 +20,11 @@ type GitOpsSetTemplate struct {
 	Repeat string `json:"repeat,omitempty"`
 	// Content is the YAML to be templated and generated.
 	Content runtime.RawExtension `json:"content"`
+
+	// Condition is a JSONPath expression that can be used to optionally generate the
+	// template.
+	// If the expression evaluates to false, the template will not be rendered.
+	Condition string `json:"condition,omitempty"`
 }
 
 // ClusterGenerator defines a generator that queries the cluster API for

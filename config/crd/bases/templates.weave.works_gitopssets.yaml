@@ -692,6 +692,11 @@ spec:
                 items:
                   description: GitOpsSetTemplate describes a resource to create
                   properties:
+                    condition:
+                      description: Condition is a JSONPath expression that can be
+                        used to optionally generate the template. If the expression
+                        evaluates to false, the template will not be rendered.
+                      type: string
                     content:
                       description: Content is the YAML to be templated and generated.
                       type: object
