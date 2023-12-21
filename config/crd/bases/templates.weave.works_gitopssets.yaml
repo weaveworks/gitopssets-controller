@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: gitopssets.templates.weave.works
 spec:
   group: templates.weave.works
@@ -692,14 +691,20 @@ spec:
                 items:
                   description: GitOpsSetTemplate describes a resource to create
                   properties:
+                    condition:
+                      description: Condition is a CEL expression that can be used
+                        to optionally generate the template. If the expression evaluates
+                        to false, the template will not be rendered.
+                      type: string
                     content:
                       description: Content is the YAML to be templated and generated.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     repeat:
-                      description: Repeat is a JSONPath string defining that the template
-                        content should be repeated for each of the matching elements
-                        in the JSONPath expression. https://kubernetes.io/docs/reference/kubectl/jsonpath/
+                      description: Repeat is either a CEL expression or a JSONPath
+                        that can be used to repeat generating the template for each
+                        of the results in the provided expression. To use a CEL expression,
+                        prefix the string with "cel:".
                       type: string
                   required:
                   - content

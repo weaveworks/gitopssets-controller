@@ -763,9 +763,23 @@ string
 </em>
 </td>
 <td>
-<p>Repeat is a JSONPath string defining that the template content should be
-repeated for each of the matching elements in the JSONPath expression.
-<a href="https://kubernetes.io/docs/reference/kubectl/jsonpath/">https://kubernetes.io/docs/reference/kubectl/jsonpath/</a></p>
+<p>Repeat is either a CEL expression or a JSONPath that can be used to
+repeat generating the template for each of the results in the provided
+expression.
+To use a CEL expression, prefix the string with &ldquo;cel:&rdquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>condition</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Condition is a CEL expression that can be used to optionally generate the
+template.
+If the expression evaluates to false, the template will not be rendered.</p>
 </td>
 </tr>
 <tr>

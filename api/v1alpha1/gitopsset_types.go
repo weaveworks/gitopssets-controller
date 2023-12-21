@@ -14,10 +14,17 @@ const GitOpsSetFinalizer = "finalizers.templates.weave.works"
 
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
-	// Repeat is a JSONPath string defining that the template content should be
-	// repeated for each of the matching elements in the JSONPath expression.
-	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
+	// Repeat is either a CEL expression or a JSONPath that can be used to
+	// repeat generating the template for each of the results in the provided
+	// expression.
+	// To use a CEL expression, prefix the string with "cel:".
 	Repeat string `json:"repeat,omitempty"`
+
+	// Condition is a CEL expression that can be used to optionally generate the
+	// template.
+	// If the expression evaluates to false, the template will not be rendered.
+	Condition string `json:"condition,omitempty"`
+
 	// Content is the YAML to be templated and generated.
 	Content runtime.RawExtension `json:"content"`
 }
