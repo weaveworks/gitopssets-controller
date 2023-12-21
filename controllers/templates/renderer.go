@@ -14,6 +14,7 @@ import (
 	"github.com/gitops-tools/pkg/sanitize"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 	celext "github.com/google/cel-go/ext"
@@ -57,6 +58,25 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
+					if template.Condition != "" {
+						env, err := makeCELEnv()
+						if err != nil {
+							return nil, err
+						}
+
+						evalContext := map[string]interface{}{
+							"Element": param,
+						}
+
+						evaluated, err := evaluate(template.Condition, env, evalContext)
+						if err != nil {
+							return nil, err
+						}
+						if evaluated == types.False {
+							continue
+						}
+					}
+
 					res, err := renderTemplateParams(index, template, param, *r)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
