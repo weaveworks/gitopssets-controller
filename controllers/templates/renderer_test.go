@@ -574,6 +574,30 @@ func TestRender(t *testing.T) {
 					addLabels[*corev1.Namespace](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
 			},
 		},
+		{
+			name: "conditional generation - false expression",
+			elements: []apiextensionsv1.JSON{
+				{Raw: []byte(`{"env": "engineering-dev","externalIP": "192.168.50.50"}`)},
+				{Raw: []byte(`{"env": "engineering-prod","externalIP": "192.168.100.20"}`)},
+			},
+			setOptions: []func(*templatesv1.GitOpsSet){
+				func(s *templatesv1.GitOpsSet) {
+					s.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+						{
+							Condition: `Element.env == "engineering-dev"`,
+							Content: runtime.RawExtension{
+								Raw: mustMarshalJSON(t, makeTestService(types.NamespacedName{Name: "{{ .Element.env }}-demo", Namespace: testNS})),
+							},
+						},
+					}
+				},
+			},
+			want: []*unstructured.Unstructured{
+				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo"), setClusterIP("192.168.50.50"),
+					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
+					addLabels[*corev1.Service](map[string]string{"templates.weave.works/name": "test-gitops-set", "templates.weave.works/namespace": testNS}))),
+			},
+		},
 	}
 
 	for _, tt := range generatorTests {
