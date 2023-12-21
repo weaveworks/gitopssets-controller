@@ -61,7 +61,7 @@ github.com/fluxcd/pkg/tar v0.4.0/go.mod h1:SyJBaQvuv2VA/rv4d1OHhCV6R8+9QKc9np193
 github.com/fluxcd/pkg/testserver v0.5.0 h1:n/Iskk0tXNt2AgIgjz9qeFK/VhEXGfqeazABXZmO2Es=
 github.com/fluxcd/source-controller/api v1.2.3 h1:71mXv3Qg9HEhcpqOq1ObmoE+P/HuZNaAvxfI7dqZMo8=
 github.com/fluxcd/source-controller/api v1.2.3/go.mod h1:5gaIVVH7hgb8p3HKFp8P6hGmZEC8fKSt4EcrG3g5vZI=
-github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
+github.com/frankban/quicktest v1.14.4 h1:g2rn0vABPOOXmZUj+vbmUp0lPoXEMuhTpIluN0XL9UY=
 github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/gitops-tools/pkg v0.1.0 h1:atKTGUjGEEvkSX+HGCzI76rHRB84+nr77ll8kyJY3Nk=
@@ -207,8 +207,8 @@ github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f/go.mod h1:AuYgA5K
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/spf13/cast v1.3.1/go.mod h1:Qx5cxh0v+4UWYiBimWS+eyWzqEqokIECu5etghLkUJE=
-github.com/spf13/cast v1.5.0 h1:rj3WzYc11XZaIZMPKmwP96zkFEnnAmV8s6XbB2aY32w=
-github.com/spf13/cast v1.5.0/go.mod h1:SpXXQ5YoyJw6s3/6cMTQuxvgRl3PCJiyaX9p6b155UU=
+github.com/spf13/cast v1.5.1 h1:R+kOtfhWQE6TVQzY+4D7wJLBgkdVasCEFxSUBYBYIlA=
+github.com/spf13/cast v1.5.1/go.mod h1:b9PdjNptOpzXr7Rq1q9gJML/2cdGQAo69NKzQ10KN48=
 github.com/spf13/cobra v1.8.0 h1:7aJaZx1B85qltLMc546zn58BxxfZdR/W22ej9CFoEf0=
 github.com/spf13/cobra v1.8.0/go.mod h1:WXLWApfZ71AjXPya3WOlMsY9yMs7YeiHhFVlvLyhcho=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
@@ -228,8 +228,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/weaveworks/cluster-controller v1.4.1 h1:vnbHPI+0GkcSOp986WvO5D6grb2IMgDvveKblmGm3vk=
-github.com/weaveworks/cluster-controller v1.4.1/go.mod h1:NrgkuiyejE2nizsiXNeqaNWfVhpvG2SlAiWHnxKIS4U=
+github.com/weaveworks/cluster-controller v1.6.0 h1:lPYAD9kgV3QwC1vslQ5RuqA/awoAOZo2PeH/ou+qaMo=
+github.com/weaveworks/cluster-controller v1.6.0/go.mod h1:x441gDOG1WfxZ7bzQz5OFph5RbU11SQC+INtNOyHd9w=
 github.com/xlab/treeprint v1.2.0 h1:HzHnuAF1plUN2zGlAFHbSQP2qJ0ZAD3XF5XD7OesXRQ=
 github.com/xlab/treeprint v1.2.0/go.mod h1:gj5Gd3gPdKtR1ikdDK6fnFLdmIS0X30kTTuNd/WEJu0=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
