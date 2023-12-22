@@ -15,7 +15,7 @@ require (
 	github.com/fluxcd/pkg/tar v0.4.0
 	github.com/fluxcd/source-controller/api v1.2.3
 	github.com/gitops-tools/pkg v0.1.0
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.12.0
