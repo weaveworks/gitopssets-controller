@@ -10,7 +10,7 @@ require (
 	github.com/fluxcd/kustomize-controller/api v1.2.1
 	github.com/fluxcd/pkg/apis/event v0.6.0
 	github.com/fluxcd/pkg/apis/meta v1.2.0
-	github.com/fluxcd/pkg/http/fetch v0.7.0
+	github.com/fluxcd/pkg/http/fetch v0.8.0
 	github.com/fluxcd/pkg/runtime v0.43.3
 	github.com/fluxcd/pkg/tar v0.4.0
 	github.com/fluxcd/source-controller/api v1.2.3
