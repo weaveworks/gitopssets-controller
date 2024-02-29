@@ -1,4 +1,4 @@
-apiVersion: templates.weave.works/v1alpha1
+apiVersion: sets.gitops.pro/v1alpha1
 kind: GitOpsSet
 metadata:
   name: repeated-gitopsset-sample

@@ -5,8 +5,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: team1-team
   namespace: wge
 ---
@@ -16,8 +16,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: team2-team
   namespace: wge
 ---
@@ -27,8 +27,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: c1-customer
   namespace: wge
 ---
@@ -38,8 +38,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: c2-customer
   namespace: wge
 ---
@@ -49,8 +49,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: team4-team
   namespace: wge
 ---
@@ -60,8 +60,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: team5-team
   namespace: wge
 ---
@@ -71,8 +71,8 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: c4-customer
   namespace: wge
 ---
@@ -82,7 +82,7 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    templates.weave.works/name: config-maps
-    templates.weave.works/namespace: wge
+    sets.gitops.pro/name: config-maps
+    sets.gitops.pro/namespace: wge
   name: c5-customer
   namespace: wge

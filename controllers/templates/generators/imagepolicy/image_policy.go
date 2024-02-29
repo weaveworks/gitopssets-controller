@@ -6,10 +6,10 @@ import (
 	"time"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
 	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/name"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

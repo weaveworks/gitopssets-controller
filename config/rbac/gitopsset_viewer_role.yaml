@@ -12,7 +12,7 @@ metadata:
   name: gitopsset-viewer-role
 rules:
 - apiGroups:
-  - templates.weave.works
+  - sets.gitops.pro
   resources:
   - gitopssets
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - templates.weave.works
+  - sets.gitops.pro
   resources:
   - gitopssets/status
   verbs:

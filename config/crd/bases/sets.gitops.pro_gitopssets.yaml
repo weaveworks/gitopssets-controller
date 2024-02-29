@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: gitopssets.templates.weave.works
+  name: gitopssets.sets.gitops.pro
 spec:
-  group: templates.weave.works
+  group: sets.gitops.pro
   names:
     kind: GitOpsSet
     listKind: GitOpsSetList

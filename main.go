@@ -16,9 +16,9 @@ import (
 	"github.com/fluxcd/pkg/runtime/metrics"
 	"github.com/fluxcd/pkg/runtime/pprof"
 	"github.com/fluxcd/pkg/tar"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/apiclient"
+	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 	flag "github.com/spf13/pflag"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
-	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/controllers"
 )
 
 var (

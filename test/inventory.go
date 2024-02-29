@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 )
 
 // AssertInventoryHasItems will ensure that each of the provided objects is

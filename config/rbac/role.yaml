@@ -35,6 +35,32 @@ rules:
   verbs:
   - impersonate
 - apiGroups:
+  - gitops.pro
+  resources:
+  - gitopssets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gitops.pro
+  resources:
+  - gitopssets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - gitops.pro
+  resources:
+  - gitopssets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - gitops.weave.works
   resources:
   - gitopsclusters
@@ -66,29 +92,3 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - templates.weave.works
-  resources:
-  - gitopssets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - templates.weave.works
-  resources:
-  - gitopssets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - templates.weave.works
-  resources:
-  - gitopssets/status
-  verbs:
-  - get
-  - patch
-  - update

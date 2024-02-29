@@ -1,16 +1,16 @@
 <p>Packages:</p>
 <ul>
 <li>
-<a href="#templates.weave.works%2fv1alpha1">templates.weave.works/v1alpha1</a>
+<a href="#sets.gitops.pro%2fv1alpha1">sets.gitops.pro/v1alpha1</a>
 </li>
 </ul>
-<h2 id="templates.weave.works/v1alpha1">templates.weave.works/v1alpha1</h2>
+<h2 id="sets.gitops.pro/v1alpha1">sets.gitops.pro/v1alpha1</h2>
 <p>Package v1alpha1 contains API Schema definitions for the gitopssets v1alpha1 API group</p>
 Resource Types:
 <ul><li>
-<a href="#templates.weave.works/v1alpha1.GitOpsSet">GitOpsSet</a>
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSet">GitOpsSet</a>
 </li></ul>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSet">GitOpsSet
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSet">GitOpsSet
 </h3>
 <p>GitOpsSet is the Schema for the gitopssets API</p>
 <table>
@@ -26,7 +26,7 @@ Resource Types:
 <code>apiVersion</code><br />
 string</td>
 <td>
-<code>templates.weave.works/v1alpha1</code>
+<code>sets.gitops.pro/v1alpha1</code>
 </td>
 </tr>
 <tr>
@@ -56,7 +56,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetSpec">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">
 GitOpsSetSpec
 </a>
 </em>
@@ -83,7 +83,7 @@ GitOpsSet.</p>
 <td>
 <code>generators</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">
 []GitOpsSetGenerator
 </a>
 </em>
@@ -96,7 +96,7 @@ GitOpsSet.</p>
 <td>
 <code>templates</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetTemplate">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetTemplate">
 []GitOpsSetTemplate
 </a>
 </em>
@@ -127,7 +127,7 @@ when reconciling this Kustomization.</p>
 <td>
 <code>status</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetStatus">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetStatus">
 GitOpsSetStatus
 </a>
 </em>
@@ -137,12 +137,12 @@ GitOpsSetStatus
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.APIClientGenerator">APIClientGenerator
+<h3 id="sets.gitops.pro/v1alpha1.APIClientGenerator">APIClientGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>APIClientGenerator defines a generator that queries an API endpoint and uses
 that to generate data.</p>
@@ -208,7 +208,7 @@ call.</p>
 <td>
 <code>headersRef</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.HeadersReference">
+<a href="#sets.gitops.pro/v1alpha1.HeadersReference">
 HeadersReference
 </a>
 </em>
@@ -268,12 +268,12 @@ provides the Certificate Authority to trust when making API calls.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ClusterGenerator">ClusterGenerator
+<h3 id="sets.gitops.pro/v1alpha1.ClusterGenerator">ClusterGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>ClusterGenerator defines a generator that queries the cluster API for
 relevant clusters.</p>
@@ -302,12 +302,12 @@ Kubernetes meta/v1.LabelSelector
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ConfigGenerator">ConfigGenerator
+<h3 id="sets.gitops.pro/v1alpha1.ConfigGenerator">ConfigGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>ConfigGenerator loads a referenced ConfigMap or
 Secret from the Cluster and makes it available as a resource.</p>
@@ -343,11 +343,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
 </p>
 <p>GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.</p>
 <table>
@@ -362,7 +362,7 @@ string
 <td>
 <code>list</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ListGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ListGenerator">
 ListGenerator
 </a>
 </em>
@@ -374,7 +374,7 @@ ListGenerator
 <td>
 <code>pullRequests</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.PullRequestGenerator">
+<a href="#sets.gitops.pro/v1alpha1.PullRequestGenerator">
 PullRequestGenerator
 </a>
 </em>
@@ -386,7 +386,7 @@ PullRequestGenerator
 <td>
 <code>gitRepository</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">
+<a href="#sets.gitops.pro/v1alpha1.GitRepositoryGenerator">
 GitRepositoryGenerator
 </a>
 </em>
@@ -398,7 +398,7 @@ GitRepositoryGenerator
 <td>
 <code>ociRepository</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.OCIRepositoryGenerator">
+<a href="#sets.gitops.pro/v1alpha1.OCIRepositoryGenerator">
 OCIRepositoryGenerator
 </a>
 </em>
@@ -410,7 +410,7 @@ OCIRepositoryGenerator
 <td>
 <code>matrix</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.MatrixGenerator">
+<a href="#sets.gitops.pro/v1alpha1.MatrixGenerator">
 MatrixGenerator
 </a>
 </em>
@@ -422,7 +422,7 @@ MatrixGenerator
 <td>
 <code>cluster</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ClusterGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ClusterGenerator">
 ClusterGenerator
 </a>
 </em>
@@ -434,7 +434,7 @@ ClusterGenerator
 <td>
 <code>apiClient</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.APIClientGenerator">
+<a href="#sets.gitops.pro/v1alpha1.APIClientGenerator">
 APIClientGenerator
 </a>
 </em>
@@ -446,7 +446,7 @@ APIClientGenerator
 <td>
 <code>imagePolicy</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ImagePolicyGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ImagePolicyGenerator">
 ImagePolicyGenerator
 </a>
 </em>
@@ -458,7 +458,7 @@ ImagePolicyGenerator
 <td>
 <code>config</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ConfigGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ConfigGenerator">
 ConfigGenerator
 </a>
 </em>
@@ -468,11 +468,11 @@ ConfigGenerator
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.MatrixGenerator">MatrixGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.MatrixGenerator">MatrixGenerator</a>)
 </p>
 <p>GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
 This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn&rsquo;t support recursive declarations.</p>
@@ -502,7 +502,7 @@ type in a single Matrix generator.</p>
 <td>
 <code>list</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ListGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ListGenerator">
 ListGenerator
 </a>
 </em>
@@ -514,7 +514,7 @@ ListGenerator
 <td>
 <code>gitRepository</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">
+<a href="#sets.gitops.pro/v1alpha1.GitRepositoryGenerator">
 GitRepositoryGenerator
 </a>
 </em>
@@ -526,7 +526,7 @@ GitRepositoryGenerator
 <td>
 <code>ociRepository</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.OCIRepositoryGenerator">
+<a href="#sets.gitops.pro/v1alpha1.OCIRepositoryGenerator">
 OCIRepositoryGenerator
 </a>
 </em>
@@ -538,7 +538,7 @@ OCIRepositoryGenerator
 <td>
 <code>pullRequests</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.PullRequestGenerator">
+<a href="#sets.gitops.pro/v1alpha1.PullRequestGenerator">
 PullRequestGenerator
 </a>
 </em>
@@ -550,7 +550,7 @@ PullRequestGenerator
 <td>
 <code>cluster</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ClusterGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ClusterGenerator">
 ClusterGenerator
 </a>
 </em>
@@ -562,7 +562,7 @@ ClusterGenerator
 <td>
 <code>apiClient</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.APIClientGenerator">
+<a href="#sets.gitops.pro/v1alpha1.APIClientGenerator">
 APIClientGenerator
 </a>
 </em>
@@ -574,7 +574,7 @@ APIClientGenerator
 <td>
 <code>imagePolicy</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ImagePolicyGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ImagePolicyGenerator">
 ImagePolicyGenerator
 </a>
 </em>
@@ -586,7 +586,7 @@ ImagePolicyGenerator
 <td>
 <code>config</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ConfigGenerator">
+<a href="#sets.gitops.pro/v1alpha1.ConfigGenerator">
 ConfigGenerator
 </a>
 </em>
@@ -596,11 +596,11 @@ ConfigGenerator
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSetSpec">GitOpsSetSpec
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSet">GitOpsSet</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSet">GitOpsSet</a>)
 </p>
 <p>GitOpsSetSpec defines the desired state of GitOpsSet</p>
 <table>
@@ -628,7 +628,7 @@ GitOpsSet.</p>
 <td>
 <code>generators</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">
 []GitOpsSetGenerator
 </a>
 </em>
@@ -641,7 +641,7 @@ GitOpsSet.</p>
 <td>
 <code>templates</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetTemplate">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetTemplate">
 []GitOpsSetTemplate
 </a>
 </em>
@@ -666,11 +666,11 @@ when reconciling this Kustomization.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSetStatus">GitOpsSetStatus
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSetStatus">GitOpsSetStatus
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSet">GitOpsSet</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSet">GitOpsSet</a>)
 </p>
 <p>GitOpsSetStatus defines the observed state of GitOpsSet</p>
 <table>
@@ -727,7 +727,7 @@ object.</p>
 <td>
 <code>inventory</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ResourceInventory">
+<a href="#sets.gitops.pro/v1alpha1.ResourceInventory">
 ResourceInventory
 </a>
 </em>
@@ -740,11 +740,11 @@ have been successfully applied</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitOpsSetTemplate">GitOpsSetTemplate
+<h3 id="sets.gitops.pro/v1alpha1.GitOpsSetTemplate">GitOpsSetTemplate
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
 </p>
 <p>GitOpsSetTemplate describes a resource to create</p>
 <table>
@@ -783,12 +783,12 @@ k8s.io/apimachinery/pkg/runtime.RawExtension
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator
+<h3 id="sets.gitops.pro/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>GitRepositoryGenerator generates from files in a Flux GitRepository resource.</p>
 <table>
@@ -814,7 +814,7 @@ string
 <td>
 <code>files</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.RepositoryGeneratorFileItem">
+<a href="#sets.gitops.pro/v1alpha1.RepositoryGeneratorFileItem">
 []RepositoryGeneratorFileItem
 </a>
 </em>
@@ -827,7 +827,7 @@ string
 <td>
 <code>directories</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.RepositoryGeneratorDirectoryItem">
+<a href="#sets.gitops.pro/v1alpha1.RepositoryGeneratorDirectoryItem">
 []RepositoryGeneratorDirectoryItem
 </a>
 </em>
@@ -839,11 +839,11 @@ generated.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.HeadersReference">HeadersReference
+<h3 id="sets.gitops.pro/v1alpha1.HeadersReference">HeadersReference
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.APIClientGenerator">APIClientGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.APIClientGenerator">APIClientGenerator</a>)
 </p>
 <p>HeadersReference references either a Secret or ConfigMap to be used for
 additional request headers.</p>
@@ -879,12 +879,12 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ImagePolicyGenerator">ImagePolicyGenerator
+<h3 id="sets.gitops.pro/v1alpha1.ImagePolicyGenerator">ImagePolicyGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>ImagePolicyGenerator generates from the ImagePolicy.</p>
 <table>
@@ -908,12 +908,12 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ListGenerator">ListGenerator
+<h3 id="sets.gitops.pro/v1alpha1.ListGenerator">ListGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>ListGenerator generates from a hard-coded list.</p>
 <table>
@@ -938,11 +938,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.MatrixGenerator">MatrixGenerator
+<h3 id="sets.gitops.pro/v1alpha1.MatrixGenerator">MatrixGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>)
 </p>
 <p>MatrixGenerator defines a matrix that combines generators.
 The matrix is a cartesian product of the generators.</p>
@@ -958,7 +958,7 @@ The matrix is a cartesian product of the generators.</p>
 <td>
 <code>generators</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">
 []GitOpsSetNestedGenerator
 </a>
 </em>
@@ -985,12 +985,12 @@ It&rsquo;s recommended that you use the Name field to separate out elements.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator
+<h3 id="sets.gitops.pro/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>OCIRepositoryGenerator generates from files in a Flux OCIRepository resource.</p>
 <table>
@@ -1016,7 +1016,7 @@ string
 <td>
 <code>files</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.RepositoryGeneratorFileItem">
+<a href="#sets.gitops.pro/v1alpha1.RepositoryGeneratorFileItem">
 []RepositoryGeneratorFileItem
 </a>
 </em>
@@ -1029,7 +1029,7 @@ string
 <td>
 <code>directories</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.RepositoryGeneratorDirectoryItem">
+<a href="#sets.gitops.pro/v1alpha1.RepositoryGeneratorDirectoryItem">
 []RepositoryGeneratorDirectoryItem
 </a>
 </em>
@@ -1041,12 +1041,12 @@ generated.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.PullRequestGenerator">PullRequestGenerator
+<h3 id="sets.gitops.pro/v1alpha1.PullRequestGenerator">PullRequestGenerator
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">GitOpsSetGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator</a>)
 </p>
 <p>PullRequestGenerator defines a generator that queries a Git hosting service
 for relevant PRs.</p>
@@ -1148,12 +1148,12 @@ or to include forks if  true</p>
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.RepositoryGeneratorDirectoryItem">RepositoryGeneratorDirectoryItem
+<h3 id="sets.gitops.pro/v1alpha1.RepositoryGeneratorDirectoryItem">RepositoryGeneratorDirectoryItem
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator</a>)
 </p>
 <p>RepositoryGeneratorDirectoryItem stores the information about a specific
 directory to be generated from.</p>
@@ -1187,12 +1187,12 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.RepositoryGeneratorFileItem">RepositoryGeneratorFileItem
+<h3 id="sets.gitops.pro/v1alpha1.RepositoryGeneratorFileItem">RepositoryGeneratorFileItem
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator</a>, 
-<a href="#templates.weave.works/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitRepositoryGenerator">GitRepositoryGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.OCIRepositoryGenerator">OCIRepositoryGenerator</a>)
 </p>
 <p>RepositoryGeneratorFileItem defines a path to a file to be parsed when generating.</p>
 <table>
@@ -1216,11 +1216,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ResourceInventory">ResourceInventory
+<h3 id="sets.gitops.pro/v1alpha1.ResourceInventory">ResourceInventory
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.GitOpsSetStatus">GitOpsSetStatus</a>)
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetStatus">GitOpsSetStatus</a>)
 </p>
 <p>ResourceInventory contains a list of Kubernetes resource object references that have been applied by a Kustomization.</p>
 <table>
@@ -1235,7 +1235,7 @@ string
 <td>
 <code>entries</code><br />
 <em>
-<a href="#templates.weave.works/v1alpha1.ResourceRef">
+<a href="#sets.gitops.pro/v1alpha1.ResourceRef">
 []ResourceRef
 </a>
 </em>
@@ -1246,11 +1246,11 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="templates.weave.works/v1alpha1.ResourceRef">ResourceRef
+<h3 id="sets.gitops.pro/v1alpha1.ResourceRef">ResourceRef
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#templates.weave.works/v1alpha1.ResourceInventory">ResourceInventory</a>)
+<a href="#sets.gitops.pro/v1alpha1.ResourceInventory">ResourceInventory</a>)
 </p>
 <p>ResourceRef contains the information necessary to locate a resource within a cluster.</p>
 <table>

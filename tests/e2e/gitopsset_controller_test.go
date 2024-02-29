@@ -25,8 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/test"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/test"
 
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 )
@@ -112,11 +112,11 @@ func TestReconcilingNewCluster(t *testing.T) {
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "test-gc-demo", Namespace: "default"}, &kust))
 
 	wantLabels := map[string]string{
-		"app.kubernetes.io/instance":      "test-gc",
-		"com.example/new":                 "tricky-label",
-		"com.example/team":                "engineering",
-		"templates.weave.works/name":      "demo-set",
-		"templates.weave.works/namespace": "default",
+		"app.kubernetes.io/instance": "test-gc",
+		"com.example/new":            "tricky-label",
+		"com.example/team":           "engineering",
+		"sets.gitops.pro/name":       "demo-set",
+		"sets.gitops.pro/namespace":  "default",
 	}
 	if diff := cmp.Diff(wantLabels, kust.ObjectMeta.Labels); diff != "" {
 		t.Fatalf("failed to generate labels:\n%s", diff)

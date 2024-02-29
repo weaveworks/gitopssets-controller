@@ -87,7 +87,7 @@ func NewGitRepository(opts ...func(*sourcev1beta2.GitRepository)) *sourcev1beta2
 			Namespace: testNamespace,
 		},
 		Spec: sourcev1beta2.GitRepositorySpec{
-			URL: "https://github.com/weaveworks/gitopssets-controller",
+			URL: "https://github.com/gitops-tools/gitopssets-controller",
 		},
 	}
 

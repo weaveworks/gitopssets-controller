@@ -18,8 +18,8 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 	syaml "sigs.k8s.io/yaml"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
 )
 
 // TemplateDelimiterAnnotation can be added to a Template to change the Go
@@ -28,7 +28,7 @@ import (
 // It's assumed to be a string with "left,right"
 // By default the delimiters are the standard Go templating delimiters:
 // {{ and }}.
-const TemplateDelimiterAnnotation string = "templates.weave.works/delimiters"
+const TemplateDelimiterAnnotation string = "sets.gitops.pro/delimiters"
 
 var templateFuncs template.FuncMap = makeTemplateFunctions()
 
@@ -171,8 +171,8 @@ func renderTemplateParams(index int, tmpl templatesv1.GitOpsSetTemplate, params 
 
 			// Add source labels
 			labels := map[string]string{
-				"templates.weave.works/name":      gs.GetName(),
-				"templates.weave.works/namespace": gs.GetNamespace(),
+				"sets.gitops.pro/name":      gs.GetName(),
+				"sets.gitops.pro/namespace": gs.GetNamespace(),
 			}
 
 			renderedLabels := uns.GetLabels()

@@ -23,12 +23,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
-	"github.com/weaveworks/gitopssets-controller/pkg/parser"
-	"github.com/weaveworks/gitopssets-controller/pkg/setup"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/apiclient"
+	"github.com/gitops-tools/gitopssets-controller/pkg/parser"
+	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 )
 
 // NewGenerateCommand creates and returns a new Command that renders GitOpsSets.

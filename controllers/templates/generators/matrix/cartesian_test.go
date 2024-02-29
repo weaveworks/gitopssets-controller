@@ -3,8 +3,8 @@ package matrix
 import (
 	"testing"
 
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/google/go-cmp/cmp"
-	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 func TestCartesian(t *testing.T) {

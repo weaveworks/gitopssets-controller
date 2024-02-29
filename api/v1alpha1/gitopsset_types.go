@@ -10,7 +10,7 @@ import (
 
 // GitOpsSetFinalizer is the finalizer added to GitOpsSets to allow us to clean
 // up resources.
-const GitOpsSetFinalizer = "finalizers.templates.weave.works"
+const GitOpsSetFinalizer = "finalizers.sets.gitops.pro"
 
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {

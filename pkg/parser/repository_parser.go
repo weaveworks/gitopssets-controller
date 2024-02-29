@@ -8,9 +8,10 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/go-logr/logr"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
+
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 )
 
 // ArchiveFetcher implementations should get the URL, validate the contents
