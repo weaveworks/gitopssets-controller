@@ -102,9 +102,6 @@ jobs:
           GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
 
-      - name: go mod vendor
-        run: go mod vendor
-
       - name: Build and push Docker image
         uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5.1.0
         with:
@@ -128,16 +125,10 @@ jobs:
           fetch-depth: 0 # for git describe
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Configure git for private modules
-        env:
-          GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
-          GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
-        run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
-
       - name: Install Helm
         run: |
           wget --no-verbose https://get.helm.sh/helm-v3.12.1-linux-amd64.tar.gz
-          tar -zxvf helm-v3.12.1-linux-amd64.tar.gz
+          tar -zxvf helm-v3.14.2-linux-amd64.tar.gz
           mv linux-amd64/helm /usr/local/bin/helm
           helm version
 

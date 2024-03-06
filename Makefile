@@ -80,11 +80,6 @@ build: manifests generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go ./version.go ${RUN_ARGS}
 
-.PHONY: vendor
-vendor: ## Update vendor directory.
-	go mod tidy
-	go mod vendor
-
 version:
 	@echo $(VERSION)
 
@@ -92,7 +87,7 @@ version:
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: test vendor ## Build docker image with the manager.
+docker-build: ## Build docker image with the manager.
 	docker build -t ${IMG} --build-arg VERSION=${VERSION} .
 
 .PHONY: docker-push
