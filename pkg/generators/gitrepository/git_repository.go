@@ -7,7 +7,7 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/gitops-tools/gitopssets-controller/pkg/parser"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"

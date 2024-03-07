@@ -23,15 +23,15 @@ import (
 
 	gitopssetsv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitopssets-controller/controllers"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/cluster"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/config"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/imagepolicy"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/list"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/matrix"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/ocirepository"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/pullrequests"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/cluster"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/config"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/imagepolicy"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/matrix"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/ocirepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/pullrequests"
 	// +kubebuilder:scaffold:imports
 )
 

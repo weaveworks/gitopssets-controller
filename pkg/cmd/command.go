@@ -25,8 +25,8 @@ import (
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitopssets-controller/controllers/templates"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/apiclient"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/apiclient"
 	"github.com/gitops-tools/gitopssets-controller/pkg/parser"
 	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 )

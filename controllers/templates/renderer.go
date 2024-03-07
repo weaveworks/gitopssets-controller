@@ -19,7 +19,7 @@ import (
 	syaml "sigs.k8s.io/yaml"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 )
 
 // TemplateDelimiterAnnotation can be added to a Template to change the Go

@@ -1,4 +1,4 @@
-package gitrepository
+package ocirepository
 
 import (
 	"context"
@@ -16,25 +16,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/gitops-tools/gitopssets-controller/test"
 )
 
 const testRetries int = 3
 
-var _ generators.Generator = (*GitRepositoryGenerator)(nil)
+var _ generators.Generator = (*OCIRepositoryGenerator)(nil)
 
 var testFetcher = fetch.NewArchiveFetcher(testRetries, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
 
-func TestGenerate_with_no_GitRepository(t *testing.T) {
+func TestGenerate_with_no_OCIRepository(t *testing.T) {
 	gen := GeneratorFactory(testFetcher)(logr.Discard(), nil)
 	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
-		t.Errorf("got an error with no GitRepository: %s", err)
+		t.Errorf("got an error with no OCIRepository: %s", err)
 	}
 	if got != nil {
-		t.Errorf("got %v, want %v with no GitRepository generator", got, nil)
+		t.Errorf("got %v, want %v with no OCIRepository generator", got, nil)
 	}
 }
 
@@ -42,13 +42,13 @@ func TestGenerate(t *testing.T) {
 	srv := test.StartFakeArchiveServer(t, "testdata")
 	testCases := []struct {
 		name      string
-		generator *templatesv1.GitRepositoryGenerator
+		generator *templatesv1.OCIRepositoryGenerator
 		objects   []runtime.Object
 		want      []map[string]any
 	}{
 		{
 			"file list case",
-			&templatesv1.GitRepositoryGenerator{
+			&templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Files: []templatesv1.RepositoryGeneratorFileItem{
 					{Path: "files/dev.yaml"},
@@ -56,7 +56,7 @@ func TestGenerate(t *testing.T) {
 					{Path: "files/staging.yaml"},
 				},
 			},
-			[]runtime.Object{test.NewGitRepository(
+			[]runtime.Object{newOCIRepository(
 				withArchiveURLAndChecksum(srv.URL+"/files.tar.gz",
 					"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
 			[]map[string]any{
@@ -67,13 +67,13 @@ func TestGenerate(t *testing.T) {
 		},
 		{
 			"directory generation",
-			&templatesv1.GitRepositoryGenerator{
+			&templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Directories: []templatesv1.RepositoryGeneratorDirectoryItem{
 					{Path: "applications/*"},
 				},
 			},
-			[]runtime.Object{test.NewGitRepository(
+			[]runtime.Object{newOCIRepository(
 				withArchiveURLAndChecksum(srv.URL+"/directories.tar.gz",
 					"sha256:a8bb41d733c5cc9bdd13d926a2edbe4c85d493c6c90271da1e1b991880935dc1"))},
 			[]map[string]any{
@@ -87,7 +87,7 @@ func TestGenerate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gen := NewGenerator(logr.Discard(), newFakeClient(t, tt.objects...), testFetcher)
 			got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
-				GitRepository: tt.generator,
+				OCIRepository: tt.generator,
 			},
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
@@ -97,7 +97,7 @@ func TestGenerate(t *testing.T) {
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
 							{
-								GitRepository: tt.generator,
+								OCIRepository: tt.generator,
 							},
 						},
 					},
@@ -114,7 +114,7 @@ func TestGenerate(t *testing.T) {
 func TestInterval(t *testing.T) {
 	gen := NewGenerator(logr.Discard(), nil, nil)
 	sg := &templatesv1.GitOpsSetGenerator{
-		GitRepository: &templatesv1.GitRepositoryGenerator{},
+		OCIRepository: &templatesv1.OCIRepositoryGenerator{},
 	}
 
 	d := gen.Interval(sg)
@@ -127,30 +127,30 @@ func TestInterval(t *testing.T) {
 func TestGenerate_errors(t *testing.T) {
 	testCases := []struct {
 		name      string
-		generator *templatesv1.GitRepositoryGenerator
+		generator *templatesv1.OCIRepositoryGenerator
 		objects   []runtime.Object
 		wantErr   string
 	}{
 		{
 			name: "missing git repository resource",
-			generator: &templatesv1.GitRepositoryGenerator{
+			generator: &templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Files: []templatesv1.RepositoryGeneratorFileItem{
 					{Path: "files/dev.yaml"},
 				},
 			},
-			wantErr: `could not load GitRepository: gitrepositories.source.toolkit.fluxcd.io "test-repository" not found`,
+			wantErr: `could not load OCIRepository: ocirepositories.source.toolkit.fluxcd.io "test-repository" not found`,
 		},
 		{
 			name: "generation not configured",
-			generator: &templatesv1.GitRepositoryGenerator{
+			generator: &templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 			},
 			wantErr: "GitOpsSet is empty",
 		},
 		{
-			name: "no artifact in GitRepository",
-			generator: &templatesv1.GitRepositoryGenerator{
+			name: "no artifact in OCIRepository",
+			generator: &templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Files: []templatesv1.RepositoryGeneratorFileItem{
 					{Path: "files/dev.yaml"},
@@ -158,19 +158,19 @@ func TestGenerate_errors(t *testing.T) {
 					{Path: "files/staging.yaml"},
 				},
 			},
-			objects: []runtime.Object{test.NewGitRepository()},
-			wantErr: "no artifact for GitRepository default/test-repository",
+			objects: []runtime.Object{newOCIRepository()},
+			wantErr: "no artifact for OCIRepository default/test-repository",
 		},
 		{
-			name: "no artifact in GitRepository with dirs",
-			generator: &templatesv1.GitRepositoryGenerator{
+			name: "no artifact in OCIRepository with dirs",
+			generator: &templatesv1.OCIRepositoryGenerator{
 				RepositoryRef: "test-repository",
 				Directories: []templatesv1.RepositoryGeneratorDirectoryItem{
-					{Path: "applications/*"},
+					{Path: "files/*"},
 				},
 			},
-			objects: []runtime.Object{test.NewGitRepository()},
-			wantErr: "no artifact for GitRepository default/test-repository",
+			objects: []runtime.Object{newOCIRepository()},
+			wantErr: "no artifact for OCIRepository default/test-repository",
 		},
 	}
 
@@ -178,7 +178,7 @@ func TestGenerate_errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gen := GeneratorFactory(testFetcher)(logr.Discard(), newFakeClient(t, tt.objects...))
 			_, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
-				GitRepository: tt.generator,
+				OCIRepository: tt.generator,
 			},
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
@@ -188,7 +188,7 @@ func TestGenerate_errors(t *testing.T) {
 					Spec: templatesv1.GitOpsSetSpec{
 						Generators: []templatesv1.GitOpsSetGenerator{
 							{
-								GitRepository: tt.generator,
+								OCIRepository: tt.generator,
 							},
 						},
 					},
@@ -199,13 +199,28 @@ func TestGenerate_errors(t *testing.T) {
 	}
 }
 
-func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.GitRepository) {
-	return func(gr *sourcev1beta2.GitRepository) {
+func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.OCIRepository) {
+	return func(gr *sourcev1beta2.OCIRepository) {
 		gr.Status.Artifact = &sourcev1.Artifact{
 			URL:    archiveURL,
 			Digest: xsum,
 		}
 	}
+}
+
+func newOCIRepository(opts ...func(*sourcev1beta2.OCIRepository)) *sourcev1beta2.OCIRepository {
+	gr := &sourcev1beta2.OCIRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-repository",
+			Namespace: "default",
+		},
+	}
+
+	for _, opt := range opts {
+		opt(gr)
+	}
+
+	return gr
 }
 
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {

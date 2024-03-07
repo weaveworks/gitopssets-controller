@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
 	"github.com/gitops-tools/gitopssets-controller/test"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 )

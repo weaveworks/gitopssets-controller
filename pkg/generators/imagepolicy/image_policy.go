@@ -7,7 +7,7 @@ import (
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/name"
 	"k8s.io/apimachinery/pkg/types"

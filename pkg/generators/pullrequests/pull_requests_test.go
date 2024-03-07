@@ -7,7 +7,7 @@ import (
 	"time"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"

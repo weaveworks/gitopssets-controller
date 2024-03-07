@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
 	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 	"github.com/gitops-tools/gitopssets-controller/test"
 )
