@@ -15,7 +15,7 @@ require (
 	github.com/fluxcd/pkg/http/fetch v0.9.0
 	github.com/fluxcd/pkg/runtime v0.44.1
 	github.com/fluxcd/pkg/tar v0.4.0
-	github.com/fluxcd/source-controller/api v1.2.3
+	github.com/fluxcd/source-controller/api v1.2.4
 	github.com/gitops-tools/pkg v0.1.0
 	github.com/go-logr/logr v1.4.1
 	github.com/go-logr/zapr v1.3.0
