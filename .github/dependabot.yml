@@ -11,4 +11,4 @@ updates:
     schedule:
       interval: "weekly"
     reviewers:
-      - "weaveworks/pesto"
+      - "@bigkevmcd"
