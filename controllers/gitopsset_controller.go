@@ -116,7 +116,11 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !controllerutil.ContainsFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer) {
 		controllerutil.AddFinalizer(&gitOpsSet, templatesv1.GitOpsSetFinalizer)
 
-		return ctrl.Result{Requeue: true}, r.Update(ctx, &gitOpsSet)
+		if err := r.Update(ctx, &gitOpsSet); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Skip reconciliation if the GitOpsSet is suspended.

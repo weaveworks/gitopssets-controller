@@ -21,7 +21,6 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,12 +29,6 @@ import (
 
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 )
-
-var kustomizationGVK = schema.GroupVersionKind{
-	Group:   "kustomize.toolkit.fluxcd.io",
-	Kind:    "Kustomization",
-	Version: "v1beta2",
-}
 
 func TestReconcilingNewCluster(t *testing.T) {
 	ctx := context.TODO()
