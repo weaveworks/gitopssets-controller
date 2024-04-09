@@ -1,8 +1,8 @@
 module github.com/gitops-tools/gitopssets-controller
 
-go 1.21
+go 1.22
 
-toolchain go1.21.7
+toolchain go1.22.2
 
 require (
 	dario.cat/mergo v1.0.0
@@ -12,9 +12,9 @@ require (
 	github.com/fluxcd/kustomize-controller/api v1.2.2
 	github.com/fluxcd/pkg/apis/event v0.7.0
 	github.com/fluxcd/pkg/apis/meta v1.3.0
-	github.com/fluxcd/pkg/http/fetch v0.9.0
+	github.com/fluxcd/pkg/http/fetch v0.10.0
 	github.com/fluxcd/pkg/runtime v0.44.1
-	github.com/fluxcd/pkg/tar v0.4.0
+	github.com/fluxcd/pkg/tar v0.6.0
 	github.com/fluxcd/source-controller/api v1.2.4
 	github.com/gitops-tools/pkg v0.2.0
 	github.com/go-logr/logr v1.4.1
@@ -112,12 +112,12 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
