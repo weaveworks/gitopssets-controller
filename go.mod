@@ -8,7 +8,7 @@ require (
 	dario.cat/mergo v1.0.0
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/cyphar/filepath-securejoin v0.2.5
-	github.com/fluxcd/image-reflector-controller/api v0.31.2
+	github.com/fluxcd/image-reflector-controller/api v0.32.0
 	github.com/fluxcd/kustomize-controller/api v1.3.0
 	github.com/fluxcd/pkg/apis/event v0.9.0
 	github.com/fluxcd/pkg/apis/meta v1.5.0

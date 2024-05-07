@@ -45,8 +45,8 @@ github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f h1:Wl78ApPPB2
 github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f/go.mod h1:OSYXu++VVOHnXeitef/D8n/6y4QV8uLHSFXX4NeXMGc=
 github.com/fluxcd/cli-utils v0.36.0-flux.7 h1:81zEo/LNmIRWMgtsZy/8L13TMUZHmmJib4gHRvKwVE8=
 github.com/fluxcd/cli-utils v0.36.0-flux.7/go.mod h1:TcfLhvBjtQnqxYMsHQUAEB2c5WJRVuibtas2Izz5ZTs=
-github.com/fluxcd/image-reflector-controller/api v0.31.2 h1:s16ewwfuLBYuh8hENuVgU8SYsSNxRaA4f+AD60/+les=
-github.com/fluxcd/image-reflector-controller/api v0.31.2/go.mod h1:tV7g+KXQL3W8w5+fRJU7ubVGc4QAfx1C7XI5qrQvA3U=
+github.com/fluxcd/image-reflector-controller/api v0.32.0 h1:mb/v9JzRHcjLcnGqmgsq0+yCcoOyae/TrOWae9T87PE=
+github.com/fluxcd/image-reflector-controller/api v0.32.0/go.mod h1:Ap3/KK8MfQAdmuhakg9CweEa3Xwwmvausbqrgd3HBWY=
 github.com/fluxcd/kustomize-controller/api v1.3.0 h1:IwXkU48lQ/YhU6XULlPXDgQlnpNyQdCNbUvhLdWVIbE=
 github.com/fluxcd/kustomize-controller/api v1.3.0/go.mod h1:kg/WM9Uye5NOqGVW/F3jnkjrlgFZHHa84+4lnzOV8fI=
 github.com/fluxcd/pkg/apis/acl v0.3.0 h1:UOrKkBTOJK+OlZX7n8rWt2rdBmDCoTK+f5TY2LcZi8A=
