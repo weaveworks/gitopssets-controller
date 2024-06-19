@@ -21,7 +21,7 @@ require (
 	github.com/google/go-containerregistry v0.12.0
 	github.com/jenkins-x/go-scm v1.14.37
 	github.com/onsi/gomega v1.33.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	github.com/weaveworks/cluster-controller v1.6.0
