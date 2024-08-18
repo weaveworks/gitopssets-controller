@@ -14,7 +14,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.5.0
 	github.com/fluxcd/pkg/http/fetch v0.11.0
 	github.com/fluxcd/pkg/runtime v0.47.1
-	github.com/fluxcd/pkg/tar v0.7.0
+	github.com/fluxcd/pkg/tar v0.8.0
 	github.com/fluxcd/source-controller/api v1.3.0
 	github.com/gitops-tools/pkg v0.2.0
 	github.com/go-logr/logr v1.4.2
@@ -116,7 +116,7 @@ require (
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
