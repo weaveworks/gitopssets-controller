@@ -123,13 +123,11 @@ spec:
                             provides the Certificate Authority to trust when making API calls.
                           properties:
                             name:
-                              description: |-
-                                Name of the referent.
-                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
+                              description: Name of the referent.
                               type: string
+                          required:
+                          - name
                           type: object
-                          x-kubernetes-map-type: atomic
                         singleElement:
                           description: |-
                             SingleElement means generate a single element with the result of the API
@@ -181,11 +179,13 @@ spec:
                                     items:
                                       type: string
                                     type: array
+                                    x-kubernetes-list-type: atomic
                                 required:
                                 - key
                                 - operator
                                 type: object
                               type: array
+                              x-kubernetes-list-type: atomic
                             matchLabels:
                               additionalProperties:
                                 type: string
@@ -351,13 +351,11 @@ spec:
                                       provides the Certificate Authority to trust when making API calls.
                                     properties:
                                       name:
-                                        description: |-
-                                          Name of the referent.
-                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                        description: Name of the referent.
                                         type: string
+                                    required:
+                                    - name
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   singleElement:
                                     description: |-
                                       SingleElement means generate a single element with the result of the API
@@ -410,11 +408,13 @@ spec:
                                               items:
                                                 type: string
                                               type: array
+                                              x-kubernetes-list-type: atomic
                                           required:
                                           - key
                                           - operator
                                           type: object
                                         type: array
+                                        x-kubernetes-list-type: atomic
                                       matchLabels:
                                         additionalProperties:
                                           type: string
@@ -592,13 +592,11 @@ spec:
                                       auth token that can query the Git Provider API.
                                     properties:
                                       name:
-                                        description: |-
-                                          Name of the referent.
-                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                        description: Name of the referent.
                                         type: string
+                                    required:
+                                    - name
                                     type: object
-                                    x-kubernetes-map-type: atomic
                                   serverURL:
                                     description: This is the API endpoint to use.
                                     pattern: ^https://
@@ -701,13 +699,11 @@ spec:
                             auth token that can query the Git Provider API.
                           properties:
                             name:
-                              description: |-
-                                Name of the referent.
-                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?
+                              description: Name of the referent.
                               type: string
+                          required:
+                          - name
                           type: object
-                          x-kubernetes-map-type: atomic
                         serverURL:
                           description: This is the API endpoint to use.
                           pattern: ^https://

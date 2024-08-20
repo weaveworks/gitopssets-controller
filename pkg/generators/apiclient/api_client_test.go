@@ -190,7 +190,7 @@ func TestGenerate(t *testing.T) {
 			apiClient: &templatesv1.APIClientGenerator{
 				Endpoint: ts.URL + "/api/get-testing",
 				Method:   http.MethodGet,
-				SecretRef: &corev1.LocalObjectReference{
+				SecretRef: &templatesv1.LocalObjectReference{
 					Name: "https-ca-credentials",
 				},
 			},

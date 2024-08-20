@@ -256,8 +256,8 @@ entire object.</p>
 <td>
 <code>secretRef</code><br />
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#localobjectreference-v1-core">
-Kubernetes core/v1.LocalObjectReference
+<a href="#sets.gitops.pro/v1alpha1.LocalObjectReference">
+LocalObjectReference
 </a>
 </em>
 </td>
@@ -938,6 +938,35 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="sets.gitops.pro/v1alpha1.LocalObjectReference">LocalObjectReference
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#sets.gitops.pro/v1alpha1.APIClientGenerator">APIClientGenerator</a>, 
+<a href="#sets.gitops.pro/v1alpha1.PullRequestGenerator">PullRequestGenerator</a>)
+</p>
+<p>LocalObjectReference contains enough information to locate the referenced Kubernetes resource object.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referent.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sets.gitops.pro/v1alpha1.MatrixGenerator">MatrixGenerator
 </h3>
 <p>
@@ -1110,8 +1139,8 @@ e.g. my-org/my-repo</p>
 <td>
 <code>secretRef</code><br />
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#localobjectreference-v1-core">
-Kubernetes core/v1.LocalObjectReference
+<a href="#sets.gitops.pro/v1alpha1.LocalObjectReference">
+LocalObjectReference
 </a>
 </em>
 </td>

@@ -49,7 +49,7 @@ func TestGenerate(t *testing.T) {
 		name          string
 		dataFunc      func(*fakescm.Data)
 		initObjs      []runtime.Object
-		secretRef     *corev1.LocalObjectReference
+		secretRef     *templatesv1.LocalObjectReference
 		labels        []string
 		forks         bool
 		clientFactory func(*scm.Client) clientFactoryFunc
@@ -183,7 +183,7 @@ func TestGenerate(t *testing.T) {
 					Fork: "test-org/my-repo",
 				}
 			},
-			secretRef: &corev1.LocalObjectReference{
+			secretRef: &templatesv1.LocalObjectReference{
 				Name: "test-secret",
 			},
 			want: []map[string]any{
@@ -331,14 +331,14 @@ func TestGenerate_errors(t *testing.T) {
 	testCases := []struct {
 		name          string
 		initObjs      []runtime.Object
-		secretRef     *corev1.LocalObjectReference
+		secretRef     *templatesv1.LocalObjectReference
 		clientFactory func(*scm.Client) clientFactoryFunc
 		wantErr       string
 	}{
 		{
 			name:          "generator with missing secret",
 			clientFactory: defaultClientFactory,
-			secretRef: &corev1.LocalObjectReference{
+			secretRef: &templatesv1.LocalObjectReference{
 				Name: "test-secret",
 			},
 			wantErr: `failed to load repository generator credentials: secrets "test-secret" not found`,
@@ -352,7 +352,7 @@ func TestGenerate_errors(t *testing.T) {
 			}, func(c *corev1.Secret) {
 				c.Data = map[string][]byte{}
 			})},
-			secretRef: &corev1.LocalObjectReference{
+			secretRef: &templatesv1.LocalObjectReference{
 				Name: "test-secret",
 			},
 			wantErr: `secret default/test-secret does not contain required field 'password'`,
