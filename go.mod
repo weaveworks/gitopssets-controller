@@ -12,7 +12,7 @@ require (
 	github.com/fluxcd/kustomize-controller/api v1.3.0
 	github.com/fluxcd/pkg/apis/event v0.10.1
 	github.com/fluxcd/pkg/apis/meta v1.6.1
-	github.com/fluxcd/pkg/http/fetch v0.12.0
+	github.com/fluxcd/pkg/http/fetch v0.12.1
 	github.com/fluxcd/pkg/runtime v0.49.0
 	github.com/fluxcd/pkg/tar v0.8.0
 	github.com/fluxcd/source-controller/api v1.3.0
@@ -114,13 +114,13 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/term v0.23.0 // indirect
-	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/term v0.24.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
