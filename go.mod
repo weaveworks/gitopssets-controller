@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/cyphar/filepath-securejoin v0.3.2
 	github.com/fluxcd/image-reflector-controller/api v0.33.0
-	github.com/fluxcd/kustomize-controller/api v1.3.0
+	github.com/fluxcd/kustomize-controller/api v1.4.0
 	github.com/fluxcd/pkg/apis/event v0.10.1
 	github.com/fluxcd/pkg/apis/meta v1.6.1
 	github.com/fluxcd/pkg/http/fetch v0.12.1
@@ -55,7 +55,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fluxcd/cli-utils v0.36.0-flux.9 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.3.0 // indirect
-	github.com/fluxcd/pkg/apis/kustomize v1.5.0 // indirect
+	github.com/fluxcd/pkg/apis/kustomize v1.6.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
