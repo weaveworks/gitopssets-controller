@@ -13,7 +13,8 @@ import (
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/runtime/testenv"
 	"github.com/fluxcd/pkg/tar"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/gitopssets-controller/test"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -49,6 +50,7 @@ func TestMain(m *testing.M) {
 	utilruntime.Must(gitopssetsv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(clustersv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(sourcev1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(sourcev1beta2.AddToScheme(scheme.Scheme))
 	utilruntime.Must(imagev1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(kustomizev1.AddToScheme(scheme.Scheme))
 	fetcher := fetch.NewArchiveFetcher(1, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")
