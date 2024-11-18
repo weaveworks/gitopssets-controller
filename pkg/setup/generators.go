@@ -9,7 +9,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -42,6 +43,7 @@ func NewSchemeForGenerators(enabledGenerators []string) (*runtime.Scheme, error)
 	builder := runtime.SchemeBuilder{
 		clientgoscheme.AddToScheme,
 		sourcev1.AddToScheme,
+		sourcev1beta2.AddToScheme,
 		templatesv1.AddToScheme,
 	}
 

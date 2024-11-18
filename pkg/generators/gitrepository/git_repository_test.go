@@ -7,7 +7,6 @@ import (
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
-	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -199,8 +198,8 @@ func TestGenerate_errors(t *testing.T) {
 	}
 }
 
-func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.GitRepository) {
-	return func(gr *sourcev1beta2.GitRepository) {
+func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1.GitRepository) {
+	return func(gr *sourcev1.GitRepository) {
 		gr.Status.Artifact = &sourcev1.Artifact{
 			URL:    archiveURL,
 			Digest: xsum,
@@ -211,7 +210,7 @@ func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.GitR
 func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 	t.Helper()
 	scheme := runtime.NewScheme()
-	if err := sourcev1beta2.AddToScheme(scheme); err != nil {
+	if err := sourcev1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
 	if err := templatesv1.AddToScheme(scheme); err != nil {

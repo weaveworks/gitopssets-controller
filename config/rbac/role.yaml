@@ -8,6 +8,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - secrets
   verbs:
   - get
   - list
@@ -22,43 +23,9 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - serviceaccounts
   verbs:
   - impersonate
-- apiGroups:
-  - gitops.pro
-  resources:
-  - gitopssets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - gitops.pro
-  resources:
-  - gitopssets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - gitops.pro
-  resources:
-  - gitopssets/status
-  verbs:
-  - get
-  - patch
-  - update
 - apiGroups:
   - gitops.weave.works
   resources:
@@ -76,16 +43,35 @@ rules:
   - list
   - watch
 - apiGroups:
-  - source.toolkit.fluxcd.io
+  - sets.gitops.pro
   resources:
-  - gitrepositories
+  - gitopssets
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
+- apiGroups:
+  - sets.gitops.pro
+  resources:
+  - gitopssets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sets.gitops.pro
+  resources:
+  - gitopssets/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - source.toolkit.fluxcd.io
   resources:
+  - gitrepositories
   - ocirepositories
   verbs:
   - get

@@ -16,7 +16,7 @@ spec:
   templates:
     - content:
         kind: Kustomization
-        apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+        apiVersion: kustomize.toolkit.fluxcd.io/v1
         metadata:
           name: "{{ .Element.env }}-demo"
           labels:

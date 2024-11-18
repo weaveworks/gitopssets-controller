@@ -11,6 +11,7 @@ import (
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -77,6 +78,7 @@ func TestReconciliation(t *testing.T) {
 	test.AssertNoError(t, clientgoscheme.AddToScheme(scheme))
 	test.AssertNoError(t, templatesv1.AddToScheme(scheme))
 	test.AssertNoError(t, sourcev1beta2.AddToScheme(scheme))
+	test.AssertNoError(t, sourcev1.AddToScheme(scheme))
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	test.AssertNoError(t, err)

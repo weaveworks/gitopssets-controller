@@ -13,7 +13,8 @@ import (
 	"github.com/fluxcd/pkg/runtime/conditions"
 	runtimeCtrl "github.com/fluxcd/pkg/runtime/controller"
 	"github.com/fluxcd/pkg/runtime/predicates"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -83,9 +84,9 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 	r.EventRecorder.Event(obj, eventType, reason, msg)
 }
 
-//+kubebuilder:rbac:groups=gitops.pro,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=gitops.pro,resources=gitopssets/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=gitops.pro,resources=gitopssets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=sets.gitops.pro,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=sets.gitops.pro,resources=gitopssets/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=sets.gitops.pro,resources=gitopssets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=gitrepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups=source.toolkit.fluxcd.io,resources=ocirepositories,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
@@ -380,7 +381,7 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	if r.Generators["OCIRepository"] != nil {
 		builder.Watches(
-			&sourcev1.OCIRepository{},
+			&sourcev1beta2.OCIRepository{},
 			handler.EnqueueRequestsFromMapFunc(r.ociRepositoryToGitOpsSet),
 		)
 	}

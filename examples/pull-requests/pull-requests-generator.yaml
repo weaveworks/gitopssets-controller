@@ -19,7 +19,7 @@ spec:
         forks: false
   templates:
     - content:
-        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        apiVersion: source.toolkit.fluxcd.io/v1
         kind: GitRepository
         metadata:
           name: "pr-{{ .Element.Number }}-gitrepository"
