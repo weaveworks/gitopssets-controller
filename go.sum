@@ -31,8 +31,8 @@ github.com/chai2010/gettext-go v1.0.2/go.mod h1:y+wnP2cHYaVj19NZhYKAwEMH2CI1gNHe
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
-github.com/cyphar/filepath-securejoin v0.3.4 h1:VBWugsJh2ZxJmLFSM06/0qzQyiQX2Qs0ViKrUAcqdZ8=
-github.com/cyphar/filepath-securejoin v0.3.4/go.mod h1:8s/MCNJREmFK0H02MF6Ihv1nakJe4L/w3WZLHNkvlYM=
+github.com/cyphar/filepath-securejoin v0.3.5 h1:L81NHjquoQmcPgXcttUS9qTSR/+bXry6pbSINQGpjj4=
+github.com/cyphar/filepath-securejoin v0.3.5/go.mod h1:edhVd3c6OXKjUmSrVa/tGJRS9joFTxlslFCAyaxigkE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
@@ -61,8 +61,8 @@ github.com/fluxcd/pkg/apis/kustomize v1.6.1 h1:22FJc69Mq4i8aCxnKPlddHhSMyI4UPkQk
 github.com/fluxcd/pkg/apis/kustomize v1.6.1/go.mod h1:5dvQ4IZwz0hMGmuj8tTWGtarsuxW0rWsxJOwC6i+0V8=
 github.com/fluxcd/pkg/apis/meta v1.7.0 h1:pDbPrBGgsiWV4bx8j+hodwv1Ysbj/pHP+FH46aTZOfs=
 github.com/fluxcd/pkg/apis/meta v1.7.0/go.mod h1:OJGH7I//SNO6zcso80oBRuf5H8oU8etZDeTgCcH7qHo=
-github.com/fluxcd/pkg/http/fetch v0.12.1 h1:Iap/cdKols3fW39/MyTGqNXHglaA1FJsWtFgYG2hbCQ=
-github.com/fluxcd/pkg/http/fetch v0.12.1/go.mod h1:t3JL+uqJ46Wm0CwVRn6Pf/3kOqh45tMoR0pMxLhextQ=
+github.com/fluxcd/pkg/http/fetch v0.13.0 h1:tWaCY+9sc6lsoJEsr7iQ9XhrOff/RAoG27Oyt7XK6eY=
+github.com/fluxcd/pkg/http/fetch v0.13.0/go.mod h1:kHWjKVIEgKCpMLZorohoISg6m0y6CAcxvQ2IdtiDEqI=
 github.com/fluxcd/pkg/runtime v0.50.0 h1:FKJQaOFv8SKp/t7yRE0EkHxA4RIr650SGTLJa1HY3AU=
 github.com/fluxcd/pkg/runtime v0.50.0/go.mod h1:NEjX8/1DL8B/dsjH1/FD9PjCLPhgdvsffSvzuFrgjys=
 github.com/fluxcd/pkg/tar v0.8.1 h1:K9RWV+E/+Qbz6Mzcg+S9DkVvZrWwJq4957Kqms183RQ=

@@ -7,12 +7,12 @@ toolchain go1.23.4
 require (
 	dario.cat/mergo v1.0.1
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/cyphar/filepath-securejoin v0.3.4
+	github.com/cyphar/filepath-securejoin v0.3.5
 	github.com/fluxcd/image-reflector-controller/api v0.33.0
 	github.com/fluxcd/kustomize-controller/api v1.4.0
 	github.com/fluxcd/pkg/apis/event v0.11.0
 	github.com/fluxcd/pkg/apis/meta v1.7.0
-	github.com/fluxcd/pkg/http/fetch v0.12.1
+	github.com/fluxcd/pkg/http/fetch v0.13.0
 	github.com/fluxcd/pkg/runtime v0.50.0
 	github.com/fluxcd/pkg/tar v0.8.1
 	github.com/fluxcd/source-controller/api v1.4.1
