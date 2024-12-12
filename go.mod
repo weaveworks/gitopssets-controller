@@ -30,7 +30,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 	k8s.io/api v0.32.0
-	k8s.io/apiextensions-apiserver v0.31.3
+	k8s.io/apiextensions-apiserver v0.32.0
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
 	sigs.k8s.io/cli-utils v0.37.2
@@ -126,7 +126,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/cli-runtime v0.31.3 // indirect
-	k8s.io/component-base v0.31.3 // indirect
+	k8s.io/component-base v0.32.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	k8s.io/kubectl v0.31.3 // indirect
