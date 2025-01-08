@@ -34,7 +34,7 @@ require (
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
 	sigs.k8s.io/cli-utils v0.37.2
-	sigs.k8s.io/controller-runtime v0.19.3
+	sigs.k8s.io/controller-runtime v0.19.4
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -57,6 +57,7 @@ require (
 	github.com/fluxcd/cli-utils v0.36.0-flux.11 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.5.0 // indirect
 	github.com/fluxcd/pkg/apis/kustomize v1.6.1 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
