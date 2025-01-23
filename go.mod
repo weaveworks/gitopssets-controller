@@ -10,7 +10,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.0
 	github.com/fluxcd/image-reflector-controller/api v0.33.0
 	github.com/fluxcd/kustomize-controller/api v1.4.0
-	github.com/fluxcd/pkg/apis/event v0.13.0
+	github.com/fluxcd/pkg/apis/event v0.15.0
 	github.com/fluxcd/pkg/apis/meta v1.9.0
 	github.com/fluxcd/pkg/http/fetch v0.14.0
 	github.com/fluxcd/pkg/runtime v0.52.0
