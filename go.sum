@@ -59,8 +59,8 @@ github.com/fluxcd/pkg/apis/event v0.16.0 h1:ffKc/3erowPnh72lFszz7sPQhLZ7bhqNrq+p
 github.com/fluxcd/pkg/apis/event v0.16.0/go.mod h1:D/QQi5lHT9/Ur3OMFLJO71D4KDQHbJ5s8dQV3h1ZAT0=
 github.com/fluxcd/pkg/apis/kustomize v1.6.1 h1:22FJc69Mq4i8aCxnKPlddHhSMyI4UPkQkqiAdWFcqe0=
 github.com/fluxcd/pkg/apis/kustomize v1.6.1/go.mod h1:5dvQ4IZwz0hMGmuj8tTWGtarsuxW0rWsxJOwC6i+0V8=
-github.com/fluxcd/pkg/apis/meta v1.9.0 h1:wPgm7bWNJZ/ImS5GqikOxt362IgLPFBG73dZ27uWRiQ=
-github.com/fluxcd/pkg/apis/meta v1.9.0/go.mod h1:pMea8eEZcsFSI7ngRnTHFtDZk2CEZGgtrueNgI6Iu70=
+github.com/fluxcd/pkg/apis/meta v1.10.0 h1:rqbAuyl5ug7A5jjRf/rNwBXmNl6tJ9wG2iIsriwnQUk=
+github.com/fluxcd/pkg/apis/meta v1.10.0/go.mod h1:n7NstXHDaleAUMajcXTVkhz0MYkvEXy1C/eLI/t1xoI=
 github.com/fluxcd/pkg/http/fetch v0.15.0 h1:AJ1JuE2asuK4QMfbHjxctFURke5FvZtyljjI1Qv4ArQ=
 github.com/fluxcd/pkg/http/fetch v0.15.0/go.mod h1:feTESfETKU14jq+e/Ce8QnMBTCh9O79bLMSMe5t55fQ=
 github.com/fluxcd/pkg/runtime v0.52.0 h1:bgYgXURy94MNbHzthJ8SRZJxuZB1X4atj/LLeR6AgDk=
