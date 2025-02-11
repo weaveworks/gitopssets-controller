@@ -1,8 +1,5 @@
 # gitopssets-controller
 
-**NOTE**: This is a fork of github.com/weaveworks/gitopssets-controller by the original author.
-
-
 GitOpsSets provide a way to declaratively generate resources in a Kubernetes cluster, generating the values to template resources from multiple sources.
 
 ## Description
@@ -129,4 +126,4 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 
 ## License
 
-Copyright 2023.
+Copyright 2025.
