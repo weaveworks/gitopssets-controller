@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/test"
 
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 )

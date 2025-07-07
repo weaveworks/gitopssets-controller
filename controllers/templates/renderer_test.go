@@ -18,11 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
-	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
-	"github.com/gitops-tools/gitopssets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators/list"
+	"github.com/weaveworks/gitopssets-controller/pkg/setup"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 const (

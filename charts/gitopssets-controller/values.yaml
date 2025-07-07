@@ -1,0 +1,54 @@
+controllerManager:
+  kubeRbacProxy:
+    args:
+    - --secure-listen-address=0.0.0.0:8443
+    - --upstream=http://127.0.0.1:8080/
+    - --logtostderr=true
+    - --v=0
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.14.1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 5m
+        memory: 64Mi
+  manager:
+    args:
+    - --health-probe-bind-address=:8081
+    - --metrics-bind-address=127.0.0.1:8080
+    - --leader-elect
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    image:
+      repository: ghcr.io/weaveworks/gitopssets-controller
+      tag: v0.16.6-7-g2262e8e
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 64Mi
+  replicas: 1
+kubernetesClusterDomain: cluster.local
+metricsService:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: https
+  type: ClusterIP
+fullnameOverride: gitopssets

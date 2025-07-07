@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators/matrix"
-	"github.com/gitops-tools/gitopssets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators/list"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators/matrix"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 func TestFindRelevantGenerators(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 	"github.com/google/go-cmp/cmp"
+	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 
 func TestRenderGitOpsSet(t *testing.T) {

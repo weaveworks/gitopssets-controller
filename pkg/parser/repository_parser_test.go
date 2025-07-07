@@ -12,8 +12,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/test"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 func TestGenerateFromFiles(t *testing.T) {
