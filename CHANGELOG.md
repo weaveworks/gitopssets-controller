@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.0...v0.17.1) (2025-07-07)
+
+
+### Bug Fixes
+
+* improve workflow dependencies and helm chart publishing ([#212](https://github.com/weaveworks/gitopssets-controller/issues/212)) ([0e6debf](https://github.com/weaveworks/gitopssets-controller/commit/0e6debff944d2530aafd671592e42889ae296242))
+
 ## [0.17.0](https://github.com/weaveworks/gitopssets-controller/compare/v0.16.6...v0.17.0) (2025-07-07)
 
 
