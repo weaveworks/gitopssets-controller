@@ -31,12 +31,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
-	"github.com/gitops-tools/gitopssets-controller/test"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators/list"
+	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 var kustomizationGVK = schema.GroupVersionKind{

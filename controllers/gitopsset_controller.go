@@ -35,10 +35,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/controllers/templates"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/controllers/templates"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators"
 )
 
 var accessor = meta.NewAccessor()

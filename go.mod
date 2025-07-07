@@ -1,4 +1,4 @@
-module github.com/gitops-tools/gitopssets-controller
+module github.com/weaveworks/gitopssets-controller
 
 go 1.23.0
 

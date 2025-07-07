@@ -18,8 +18,8 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 	syaml "sigs.k8s.io/yaml"
 
-	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
-	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	"github.com/weaveworks/gitopssets-controller/pkg/generators"
 )
 
 // TemplateDelimiterAnnotation can be added to a Template to change the Go
