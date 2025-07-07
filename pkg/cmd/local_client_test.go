@@ -7,8 +7,8 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
-	"github.com/weaveworks/gitopssets-controller/test"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

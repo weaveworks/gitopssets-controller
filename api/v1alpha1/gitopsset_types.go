@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"github.com/fluxcd/pkg/apis/meta"
-	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -10,7 +9,14 @@ import (
 
 // GitOpsSetFinalizer is the finalizer added to GitOpsSets to allow us to clean
 // up resources.
-const GitOpsSetFinalizer = "finalizers.templates.weave.works"
+const GitOpsSetFinalizer = "finalizers.sets.gitops.pro"
+
+// LocalObjectReference contains enough information to locate the referenced Kubernetes resource object.
+type LocalObjectReference struct {
+	// Name of the referent.
+	// +required
+	Name string `json:"name"`
+}
 
 // GitOpsSetTemplate describes a resource to create
 type GitOpsSetTemplate struct {
@@ -73,7 +79,7 @@ type PullRequestGenerator struct {
 
 	// Reference to Secret in same namespace with a field "password" which is an
 	// auth token that can query the Git Provider API.
-	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
+	SecretRef *LocalObjectReference `json:"secretRef,omitempty"`
 
 	// Labels is used to filter the PRs that you want to target.
 	// This may be applied on the server.
@@ -137,7 +143,7 @@ type APIClientGenerator struct {
 
 	// Reference to Secret in same namespace with a field "caFile" which
 	// provides the Certificate Authority to trust when making API calls.
-	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty"`
+	SecretRef *LocalObjectReference `json:"secretRef,omitempty"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for

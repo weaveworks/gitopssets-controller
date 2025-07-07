@@ -11,6 +11,7 @@ import (
 	kustomizev1 "github.com/fluxcd/kustomize-controller/api/v1beta2"
 	"github.com/fluxcd/pkg/apis/meta"
 	fluxMeta "github.com/fluxcd/pkg/apis/meta"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -30,12 +31,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
-	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 var kustomizationGVK = schema.GroupVersionKind{
@@ -77,6 +78,7 @@ func TestReconciliation(t *testing.T) {
 	test.AssertNoError(t, clientgoscheme.AddToScheme(scheme))
 	test.AssertNoError(t, templatesv1.AddToScheme(scheme))
 	test.AssertNoError(t, sourcev1beta2.AddToScheme(scheme))
+	test.AssertNoError(t, sourcev1.AddToScheme(scheme))
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	test.AssertNoError(t, err)
@@ -333,8 +335,8 @@ func TestReconciliation(t *testing.T) {
 				"testing":         "newVersion",
 			}
 			k.ObjectMeta.Labels = map[string]string{
-				"templates.weave.works/name":      "demo-set",
-				"templates.weave.works/namespace": "default",
+				"sets.gitops.pro/name":      "demo-set",
+				"sets.gitops.pro/namespace": "default",
 			}
 			k.Spec.Path = "./templated/clusters/engineering-dev/"
 			k.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "engineering-dev"}}
@@ -393,8 +395,8 @@ func TestReconciliation(t *testing.T) {
 		}
 		wantCM := test.NewConfigMap(func(c *corev1.ConfigMap) {
 			c.ObjectMeta.Labels = map[string]string{
-				"templates.weave.works/name":      "demo-set",
-				"templates.weave.works/namespace": "default",
+				"sets.gitops.pro/name":      "demo-set",
+				"sets.gitops.pro/namespace": "default",
 			}
 			c.Data = map[string]string{
 				"testing": "test-value1",
@@ -430,8 +432,8 @@ func TestReconciliation(t *testing.T) {
 
 		wantCM = test.NewConfigMap(func(c *corev1.ConfigMap) {
 			c.ObjectMeta.Labels = map[string]string{
-				"templates.weave.works/name":      "demo-set",
-				"templates.weave.works/namespace": "default",
+				"sets.gitops.pro/name":      "demo-set",
+				"sets.gitops.pro/namespace": "default",
 			}
 			c.Data = map[string]string{
 				"testing": "test-value2",
@@ -676,8 +678,8 @@ func TestReconciliation(t *testing.T) {
 		}
 		wantUpdated := test.MakeTestKustomization(nsn("default", "engineering-dev-demo"), func(k *kustomizev1.Kustomization) {
 			k.ObjectMeta.Labels = map[string]string{
-				"templates.weave.works/name":      "demo-set",
-				"templates.weave.works/namespace": "default",
+				"sets.gitops.pro/name":      "demo-set",
+				"sets.gitops.pro/namespace": "default",
 			}
 			k.Spec.Path = "./templated/clusters/engineering-dev/"
 			k.Spec.Force = true

@@ -2,13 +2,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role
 rules:
 - apiGroups:
   - ""
   resources:
   - configmaps
+  - secrets
   verbs:
   - get
   - list
@@ -20,14 +20,6 @@ rules:
   verbs:
   - create
   - patch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -51,23 +43,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - source.toolkit.fluxcd.io
-  resources:
-  - gitrepositories
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - source.toolkit.fluxcd.io
-  resources:
-  - ocirepositories
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - templates.weave.works
+  - sets.gitops.pro
   resources:
   - gitopssets
   verbs:
@@ -79,16 +55,25 @@ rules:
   - update
   - watch
 - apiGroups:
-  - templates.weave.works
+  - sets.gitops.pro
   resources:
   - gitopssets/finalizers
   verbs:
   - update
 - apiGroups:
-  - templates.weave.works
+  - sets.gitops.pro
   resources:
   - gitopssets/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - source.toolkit.fluxcd.io
+  resources:
+  - gitrepositories
+  - ocirepositories
+  verbs:
+  - get
+  - list
+  - watch

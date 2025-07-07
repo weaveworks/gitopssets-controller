@@ -9,23 +9,24 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/parser"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/apiclient"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/cluster"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/config"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/imagepolicy"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/list"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/matrix"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/ocirepository"
-	"github.com/weaveworks/gitopssets-controller/controllers/templates/generators/pullrequests"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/apiclient"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/cluster"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/config"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/imagepolicy"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/matrix"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/ocirepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/pullrequests"
+	"github.com/gitops-tools/gitopssets-controller/pkg/parser"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -42,6 +43,7 @@ func NewSchemeForGenerators(enabledGenerators []string) (*runtime.Scheme, error)
 	builder := runtime.SchemeBuilder{
 		clientgoscheme.AddToScheme,
 		sourcev1.AddToScheme,
+		sourcev1beta2.AddToScheme,
 		templatesv1.AddToScheme,
 	}
 

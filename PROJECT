@@ -1,16 +1,16 @@
-domain: weave.works
+domain: gitops.pro
 layout:
 - go.kubebuilder.io/v3
 projectName: gitopssets-controller
-repo: github.com/weaveworks/gitopssets-controller
+repo: github.com/gitops-tools/gitopssets-controller
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: weave.works
+  domain: gitops.pro
   group: templates
   kind: GitOpsSet
-  path: github.com/weaveworks/gitopssets-controller/api/v1alpha1
+  path: github.com/gitops-tools/gitopssets-controller/api/v1alpha1
   version: v1alpha1
 version: "3"

@@ -1,0 +1,842 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.1
+  name: gitopssets.sets.gitops.pro
+spec:
+  group: sets.gitops.pro
+  names:
+    kind: GitOpsSet
+    listKind: GitOpsSetList
+    plural: gitopssets
+    shortNames:
+    - gs
+    singular: gitopsset
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Status
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: GitOpsSet is the Schema for the gitopssets API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: GitOpsSetSpec defines the desired state of GitOpsSet
+            properties:
+              generators:
+                description: Generators generate the data to be inserted into the
+                  provided templates.
+                items:
+                  description: GitOpsSetGenerator is the top-level set of generators
+                    for this GitOpsSet.
+                  properties:
+                    apiClient:
+                      description: |-
+                        APIClientGenerator defines a generator that queries an API endpoint and uses
+                        that to generate data.
+                      properties:
+                        body:
+                          description: |-
+                            Body is set as the body in a POST request.
+
+                            If set, this will configure the Method to be POST automatically.
+                          x-kubernetes-preserve-unknown-fields: true
+                        endpoint:
+                          description: This is the API endpoint to use.
+                          pattern: ^(http|https)://
+                          type: string
+                        headersRef:
+                          description: |-
+                            HeadersRef allows optional configuration of a Secret or ConfigMap to add
+                            additional headers to an outgoing request.
+
+                            For example, a Secret with a key Authorization: Bearer abc123 could be
+                            used to configure an authorization header.
+                          properties:
+                            kind:
+                              description: The resource kind to get headers from.
+                              enum:
+                              - Secret
+                              - ConfigMap
+                              type: string
+                            name:
+                              description: Name of the resource in the same namespace
+                                to apply headers from.
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        interval:
+                          description: The interval at which to poll the API endpoint.
+                          type: string
+                        jsonPath:
+                          description: |-
+                            JSONPath is string that is used to modify the result of the API
+                            call.
+
+                            This can be used to extract a repeating element from a response.
+                            https://kubernetes.io/docs/reference/kubectl/jsonpath/
+                          type: string
+                        method:
+                          default: GET
+                          description: Method defines the HTTP method to use to talk
+                            to the endpoint.
+                          enum:
+                          - GET
+                          - POST
+                          type: string
+                        secretRef:
+                          description: |-
+                            Reference to Secret in same namespace with a field "caFile" which
+                            provides the Certificate Authority to trust when making API calls.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        singleElement:
+                          description: |-
+                            SingleElement means generate a single element with the result of the API
+                            call.
+
+                            When true, the response must be a JSON object and will be returned as a
+                            single element, i.e. only one element will be generated containing the
+                            entire object.
+                          type: boolean
+                      required:
+                      - interval
+                      type: object
+                    cluster:
+                      description: |-
+                        ClusterGenerator defines a generator that queries the cluster API for
+                        relevant clusters.
+                      properties:
+                        selector:
+                          description: |-
+                            Selector is used to filter the clusters that you want to target.
+
+                            If no selector is provided, no clusters will be matched.
+                          properties:
+                            matchExpressions:
+                              description: matchExpressions is a list of label selector
+                                requirements. The requirements are ANDed.
+                              items:
+                                description: |-
+                                  A label selector requirement is a selector that contains values, a key, and an operator that
+                                  relates the key and values.
+                                properties:
+                                  key:
+                                    description: key is the label key that the selector
+                                      applies to.
+                                    type: string
+                                  operator:
+                                    description: |-
+                                      operator represents a key's relationship to a set of values.
+                                      Valid operators are In, NotIn, Exists and DoesNotExist.
+                                    type: string
+                                  values:
+                                    description: |-
+                                      values is an array of string values. If the operator is In or NotIn,
+                                      the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                      the values array must be empty. This array is replaced during a strategic
+                                      merge patch.
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                              x-kubernetes-list-type: atomic
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              description: |-
+                                matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                operator is "In", and the values array contains only "value". The requirements are ANDed.
+                              type: object
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
+                    config:
+                      description: |-
+                        ConfigGenerator loads a referenced ConfigMap or
+                        Secret from the Cluster and makes it available as a resource.
+                      properties:
+                        kind:
+                          description: Kind of the referent.
+                          enum:
+                          - ConfigMap
+                          - Secret
+                          type: string
+                        name:
+                          description: Name of the referent.
+                          type: string
+                      required:
+                      - kind
+                      - name
+                      type: object
+                    gitRepository:
+                      description: GitRepositoryGenerator generates from files in
+                        a Flux GitRepository resource.
+                      properties:
+                        directories:
+                          description: |-
+                            Directories is a set of rules for identifying directories to be
+                            generated.
+                          items:
+                            description: |-
+                              RepositoryGeneratorDirectoryItem stores the information about a specific
+                              directory to be generated from.
+                            properties:
+                              exclude:
+                                type: boolean
+                              path:
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        files:
+                          description: Files is a set of rules for identifying files
+                            to be parsed.
+                          items:
+                            description: RepositoryGeneratorFileItem defines a path
+                              to a file to be parsed when generating.
+                            properties:
+                              path:
+                                description: Path is the name of a file to read and
+                                  generate from can be JSON or YAML.
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        repositoryRef:
+                          description: RepositoryRef is the name of a GitRepository
+                            resource to be generated from.
+                          type: string
+                      type: object
+                    imagePolicy:
+                      description: ImagePolicyGenerator generates from the ImagePolicy.
+                      properties:
+                        policyRef:
+                          description: PolicyRef is the name of a ImagePolicy resource
+                            to be generated from.
+                          type: string
+                      type: object
+                    list:
+                      description: ListGenerator generates from a hard-coded list.
+                      properties:
+                        elements:
+                          items:
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                      type: object
+                    matrix:
+                      description: |-
+                        MatrixGenerator defines a matrix that combines generators.
+                        The matrix is a cartesian product of the generators.
+                      properties:
+                        generators:
+                          description: Generators is a list of generators to be combined.
+                          items:
+                            description: |-
+                              GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
+                              This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn't support recursive declarations.
+                            properties:
+                              apiClient:
+                                description: |-
+                                  APIClientGenerator defines a generator that queries an API endpoint and uses
+                                  that to generate data.
+                                properties:
+                                  body:
+                                    description: |-
+                                      Body is set as the body in a POST request.
+
+                                      If set, this will configure the Method to be POST automatically.
+                                    x-kubernetes-preserve-unknown-fields: true
+                                  endpoint:
+                                    description: This is the API endpoint to use.
+                                    pattern: ^(http|https)://
+                                    type: string
+                                  headersRef:
+                                    description: |-
+                                      HeadersRef allows optional configuration of a Secret or ConfigMap to add
+                                      additional headers to an outgoing request.
+
+                                      For example, a Secret with a key Authorization: Bearer abc123 could be
+                                      used to configure an authorization header.
+                                    properties:
+                                      kind:
+                                        description: The resource kind to get headers
+                                          from.
+                                        enum:
+                                        - Secret
+                                        - ConfigMap
+                                        type: string
+                                      name:
+                                        description: Name of the resource in the same
+                                          namespace to apply headers from.
+                                        type: string
+                                    required:
+                                    - kind
+                                    - name
+                                    type: object
+                                  interval:
+                                    description: The interval at which to poll the
+                                      API endpoint.
+                                    type: string
+                                  jsonPath:
+                                    description: |-
+                                      JSONPath is string that is used to modify the result of the API
+                                      call.
+
+                                      This can be used to extract a repeating element from a response.
+                                      https://kubernetes.io/docs/reference/kubectl/jsonpath/
+                                    type: string
+                                  method:
+                                    default: GET
+                                    description: Method defines the HTTP method to
+                                      use to talk to the endpoint.
+                                    enum:
+                                    - GET
+                                    - POST
+                                    type: string
+                                  secretRef:
+                                    description: |-
+                                      Reference to Secret in same namespace with a field "caFile" which
+                                      provides the Certificate Authority to trust when making API calls.
+                                    properties:
+                                      name:
+                                        description: Name of the referent.
+                                        type: string
+                                    required:
+                                    - name
+                                    type: object
+                                  singleElement:
+                                    description: |-
+                                      SingleElement means generate a single element with the result of the API
+                                      call.
+
+                                      When true, the response must be a JSON object and will be returned as a
+                                      single element, i.e. only one element will be generated containing the
+                                      entire object.
+                                    type: boolean
+                                required:
+                                - interval
+                                type: object
+                              cluster:
+                                description: |-
+                                  ClusterGenerator defines a generator that queries the cluster API for
+                                  relevant clusters.
+                                properties:
+                                  selector:
+                                    description: |-
+                                      Selector is used to filter the clusters that you want to target.
+
+                                      If no selector is provided, no clusters will be matched.
+                                    properties:
+                                      matchExpressions:
+                                        description: matchExpressions is a list of
+                                          label selector requirements. The requirements
+                                          are ANDed.
+                                        items:
+                                          description: |-
+                                            A label selector requirement is a selector that contains values, a key, and an operator that
+                                            relates the key and values.
+                                          properties:
+                                            key:
+                                              description: key is the label key that
+                                                the selector applies to.
+                                              type: string
+                                            operator:
+                                              description: |-
+                                                operator represents a key's relationship to a set of values.
+                                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                                              type: string
+                                            values:
+                                              description: |-
+                                                values is an array of string values. If the operator is In or NotIn,
+                                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                                the values array must be empty. This array is replaced during a strategic
+                                                merge patch.
+                                              items:
+                                                type: string
+                                              type: array
+                                              x-kubernetes-list-type: atomic
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                        x-kubernetes-list-type: atomic
+                                      matchLabels:
+                                        additionalProperties:
+                                          type: string
+                                        description: |-
+                                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                        type: object
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                type: object
+                              config:
+                                description: |-
+                                  ConfigGenerator loads a referenced ConfigMap or
+                                  Secret from the Cluster and makes it available as a resource.
+                                properties:
+                                  kind:
+                                    description: Kind of the referent.
+                                    enum:
+                                    - ConfigMap
+                                    - Secret
+                                    type: string
+                                  name:
+                                    description: Name of the referent.
+                                    type: string
+                                required:
+                                - kind
+                                - name
+                                type: object
+                              gitRepository:
+                                description: GitRepositoryGenerator generates from
+                                  files in a Flux GitRepository resource.
+                                properties:
+                                  directories:
+                                    description: |-
+                                      Directories is a set of rules for identifying directories to be
+                                      generated.
+                                    items:
+                                      description: |-
+                                        RepositoryGeneratorDirectoryItem stores the information about a specific
+                                        directory to be generated from.
+                                      properties:
+                                        exclude:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  files:
+                                    description: Files is a set of rules for identifying
+                                      files to be parsed.
+                                    items:
+                                      description: RepositoryGeneratorFileItem defines
+                                        a path to a file to be parsed when generating.
+                                      properties:
+                                        path:
+                                          description: Path is the name of a file
+                                            to read and generate from can be JSON
+                                            or YAML.
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  repositoryRef:
+                                    description: RepositoryRef is the name of a GitRepository
+                                      resource to be generated from.
+                                    type: string
+                                type: object
+                              imagePolicy:
+                                description: ImagePolicyGenerator generates from the
+                                  ImagePolicy.
+                                properties:
+                                  policyRef:
+                                    description: PolicyRef is the name of a ImagePolicy
+                                      resource to be generated from.
+                                    type: string
+                                type: object
+                              list:
+                                description: ListGenerator generates from a hard-coded
+                                  list.
+                                properties:
+                                  elements:
+                                    items:
+                                      x-kubernetes-preserve-unknown-fields: true
+                                    type: array
+                                type: object
+                              name:
+                                description: |-
+                                  Name is an optional field that will be used to prefix the values generated
+                                  by the nested generators, this allows multiple generators of the same
+                                  type in a single Matrix generator.
+                                type: string
+                              ociRepository:
+                                description: OCIRepositoryGenerator generates from
+                                  files in a Flux OCIRepository resource.
+                                properties:
+                                  directories:
+                                    description: |-
+                                      Directories is a set of rules for identifying directories to be
+                                      generated.
+                                    items:
+                                      description: |-
+                                        RepositoryGeneratorDirectoryItem stores the information about a specific
+                                        directory to be generated from.
+                                      properties:
+                                        exclude:
+                                          type: boolean
+                                        path:
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  files:
+                                    description: Files is a set of rules for identifying
+                                      files to be parsed.
+                                    items:
+                                      description: RepositoryGeneratorFileItem defines
+                                        a path to a file to be parsed when generating.
+                                      properties:
+                                        path:
+                                          description: Path is the name of a file
+                                            to read and generate from can be JSON
+                                            or YAML.
+                                          type: string
+                                      required:
+                                      - path
+                                      type: object
+                                    type: array
+                                  repositoryRef:
+                                    description: RepositoryRef is the name of a OCIRepository
+                                      resource to be generated from.
+                                    type: string
+                                type: object
+                              pullRequests:
+                                description: |-
+                                  PullRequestGenerator defines a generator that queries a Git hosting service
+                                  for relevant PRs.
+                                properties:
+                                  driver:
+                                    description: Determines which git-api protocol
+                                      to use.
+                                    enum:
+                                    - github
+                                    - gitlab
+                                    - bitbucketserver
+                                    type: string
+                                  forks:
+                                    description: |-
+                                      Fork is used to filter out forks from the target PRs if false,
+                                      or to include forks if  true
+                                    type: boolean
+                                  interval:
+                                    description: The interval at which to check for
+                                      repository updates.
+                                    type: string
+                                  labels:
+                                    description: |-
+                                      Labels is used to filter the PRs that you want to target.
+                                      This may be applied on the server.
+                                    items:
+                                      type: string
+                                    type: array
+                                  repo:
+                                    description: |-
+                                      This should be the Repo you want to query.
+                                      e.g. my-org/my-repo
+                                    type: string
+                                  secretRef:
+                                    description: |-
+                                      Reference to Secret in same namespace with a field "password" which is an
+                                      auth token that can query the Git Provider API.
+                                    properties:
+                                      name:
+                                        description: Name of the referent.
+                                        type: string
+                                    required:
+                                    - name
+                                    type: object
+                                  serverURL:
+                                    description: This is the API endpoint to use.
+                                    pattern: ^https://
+                                    type: string
+                                required:
+                                - driver
+                                - interval
+                                - repo
+                                type: object
+                            type: object
+                          type: array
+                        singleElement:
+                          description: |-
+                            SingleElement means generate a single element with the result of the
+                            merged generator elements.
+
+                            When true, the matrix elements will be merged to a single element, with
+                            whatever prefixes they have.
+                            It's recommended that you use the Name field to separate out elements.
+                          type: boolean
+                      type: object
+                    ociRepository:
+                      description: OCIRepositoryGenerator generates from files in
+                        a Flux OCIRepository resource.
+                      properties:
+                        directories:
+                          description: |-
+                            Directories is a set of rules for identifying directories to be
+                            generated.
+                          items:
+                            description: |-
+                              RepositoryGeneratorDirectoryItem stores the information about a specific
+                              directory to be generated from.
+                            properties:
+                              exclude:
+                                type: boolean
+                              path:
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        files:
+                          description: Files is a set of rules for identifying files
+                            to be parsed.
+                          items:
+                            description: RepositoryGeneratorFileItem defines a path
+                              to a file to be parsed when generating.
+                            properties:
+                              path:
+                                description: Path is the name of a file to read and
+                                  generate from can be JSON or YAML.
+                                type: string
+                            required:
+                            - path
+                            type: object
+                          type: array
+                        repositoryRef:
+                          description: RepositoryRef is the name of a OCIRepository
+                            resource to be generated from.
+                          type: string
+                      type: object
+                    pullRequests:
+                      description: |-
+                        PullRequestGenerator defines a generator that queries a Git hosting service
+                        for relevant PRs.
+                      properties:
+                        driver:
+                          description: Determines which git-api protocol to use.
+                          enum:
+                          - github
+                          - gitlab
+                          - bitbucketserver
+                          type: string
+                        forks:
+                          description: |-
+                            Fork is used to filter out forks from the target PRs if false,
+                            or to include forks if  true
+                          type: boolean
+                        interval:
+                          description: The interval at which to check for repository
+                            updates.
+                          type: string
+                        labels:
+                          description: |-
+                            Labels is used to filter the PRs that you want to target.
+                            This may be applied on the server.
+                          items:
+                            type: string
+                          type: array
+                        repo:
+                          description: |-
+                            This should be the Repo you want to query.
+                            e.g. my-org/my-repo
+                          type: string
+                        secretRef:
+                          description: |-
+                            Reference to Secret in same namespace with a field "password" which is an
+                            auth token that can query the Git Provider API.
+                          properties:
+                            name:
+                              description: Name of the referent.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        serverURL:
+                          description: This is the API endpoint to use.
+                          pattern: ^https://
+                          type: string
+                      required:
+                      - driver
+                      - interval
+                      - repo
+                      type: object
+                  type: object
+                type: array
+              serviceAccountName:
+                description: |-
+                  The name of the Kubernetes service account to impersonate
+                  when reconciling this Kustomization.
+                type: string
+              suspend:
+                description: |-
+                  Suspend tells the controller to suspend the reconciliation of this
+                  GitOpsSet.
+                type: boolean
+              templates:
+                description: |-
+                  Templates are a set of YAML templates that are rendered into resources
+                  from the data supplied by the generators.
+                items:
+                  description: GitOpsSetTemplate describes a resource to create
+                  properties:
+                    content:
+                      description: Content is the YAML to be templated and generated.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    repeat:
+                      description: |-
+                        Repeat is a JSONPath string defining that the template content should be
+                        repeated for each of the matching elements in the JSONPath expression.
+                        https://kubernetes.io/docs/reference/kubectl/jsonpath/
+                      type: string
+                  required:
+                  - content
+                  type: object
+                type: array
+            type: object
+          status:
+            description: GitOpsSetStatus defines the observed state of GitOpsSet
+            properties:
+              conditions:
+                description: Conditions holds the conditions for the GitOpsSet
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              inventory:
+                description: |-
+                  Inventory contains the list of Kubernetes resource object references that
+                  have been successfully applied
+                properties:
+                  entries:
+                    description: Entries of Kubernetes resource object references.
+                    items:
+                      description: ResourceRef contains the information necessary
+                        to locate a resource within a cluster.
+                      properties:
+                        id:
+                          description: |-
+                            ID is the string representation of the Kubernetes resource object's metadata,
+                            in the format '<namespace>_<name>_<group>_<kind>'.
+                          type: string
+                        v:
+                          description: Version is the API version of the Kubernetes
+                            resource object's kind.
+                          type: string
+                      required:
+                      - id
+                      - v
+                      type: object
+                    type: array
+                type: object
+              lastHandledReconcileAt:
+                description: |-
+                  LastHandledReconcileAt holds the value of the most recent
+                  reconcile request value, so a change of the annotation value
+                  can be detected.
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the last observed generation of the HelmRepository
+                  object.
+                format: int64
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

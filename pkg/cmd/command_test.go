@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
 	"github.com/google/go-cmp/cmp"
-	"github.com/weaveworks/gitopssets-controller/pkg/setup"
 )
 
 func TestRenderGitOpsSet(t *testing.T) {
@@ -24,8 +24,8 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/name: go-demo
     com.example/team: dev-team
-    templates.weave.works/name: gitopsset-sample
-    templates.weave.works/namespace: ""
+    sets.gitops.pro/name: gitopsset-sample
+    sets.gitops.pro/namespace: ""
   name: dev-demo
   namespace: default
 spec:
@@ -57,8 +57,8 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/name: go-demo
     com.example/team: dev-team
-    templates.weave.works/name: gitopsset-sample
-    templates.weave.works/namespace: ""
+    sets.gitops.pro/name: gitopsset-sample
+    sets.gitops.pro/namespace: ""
   name: dev-demo
   namespace: default
 spec:
@@ -76,8 +76,8 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/name: go-demo
     com.example/team: dev-team
-    templates.weave.works/name: second-gitopsset-sample
-    templates.weave.works/namespace: ""
+    sets.gitops.pro/name: second-gitopsset-sample
+    sets.gitops.pro/namespace: ""
   name: dev-demo-2
   namespace: default
 spec:

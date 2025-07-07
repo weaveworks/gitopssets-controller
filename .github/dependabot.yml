@@ -5,10 +5,10 @@ updates:
     schedule:
       interval: "daily"
     reviewers:
-      - "weaveworks/pesto"
+      - "@bigkevmcd"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     reviewers:
-      - "weaveworks/pesto"
+      - "@bigkevmcd"

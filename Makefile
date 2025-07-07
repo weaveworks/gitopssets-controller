@@ -7,7 +7,7 @@ CHART_VERSION := $(shell echo $(VERSION) | sed 's/^v//')
 # Image URL to use all building/pushing image targets
 IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.25.0
+ENVTEST_K8S_VERSION = 1.31.0
 GEN_API_REF_DOCS_VERSION ?= e327d0730470cbd61b06300f81c5fcf91c23c113
 CHART_REGISTRY ?= ghcr.io/weaveworks/charts
 
@@ -63,7 +63,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $(go list ./... | grep -v tests\/e2e) -coverprofile cover.out
 
 .PHONY: e2e-tests
 e2e-tests: manifests generate fmt vet envtest ## Run tests.
@@ -80,11 +80,6 @@ build: manifests generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go ./version.go ${RUN_ARGS}
 
-.PHONY: vendor
-vendor: ## Update vendor directory.
-	go mod tidy
-	go mod vendor
-
 version:
 	@echo $(VERSION)
 
@@ -92,7 +87,7 @@ version:
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: test vendor ## Build docker image with the manager.
+docker-build: ## Build docker image with the manager.
 	docker build -t ${IMG} --build-arg VERSION=${VERSION} .
 
 .PHONY: docker-push
@@ -158,7 +153,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.10.0
+CONTROLLER_TOOLS_VERSION ?= v0.16.1
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
