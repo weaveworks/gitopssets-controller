@@ -34,7 +34,7 @@ controllerManager:
         type: RuntimeDefault
     image:
       repository: ghcr.io/weaveworks/gitopssets-controller
-      tag: v0.16.6-7-g2262e8e
+      tag: v0.17.2
     resources:
       limits:
         cpu: "1"
