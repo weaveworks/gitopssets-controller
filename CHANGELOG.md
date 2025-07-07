@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.2](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.1...v0.17.2) (2025-07-07)
+
+
+### Bug Fixes
+
+* only push images and charts on releases with proper package association ([#217](https://github.com/weaveworks/gitopssets-controller/issues/217)) ([ca62f34](https://github.com/weaveworks/gitopssets-controller/commit/ca62f34e33dd553707b97bac54ede4658a3ecc73))
+
 ## [0.17.1](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.0...v0.17.1) (2025-07-07)
 
 
