@@ -967,7 +967,7 @@ func TestEventsWithReconciling(t *testing.T) {
 		EventType: "Normal",
 		Reason:    "ReconciliationSucceeded",
 	}
-	compareWant := gomega.BeComparableTo(want, cmpopts.IgnoreFields(test.EventData{}, "Message"))
+	compareWant := gomega.BeComparableTo(want, cmpopts.IgnoreFields(test.EventData{}, "Message", "Object", "Related"))
 
 	g := gomega.NewWithT(t)
 
@@ -1024,7 +1024,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
 	g := gomega.NewWithT(t)
-	g.Eventually(func() bool {
+	g.Eventually(func() string {
 		// reconciliation should fail because there is an existing resource.
 		want := []*test.EventData{
 			{
@@ -1033,8 +1033,8 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 			},
 		}
 
-		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message")) == ""
-	}, timeout).Should(gomega.BeTrue())
+		return cmp.Diff(want, eventRecorder.Events, cmpopts.IgnoreFields(test.EventData{}, "Message", "Object", "Related"))
+	}, timeout).Should(gomega.Equal(""))
 }
 
 func deleteGitOpsSetAndWaitForNotFound(t *testing.T, cl client.Client, gs *templatesv1.GitOpsSet) {

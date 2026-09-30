@@ -52,7 +52,7 @@ const (
 )
 
 type eventRecorder interface {
-	Event(object runtime.Object, eventType, reason, message string)
+	Eventf(object runtime.Object, related runtime.Object, eventtype, reason string, action string, messageFmt string, args ...any)
 }
 
 // GitOpsSetReconciler reconciles a GitOpsSet object
@@ -70,7 +70,7 @@ type GitOpsSetReconciler struct {
 }
 
 // event emits a Kubernetes event using EventRecorder
-func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string) {
+func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg string, args ...any) {
 	reason := conditions.GetReason(obj, fluxMeta.ReadyCondition)
 	if reason == "" {
 		reason = severity
@@ -81,7 +81,7 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 		eventType = corev1.EventTypeWarning
 	}
 
-	r.EventRecorder.Event(obj, eventType, reason, msg)
+	r.EventRecorder.Eventf(obj, nil, eventType, reason, "", msg, args...)
 }
 
 //+kubebuilder:rbac:groups=sets.gitops.pro,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -160,9 +160,9 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		// Log and emit success event.
 		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
-			msg := fmt.Sprintf("Reconciliation finished in %s",
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s",
 				time.Since(reconcileStart).String())
-			r.event(&gitOpsSet, eventv1.EventSeverityInfo, msg)
+
 		}
 	}()
 
@@ -184,8 +184,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 		}
-		msg := fmt.Sprintf("Reconciliation failed after %s", time.Since(reconcileStart).String())
-		r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
+		r.event(&gitOpsSet, eventv1.EventSeverityError, "Reconciliation failed after %s", time.Since(reconcileStart).String())
 
 		return ctrl.Result{}, err
 	}
@@ -197,8 +196,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())
-			msg := "Status and inventory update failed after reconciliation"
-			r.event(&gitOpsSet, eventv1.EventSeverityError, msg)
+			r.event(&gitOpsSet, eventv1.EventSeverityError, "Status and inventory update failed after reconciliation")
 
 			return ctrl.Result{}, fmt.Errorf("failed to update status and inventory: %w", err)
 		}
