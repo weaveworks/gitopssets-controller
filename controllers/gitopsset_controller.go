@@ -209,7 +209,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 	logger := log.FromContext(ctx)
 	instantiatedGenerators := map[string]generators.Generator{}
 	for k, factory := range r.Generators {
-		instantiatedGenerators[k] = factory(log.FromContext(ctx), r.Client)
+		instantiatedGenerators[k] = factory(log.FromContext(ctx), k8sClient)
 	}
 
 	inventory, err := r.renderAndReconcile(ctx, logger, k8sClient, gitOpsSet, instantiatedGenerators)

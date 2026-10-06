@@ -23,6 +23,35 @@ import (
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
 )
 
+func TestReconcileResourcesPassesImpersonatedClientToGenerators(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := templatesv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	controllerClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	impersonated := fake.NewClientBuilder().WithScheme(scheme).Build()
+	var seen client.Reader
+	reconciler := &GitOpsSetReconciler{
+		Client: controllerClient,
+		Generators: map[string]generators.GeneratorFactory{
+			"List": func(l logr.Logger, c client.Reader) generators.Generator {
+				seen = c
+				return list.NewGenerator(l)
+			},
+		},
+	}
+
+	if _, _, err := reconciler.reconcileResources(t.Context(), impersonated, gitOpsSetRendering()); err != nil {
+		t.Fatal(err)
+	}
+	if seen != impersonated {
+		t.Fatal("generators received the controller client instead of the impersonated client")
+	}
+}
+
 func TestRenderAndReconcileKeepsFailedDeletesInInventory(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {

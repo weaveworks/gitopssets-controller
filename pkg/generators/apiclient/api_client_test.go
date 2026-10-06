@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -16,8 +18,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -368,6 +372,79 @@ func TestGenerate_errors(t *testing.T) {
 			test.AssertErrorMatch(t, tt.wantErr, err)
 		})
 	}
+}
+
+func TestDefaultClientFactoryRedirects(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("followed a cross-host redirect")
+	}))
+	defer target.Close()
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/next" {
+			_, _ = w.Write([]byte(`[{"name":"ok"}]`))
+			return
+		}
+		http.Redirect(w, r, target.URL+"/secret", http.StatusFound)
+	}))
+	defer source.Close()
+
+	client := DefaultClientFactory(nil)
+	_, err := client.Get(source.URL)
+	if err == nil || !strings.Contains(err.Error(), "refusing redirect") {
+		t.Fatalf("cross-host redirect error = %v", err)
+	}
+
+	sameHost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/next" {
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+		http.Redirect(w, r, r.URL.ResolveReference(&url.URL{Path: "/next"}).String(), http.StatusFound)
+	}))
+	defer sameHost.Close()
+	resp, err := client.Get(sameHost.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("same-host redirect status = %d", resp.StatusCode)
+	}
+}
+
+func TestGenerateDoesNotCallEndpointWhenSecretReadIsForbidden(t *testing.T) {
+	calls := 0
+	factory := func(_ *tls.Config) *http.Client {
+		calls++
+		return nil
+	}
+	gen := NewGenerator(logr.Discard(), forbidSecretReader{}, factory)
+	_, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
+		APIClient: &templatesv1.APIClientGenerator{
+			Endpoint: "https://example.com/private",
+			HeadersRef: &templatesv1.HeadersReference{
+				Kind: "Secret",
+				Name: "credentials",
+			},
+		},
+	}, &templatesv1.GitOpsSet{ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "demo"}})
+	if err == nil || !strings.Contains(err.Error(), "forbidden") {
+		t.Fatalf("error = %v, want forbidden", err)
+	}
+	if calls != 0 {
+		t.Fatalf("client factory calls = %d, want 0", calls)
+	}
+}
+
+type forbidSecretReader struct{}
+
+func (forbidSecretReader) Get(context.Context, client.ObjectKey, client.Object, ...client.GetOption) error {
+	return apierrors.NewForbidden(schema.GroupResource{Group: "", Resource: "secrets"}, "credentials", fmt.Errorf("impersonated user cannot read secrets"))
+}
+
+func (forbidSecretReader) List(context.Context, client.ObjectList, ...client.ListOption) error {
+	return fmt.Errorf("not implemented")
 }
 
 func TestGenerateDoesNotCallEndpointWhenTLSConfigFails(t *testing.T) {

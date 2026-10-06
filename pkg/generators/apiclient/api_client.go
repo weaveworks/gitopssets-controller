@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
@@ -29,9 +30,27 @@ var DefaultClientFactory = func(config *tls.Config) *http.Client {
 	transport.TLSClientConfig = config
 
 	return &http.Client{
-		Transport: transport,
-		Timeout:   30 * time.Second,
+		Transport:     transport,
+		Timeout:       30 * time.Second,
+		CheckRedirect: rejectCrossHostRedirect,
 	}
+}
+
+func rejectCrossHostRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) == 0 {
+		return nil
+	}
+	if !sameHost(req.URL, via[0].URL) {
+		return fmt.Errorf("refusing redirect from %s to %s", via[0].URL.Host, req.URL.Host)
+	}
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	return nil
+}
+
+func sameHost(left, right *url.URL) bool {
+	return strings.EqualFold(left.Host, right.Host)
 }
 
 // GeneratorFactory is a function for creating per-reconciliation generators for
