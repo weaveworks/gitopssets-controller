@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/object"
 )
@@ -21,6 +22,19 @@ type ResourceRef struct {
 
 	// Version is the API version of the Kubernetes resource object's kind.
 	Version string `json:"v"`
+
+	// LastAppliedTime is when this object was last applied successfully.
+	// +optional
+	LastAppliedTime *metav1.Time `json:"lastAppliedTime,omitempty"`
+
+	// LastError is the most recent apply or delete error for this object.
+	// It is cleared after a successful apply.
+	// +optional
+	LastError string `json:"lastError,omitempty"`
+
+	// SourceRevision is the source digest recorded when this object was applied.
+	// +optional
+	SourceRevision string `json:"sourceRevision,omitempty"`
 }
 
 // ResourceRefFromObject returns a ResourceRef from a runtime.Object.

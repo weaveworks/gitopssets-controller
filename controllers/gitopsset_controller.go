@@ -247,79 +247,142 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 	var inventoryErr error
 
-	existingEntries := sets.New[templatesv1.ResourceRef]()
+	existingEntries := newResourceRefSet(nil)
 	if gitOpsSet.Status.Inventory != nil {
-		existingEntries.Insert(gitOpsSet.Status.Inventory.Entries...)
+		existingEntries = newResourceRefSet(gitOpsSet.Status.Inventory.Entries)
 	}
 
-	entries := sets.New[templatesv1.ResourceRef]()
+	entries := newResourceRefSet(nil)
 	for _, newResource := range resources {
 		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
 			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to update inventory: %w", err))
 			continue
 		}
+		previous, hadPrevious := existingEntries.get(ref)
+		recordFailure := func(applyErr error) {
+			failed := ref
+			if hadPrevious {
+				failed = previous
+			}
+			failed.LastError = applyErr.Error()
+			entries.insert(failed)
+			inventoryErr = errors.Join(inventoryErr, applyErr)
+		}
 
-		if existingEntries.Has(ref) {
+		if hadPrevious {
 			existing, err := unstructuredFromResourceRef(ref)
 			if err != nil {
-				inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to convert resource for update: %w", err))
+				recordFailure(fmt.Errorf("failed to convert resource for update: %w", err))
 				continue
 			}
-			// We can add the entry because we know it exists
-			entries.Insert(ref)
 			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
 			if err == nil {
 				newResource = copyUnstructuredContent(existing, newResource)
 				if err := k8sClient.Patch(ctx, newResource, client.MergeFrom(existing)); err != nil {
-					inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to update Resource: %w", err))
+					recordFailure(fmt.Errorf("failed to update Resource: %w", err))
+					continue
 				}
+				entries.insert(appliedResourceRef(ref, previous.SourceRevision))
 				continue
 			}
 
 			if !apierrors.IsNotFound(err) {
-				inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to load existing Resource: %w", err))
+				recordFailure(fmt.Errorf("failed to load existing Resource: %w", err))
 				continue
 			}
 		}
 
 		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
-			inventoryErr = errors.Join(inventoryErr, err)
+			recordFailure(err)
 			continue
 		}
 
 		if err := k8sClient.Create(ctx, newResource); err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				if err := r.adoptExistingResource(ctx, k8sClient, gitOpsSet, ref, newResource); err != nil {
-					inventoryErr = errors.Join(inventoryErr, err)
+					recordFailure(err)
 					continue
 				}
-				entries.Insert(ref)
+				entries.insert(appliedResourceRef(ref, previous.SourceRevision))
 				continue
 			}
-			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to create Resource: %w", err))
+			recordFailure(fmt.Errorf("failed to create Resource: %w", err))
 			continue
 		}
 
-		entries.Insert(ref)
+		entries.insert(appliedResourceRef(ref, previous.SourceRevision))
 	}
 
 	if gitOpsSet.Status.Inventory == nil || orphansResources(gitOpsSet) {
-		return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
-			return x.ID < y.ID
-		})}, inventoryErr
-
+		return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
 	}
-	objectsToRemove := existingEntries.Difference(entries)
-	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, objectsToRemove.List())
+	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, existingEntries.difference(entries))
 	if err != nil {
 		inventoryErr = errors.Join(inventoryErr, err)
 	}
-	entries.Insert(failedDeletes...)
+	for _, failed := range failedDeletes {
+		entries.insert(failed)
+	}
 
-	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
-		return x.ID < y.ID
-	})}, inventoryErr
+	return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
+}
+
+func appliedResourceRef(ref templatesv1.ResourceRef, sourceRevision string) templatesv1.ResourceRef {
+	now := metav1.Now()
+	ref.LastAppliedTime = &now
+	ref.LastError = ""
+	ref.SourceRevision = sourceRevision
+	return ref
+}
+
+type resourceRefSet struct {
+	items map[string]templatesv1.ResourceRef
+}
+
+func newResourceRefSet(entries []templatesv1.ResourceRef) *resourceRefSet {
+	set := &resourceRefSet{items: map[string]templatesv1.ResourceRef{}}
+	for _, entry := range entries {
+		set.insert(entry)
+	}
+	return set
+}
+
+func resourceRefKey(ref templatesv1.ResourceRef) string {
+	return ref.ID + "\x00" + ref.Version
+}
+
+func (s *resourceRefSet) insert(ref templatesv1.ResourceRef) {
+	s.items[resourceRefKey(ref)] = ref
+}
+
+func (s *resourceRefSet) get(ref templatesv1.ResourceRef) (templatesv1.ResourceRef, bool) {
+	got, ok := s.items[resourceRefKey(ref)]
+	return got, ok
+}
+
+func (s *resourceRefSet) difference(other *resourceRefSet) []templatesv1.ResourceRef {
+	var gone []templatesv1.ResourceRef
+	for key, ref := range s.items {
+		if _, ok := other.items[key]; !ok {
+			gone = append(gone, ref)
+		}
+	}
+	return gone
+}
+
+func (s *resourceRefSet) list() []templatesv1.ResourceRef {
+	refs := make([]templatesv1.ResourceRef, 0, len(s.items))
+	for _, ref := range s.items {
+		refs = append(refs, ref)
+	}
+	sort.Slice(refs, func(i, j int) bool {
+		if refs[i].ID == refs[j].ID {
+			return refs[i].Version < refs[j].Version
+		}
+		return refs[i].ID < refs[j].ID
+	})
+	return refs
 }
 
 func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request, newStatus templatesv1.GitOpsSetStatus) error {
@@ -341,19 +404,22 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient 
 	for _, v := range deletions {
 		u, err := unstructuredFromResourceRef(v)
 		if err != nil {
+			v.LastError = err.Error()
 			failed = append(failed, v)
 			deleteErr = errors.Join(deleteErr, err)
 			continue
 		}
 		if err := logResourceMessage(logger, "deleting resource", u); err != nil {
+			v.LastError = err.Error()
 			failed = append(failed, v)
 			deleteErr = errors.Join(deleteErr, err)
 			continue
 		}
 
 		if err := k8sClient.Delete(ctx, u); err != nil && !apierrors.IsNotFound(err) {
-			failed = append(failed, v)
 			deleteErr = errors.Join(deleteErr, fmt.Errorf("failed to delete %s: %w", v.ID, err))
+			v.LastError = err.Error()
+			failed = append(failed, v)
 		}
 	}
 

@@ -824,6 +824,20 @@ spec:
                             ID is the string representation of the Kubernetes resource object's metadata,
                             in the format '<namespace>_<name>_<group>_<kind>'.
                           type: string
+                        lastAppliedTime:
+                          description: LastAppliedTime is when this object was last
+                            applied successfully.
+                          format: date-time
+                          type: string
+                        lastError:
+                          description: |-
+                            LastError is the most recent apply or delete error for this object.
+                            It is cleared after a successful apply.
+                          type: string
+                        sourceRevision:
+                          description: SourceRevision is the source digest recorded
+                            when this object was applied.
+                          type: string
                         v:
                           description: Version is the API version of the Kubernetes
                             resource object's kind.

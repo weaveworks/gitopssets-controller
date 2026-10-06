@@ -183,6 +183,64 @@ func TestFinalizeOrphanSkipsInventoryDelete(t *testing.T) {
 	}
 }
 
+func TestInventoryRecordsApplyTimeAndError(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := templatesv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	existing := newConfigMap("demo", "kept")
+	appliedAt := metav1.Now()
+	previous := mustResourceRef(t, existing)
+	previous.LastAppliedTime = &appliedAt
+	previous.LastError = "old failure"
+	previous.SourceRevision = "sha256:abc"
+
+	cl := &patchFailClient{
+		Client: fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(existing).Build(),
+		fail:   true,
+	}
+	gs := gitOpsSetRendering("kept")
+	gs.Status.Inventory = &templatesv1.ResourceInventory{Entries: []templatesv1.ResourceRef{previous}}
+	gens := map[string]generators.Generator{"List": list.NewGenerator(logr.Discard())}
+
+	inventory, err := (&GitOpsSetReconciler{}).renderAndReconcile(t.Context(), logr.Discard(), cl, gs, gens)
+	if err == nil {
+		t.Fatal("expected update error")
+	}
+	if len(inventory.Entries) != 1 || inventory.Entries[0].LastError == "" || inventory.Entries[0].SourceRevision != "sha256:abc" {
+		t.Fatalf("failed entry = %#v", inventory.Entries)
+	}
+
+	cl.fail = false
+	inventory, err = (&GitOpsSetReconciler{}).renderAndReconcile(t.Context(), logr.Discard(), cl, gitOpsSetWithInventory(gs, inventory), gens)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inventory.Entries) != 1 {
+		t.Fatalf("entries = %#v", inventory.Entries)
+	}
+	got := inventory.Entries[0]
+	if got.LastAppliedTime == nil || got.LastError != "" || got.SourceRevision != "sha256:abc" || got.ID != previous.ID {
+		t.Fatalf("applied entry = %#v", got)
+	}
+}
+
+type patchFailClient struct {
+	client.Client
+	fail bool
+}
+
+func (c *patchFailClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	if c.fail {
+		return fmt.Errorf("conflict")
+	}
+	return c.Client.Patch(ctx, obj, patch, opts...)
+}
+
 func TestRenderAndReconcileTreatsNotFoundDeleteAsSuccess(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
