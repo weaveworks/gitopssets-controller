@@ -295,9 +295,11 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 	}
 	objectsToRemove := existingEntries.Difference(entries)
-	if err := r.removeResourceRefs(ctx, k8sClient, objectsToRemove.List()); err != nil {
+	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, objectsToRemove.List())
+	if err != nil {
 		inventoryErr = errors.Join(inventoryErr, err)
 	}
+	entries.Insert(failedDeletes...)
 
 	return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 		return x.ID < y.ID
@@ -316,23 +318,30 @@ func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request,
 	return r.Status().Patch(ctx, &set, patch)
 }
 
-func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient client.Client, deletions []templatesv1.ResourceRef) error {
+func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient client.Client, deletions []templatesv1.ResourceRef) ([]templatesv1.ResourceRef, error) {
 	logger := log.FromContext(ctx)
+	var failed []templatesv1.ResourceRef
+	var deleteErr error
 	for _, v := range deletions {
 		u, err := unstructuredFromResourceRef(v)
 		if err != nil {
-			return err
+			failed = append(failed, v)
+			deleteErr = errors.Join(deleteErr, err)
+			continue
 		}
 		if err := logResourceMessage(logger, "deleting resource", u); err != nil {
-			return err
+			failed = append(failed, v)
+			deleteErr = errors.Join(deleteErr, err)
+			continue
 		}
 
-		if err := client.IgnoreNotFound(k8sClient.Delete(ctx, u)); err != nil {
-			return fmt.Errorf("failed to delete %v: %w", u, err)
+		if err := k8sClient.Delete(ctx, u); err != nil && !apierrors.IsNotFound(err) {
+			failed = append(failed, v)
+			deleteErr = errors.Join(deleteErr, fmt.Errorf("failed to delete %s: %w", v.ID, err))
 		}
 	}
 
-	return nil
+	return failed, deleteErr
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -442,7 +451,7 @@ func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitO
 		gs.Status.Inventory != nil &&
 		gs.Status.Inventory.Entries != nil {
 
-		if err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
+		if _, err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
 			return ctrl.Result{}, err
 		}
 
