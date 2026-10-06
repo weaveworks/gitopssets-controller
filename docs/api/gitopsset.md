@@ -81,6 +81,21 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
+<code>deletionPolicy</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DeletionPolicy controls whether rendered resources are deleted when they
+are no longer produced, and when the GitOpsSet is deleted.</p>
+<p>Delete removes those resources. Orphan leaves them in the cluster and
+removes them from the inventory. An empty value means Delete.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>generators</code><br />
 <em>
 <a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">
@@ -117,6 +132,35 @@ string
 <em>(Optional)</em>
 <p>The name of the Kubernetes service account to impersonate
 when reconciling this Kustomization.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>healthCheck</code><br />
+<em>
+<a href="#sets.gitops.pro/v1alpha1.HealthCheck">
+HealthCheck
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HealthCheck controls whether applied resources are checked for readiness.
+Checks are enabled when this is omitted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>force</code><br />
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Force acquires ownership of conflicting fields during server-side apply.
+Without this, a field owned by another manager is left unchanged and the
+apply returns a conflict.</p>
 </td>
 </tr>
 </tbody>
@@ -264,6 +308,95 @@ LocalObjectReference
 <td>
 <p>Reference to Secret in same namespace with a field &ldquo;caFile&rdquo; which
 provides the Certificate Authority to trust when making API calls.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>allowClusterNetwork</code><br />
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AllowClusterNetwork permits loopback and in-cluster DNS names such as
+*.svc and *.cluster.local. Link-local, unspecified, and multicast
+addresses are refused even when this is true.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sets.gitops.pro/v1alpha1.AppliedSource">AppliedSource
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetStatus">GitOpsSetStatus</a>)
+</p>
+<p>AppliedSource identifies a source input that was current when resources were applied.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kind</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Kind is GitRepository, OCIRepository, Secret, or ConfigMap.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the source object name.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>digest</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Digest is the artifact digest for a GitRepository or OCIRepository.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>revision</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Revision is the artifact revision for a GitRepository or OCIRepository.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourceVersion</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResourceVersion is the Secret or ConfigMap resourceVersion.</p>
 </td>
 </tr>
 </tbody>
@@ -466,6 +599,21 @@ ConfigGenerator
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>filter</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Filter is a CEL expression evaluated against each generated element.
+The element map is available as the variable <code>element</code>. The expression
+must return a boolean. An empty filter keeps every element. For a matrix
+generator the filter runs after the cartesian product.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sets.gitops.pro/v1alpha1.GitOpsSetNestedGenerator">GitOpsSetNestedGenerator
@@ -626,6 +774,21 @@ GitOpsSet.</p>
 </tr>
 <tr>
 <td>
+<code>deletionPolicy</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DeletionPolicy controls whether rendered resources are deleted when they
+are no longer produced, and when the GitOpsSet is deleted.</p>
+<p>Delete removes those resources. Orphan leaves them in the cluster and
+removes them from the inventory. An empty value means Delete.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>generators</code><br />
 <em>
 <a href="#sets.gitops.pro/v1alpha1.GitOpsSetGenerator">
@@ -662,6 +825,35 @@ string
 <em>(Optional)</em>
 <p>The name of the Kubernetes service account to impersonate
 when reconciling this Kustomization.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>healthCheck</code><br />
+<em>
+<a href="#sets.gitops.pro/v1alpha1.HealthCheck">
+HealthCheck
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HealthCheck controls whether applied resources are checked for readiness.
+Checks are enabled when this is omitted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>force</code><br />
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Force acquires ownership of conflicting fields during server-side apply.
+Without this, a field owned by another manager is left unchanged and the
+apply returns a conflict.</p>
 </td>
 </tr>
 </tbody>
@@ -736,6 +928,21 @@ ResourceInventory
 <em>(Optional)</em>
 <p>Inventory contains the list of Kubernetes resource object references that
 have been successfully applied</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastAppliedSources</code><br />
+<em>
+<a href="#sets.gitops.pro/v1alpha1.AppliedSource">
+[]AppliedSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastAppliedSources records the source digests and resource versions used
+for the last successful apply.</p>
 </td>
 </tr>
 </tbody>
@@ -875,6 +1082,35 @@ string
 </td>
 <td>
 <p>Name of the resource in the same namespace to apply headers from.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sets.gitops.pro/v1alpha1.HealthCheck">HealthCheck
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
+</p>
+<p>HealthCheck configures the Healthy condition.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code><br />
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enabled turns health checks on or off. Nil means enabled.</p>
 </td>
 </tr>
 </tbody>
@@ -1311,6 +1547,45 @@ string
 </td>
 <td>
 <p>Version is the API version of the Kubernetes resource object&rsquo;s kind.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastAppliedTime</code><br />
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastAppliedTime is when this object was last applied successfully.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastError</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LastError is the most recent apply or delete error for this object.
+It is cleared after a successful apply.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sourceRevision</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SourceRevision is the source digest recorded when this object was applied.</p>
 </td>
 </tr>
 </tbody>
