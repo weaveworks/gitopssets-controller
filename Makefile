@@ -137,6 +137,26 @@ release: manifests kustomize ## Generate a release file
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > release.yaml
 
+# Platforms attached to a GitHub release. The module replace directive means
+# `go install ...@latest` does not build this CLI, so the release publishes binaries.
+CLI_DIST ?= dist/cli
+CLI_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
+
+.PHONY: cli-release
+cli-release: ## Cross-compile gitopssets-cli binaries and checksums for a GitHub release
+	rm -rf $(CLI_DIST)
+	mkdir -p $(CLI_DIST)
+	@for platform in $(CLI_PLATFORMS); do \
+		os=$${platform%/*}; \
+		arch=$${platform#*/}; \
+		out=$(CLI_DIST)/gitopssets-cli-$${os}-$${arch}; \
+		echo "building $$out"; \
+		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath \
+			-ldflags "-s -w -X main.version=$(VERSION)" \
+			-o $$out ./cmd/gitopssets-cli; \
+	done
+	cd $(CLI_DIST) && shasum -a 256 gitopssets-cli-* > checksums.txt
+
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
