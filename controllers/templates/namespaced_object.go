@@ -1,6 +1,9 @@
 package templates
 
 import (
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -11,7 +14,19 @@ import (
 // https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
 func IsNamespacedObject(obj runtime.Object) bool {
 	return kind(obj) != "Namespace"
+}
 
+func objectIsNamespaced(mapper meta.RESTMapper, obj runtime.Object) (bool, error) {
+	if mapper == nil {
+		return IsNamespacedObject(obj), nil
+	}
+
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return false, fmt.Errorf("failed to determine if %s is namespaced: %w", gvk.Kind, err)
+	}
+	return mapping.Scope.Name() == meta.RESTScopeNameNamespace, nil
 }
 
 func kind(o runtime.Object) string {

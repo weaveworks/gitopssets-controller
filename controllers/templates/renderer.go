@@ -12,6 +12,7 @@ import (
 	"dario.cat/mergo"
 	"github.com/Masterminds/sprig/v3"
 	"github.com/gitops-tools/pkg/sanitize"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	yamlserializer "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -36,6 +37,12 @@ var templateFuncs template.FuncMap = makeTemplateFunctions()
 // Render parses the GitOpsSet and renders the template resources using
 // the configured generators and templates.
 func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator) ([]*unstructured.Unstructured, error) {
+	return RenderWithMapper(ctx, r, configuredGenerators, nil)
+}
+
+// RenderWithMapper renders templates and uses mapper to decide whether an
+// object is namespaced. A nil mapper keeps the historical kind check.
+func RenderWithMapper(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator, mapper meta.RESTMapper) ([]*unstructured.Unstructured, error) {
 	rendered := []*unstructured.Unstructured{}
 
 	index := 0
@@ -48,7 +55,7 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 		for _, params := range generated {
 			for _, param := range params {
 				for _, template := range r.Spec.Templates {
-					res, err := renderTemplateParams(index, template, param, *r)
+					res, err := renderTemplateParams(mapper, index, template, param, *r)
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
@@ -122,7 +129,7 @@ func isNillable(kind reflect.Kind) bool {
 	}
 }
 
-func renderTemplateParams(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
+func renderTemplateParams(mapper meta.RESTMapper, index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
 
 	repeatedParams, err := repeat(index, tmpl, params)
@@ -174,10 +181,16 @@ func renderTemplateParams(index int, tmpl templatesv1.GitOpsSetTemplate, params 
 			delete(unstructuredMap, "status")
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
-			if IsNamespacedObject(uns) {
+			namespaced, err := objectIsNamespaced(mapper, uns)
+			if err != nil {
+				return nil, err
+			}
+			if namespaced {
 				if uns.GetNamespace() == "" {
 					uns.SetNamespace(gs.GetNamespace())
 				}
+			} else if uns.GetNamespace() != "" {
+				return nil, fmt.Errorf("%s is cluster-scoped and cannot set namespace %q", uns.GetKind(), uns.GetNamespace())
 			}
 
 			// Add source labels

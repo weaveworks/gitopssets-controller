@@ -226,7 +226,7 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 }
 
 func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {
-	resources, err := templates.Render(ctx, gitOpsSet, instantiatedGenerators)
+	resources, err := templates.RenderWithMapper(ctx, gitOpsSet, instantiatedGenerators, r.Mapper)
 	if err != nil {
 		return nil, err
 	}
