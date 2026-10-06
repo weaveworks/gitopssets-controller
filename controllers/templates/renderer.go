@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"text/template"
 
@@ -92,9 +93,10 @@ func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any
 				continue
 			}
 
-			if !v.IsNil() {
-				repeated = append(repeated, v.Interface())
+			if isNillable(v.Kind()) && v.IsNil() {
+				continue
 			}
+			repeated = append(repeated, v.Interface())
 		}
 	}
 
@@ -109,6 +111,15 @@ func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any
 	}
 
 	return elements, nil
+}
+
+func isNillable(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return true
+	default:
+		return false
+	}
 }
 
 func renderTemplateParams(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any, gs templatesv1.GitOpsSet) ([]*unstructured.Unstructured, error) {
