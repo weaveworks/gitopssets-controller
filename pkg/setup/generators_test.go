@@ -9,12 +9,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta2"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
 
-	"github.com/weaveworks/gitopssets-controller/test"
+	"github.com/gitops-tools/gitopssets-controller/test"
 )
 
 func TestNewSchemeForGenerators(t *testing.T) {

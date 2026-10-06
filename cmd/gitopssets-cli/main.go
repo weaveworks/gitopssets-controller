@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/gitops-tools/gitopssets-controller/pkg/cmd"
 	"github.com/spf13/cobra"
-	"github.com/weaveworks/gitopssets-controller/pkg/cmd"
 )
 
 func main() {

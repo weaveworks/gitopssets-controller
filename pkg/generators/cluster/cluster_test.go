@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -11,9 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
 )
 
 func TestClusterGenerator_Generate(t *testing.T) {
@@ -122,7 +121,7 @@ func TestClusterGenerator_Generate(t *testing.T) {
 			c := newFakeClient(t, tt.clusters...)
 			g := NewGenerator(logr.Discard(), c)
 
-			gotParams, err := g.Generate(context.TODO(), tt.sg, nil)
+			gotParams, err := g.Generate(t.Context(), tt.sg, nil)
 
 			if tt.errContains != "" {
 				assert.Contains(t, err.Error(), tt.errContains)

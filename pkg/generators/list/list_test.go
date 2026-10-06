@@ -1,14 +1,13 @@
 package list
 
 import (
-	"context"
 	"testing"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/test"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
@@ -16,7 +15,7 @@ var _ generators.Generator = (*ListGenerator)(nil)
 
 func TestGenerate_with_no_lists(t *testing.T) {
 	gen := GeneratorFactory(logr.Discard(), nil)
-	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
+	got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
 		t.Errorf("got an error with no list: %s", err)
@@ -48,7 +47,7 @@ func TestGenerate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			gen := GeneratorFactory(logr.Discard(), nil)
-			got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
+			got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
 				List: &templatesv1.ListGenerator{
 					Elements: tt.elements,
 				},
@@ -88,7 +87,7 @@ func TestGenerate_errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			gen := GeneratorFactory(logr.Discard(), nil)
-			_, err := gen.Generate(context.TODO(), tt.generator, nil)
+			_, err := gen.Generate(t.Context(), tt.generator, nil)
 
 			test.AssertErrorMatch(t, tt.wantErr, err)
 		})

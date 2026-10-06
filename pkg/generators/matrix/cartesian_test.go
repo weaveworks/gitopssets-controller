@@ -3,23 +3,20 @@ package matrix
 import (
 	"testing"
 
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/google/go-cmp/cmp"
-	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 func TestCartesian(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		generated []generatedElements
 		expected  []map[string]any
 	}{
-		{
-			name:      "empty slices",
+		"empty slices": {
 			generated: []generatedElements{},
 			expected:  []map[string]any{},
 		},
-		{
-			name: "one slice",
+		"one slice": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -30,8 +27,7 @@ func TestCartesian(t *testing.T) {
 			},
 			expected: []map[string]any{{"a": 1}, {"a": 2}},
 		},
-		{
-			name: "simple slices",
+		"simple slices": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -52,8 +48,7 @@ func TestCartesian(t *testing.T) {
 				{"cheese": 1, "bag": 1},
 			},
 		},
-		{
-			name: "named generators",
+		"named generators": {
 			generated: []generatedElements{
 				{
 					name: "foods",
@@ -97,9 +92,7 @@ func TestCartesian(t *testing.T) {
 				},
 			},
 		},
-
-		{
-			name: "both slices have one element",
+		"both slices have one element": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -116,8 +109,7 @@ func TestCartesian(t *testing.T) {
 				{"a": 1, "b": 2},
 			},
 		},
-		{
-			name: "both slices have multiple elements",
+		"both slices have multiple elements": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -139,8 +131,7 @@ func TestCartesian(t *testing.T) {
 				{"a": 2, "b": 4},
 			},
 		},
-		{
-			name: "overlapping values and different ordering",
+		"overlapping values and different ordering": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -160,8 +151,7 @@ func TestCartesian(t *testing.T) {
 				{"name": "test1", "value": "value4"},
 			},
 		},
-		{
-			name: "nested maps",
+		"nested maps": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -183,8 +173,7 @@ func TestCartesian(t *testing.T) {
 				{"a": 4, "b": map[string]any{"c": 5, "d": 6}, "e": 10, "f": map[string]any{"g": 11, "h": 12}},
 			},
 		},
-		{
-			name: "three slices",
+		"three slices": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -206,8 +195,7 @@ func TestCartesian(t *testing.T) {
 				{"a": 1, "b": 2, "c": 3},
 			},
 		},
-		{
-			name: "longer slices",
+		"longer slices": {
 			generated: []generatedElements{
 				{
 					elements: []map[string]any{
@@ -237,8 +225,7 @@ func TestCartesian(t *testing.T) {
 				{"aaaaa": 1, "b": 2, "c": 3},
 			},
 		},
-		{
-			name: "real-world example",
+		"real-world example": {
 			generated: []generatedElements{
 				{
 					name: "staging",
@@ -316,8 +303,8 @@ func TestCartesian(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := cartesian(tt.generated)
 			test.AssertNoError(t, err)
 			if diff := cmp.Diff(tt.expected, result); diff != "" {

@@ -1,12 +1,11 @@
 package ocirepository
 
 import (
-	"context"
 	"testing"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/tar"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
@@ -15,9 +14,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/test"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/test"
 )
 
 const testRetries int = 3
@@ -28,7 +27,7 @@ var testFetcher = fetch.NewArchiveFetcher(testRetries, tar.UnlimitedUntarSize, t
 
 func TestGenerate_with_no_OCIRepository(t *testing.T) {
 	gen := GeneratorFactory(testFetcher)(logr.Discard(), nil)
-	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
+	got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
 		t.Errorf("got an error with no OCIRepository: %s", err)
@@ -86,7 +85,7 @@ func TestGenerate(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			gen := NewGenerator(logr.Discard(), newFakeClient(t, tt.objects...), testFetcher)
-			got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
+			got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
 				OCIRepository: tt.generator,
 			},
 				&templatesv1.GitOpsSet{
@@ -177,7 +176,7 @@ func TestGenerate_errors(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			gen := GeneratorFactory(testFetcher)(logr.Discard(), newFakeClient(t, tt.objects...))
-			_, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{
+			_, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
 				OCIRepository: tt.generator,
 			},
 				&templatesv1.GitOpsSet{
@@ -201,7 +200,7 @@ func TestGenerate_errors(t *testing.T) {
 
 func withArchiveURLAndChecksum(archiveURL, xsum string) func(*sourcev1beta2.OCIRepository) {
 	return func(gr *sourcev1beta2.OCIRepository) {
-		gr.Status.Artifact = &sourcev1.Artifact{
+		gr.Status.Artifact = &meta.Artifact{
 			URL:    archiveURL,
 			Digest: xsum,
 		}

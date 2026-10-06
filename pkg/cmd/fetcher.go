@@ -29,16 +29,16 @@ type ProxyArchiveFetcher struct {
 	maxUntarSize int
 }
 
-// Fetch implements the ArchiveFetcher implementation, but uses the Kube service
+// FetchWithContext implements the ArchiveFetcher implementation, but uses the Kube service
 // proxy mechanism to get the archive.
-func (p *ProxyArchiveFetcher) Fetch(archiveURL, checksum, dir string) error {
+func (p *ProxyArchiveFetcher) FetchWithContext(ctx context.Context, archiveURL, checksum, dir string) error {
 	parsed, err := parseArtifactURL(archiveURL)
 	if err != nil {
 		return err
 	}
 
 	responseWrapper := p.Client.Services(parsed.namespace).ProxyGet(parsed.scheme, parsed.name, parsed.port, parsed.path, nil)
-	b, err := responseWrapper.DoRaw(context.TODO())
+	b, err := responseWrapper.DoRaw(ctx)
 	if err != nil {
 		return err
 	}

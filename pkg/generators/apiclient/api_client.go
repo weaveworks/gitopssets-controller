@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/go-logr/logr"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/jsonpath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,7 @@ var DefaultClientFactory = func(config *tls.Config) *http.Client {
 
 	return &http.Client{
 		Transport: transport,
+		Timeout:   30 * time.Second,
 	}
 }
 
@@ -91,7 +93,9 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Cap the response body to a reasonable size to avoid memory exhaustion.
+	const maxResponseBytes = 5 * 1024 * 1024 // 5MiB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		g.Logger.Error(err, "failed to read response", "endpoint", sg.APIClient.Endpoint)
 		return nil, err
@@ -99,7 +103,8 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 
 	// Anything 400+ is an error?
 	if resp.StatusCode >= http.StatusBadRequest {
-		g.Logger.Info("failed to fetch endpoint", "endpoint", sg.APIClient.Endpoint, "statusCode", resp.StatusCode, "response", string(body))
+		// Avoid logging full body to prevent leaking secrets; log status and length only.
+		g.Logger.Info("failed to fetch endpoint", "endpoint", sg.APIClient.Endpoint, "statusCode", resp.StatusCode, "responseLen", len(body))
 		return nil, fmt.Errorf("got %d response from endpoint %s", resp.StatusCode, sg.APIClient.Endpoint)
 	}
 
@@ -130,6 +135,15 @@ func (g *APIClientGenerator) createRequest(ctx context.Context, ac *templatesv1.
 	var body io.Reader
 	if ac.Body != nil {
 		body = bytes.NewReader(ac.Body.Raw)
+	}
+
+	// Validate scheme to http/https only and ensure URL parses correctly.
+	u, err := url.Parse(ac.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endpoint URL %q: %w", ac.Endpoint, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported URL scheme %q for endpoint %s", u.Scheme, ac.Endpoint)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, ac.Endpoint, body)
@@ -264,6 +278,9 @@ func addHeadersFromSecretToRequest(ctx context.Context, k8sClient client.Reader,
 	}
 
 	for k, v := range s.Data {
+		if isUnsafeHeader(k) {
+			continue
+		}
 		req.Header.Set(k, string(v))
 	}
 
@@ -277,8 +294,22 @@ func addHeadersFromConfigMapToRequest(ctx context.Context, k8sClient client.Read
 	}
 
 	for k, v := range configMap.Data {
+		if isUnsafeHeader(k) {
+			continue
+		}
 		req.Header.Set(k, v)
 	}
 
 	return nil
+}
+
+// isUnsafeHeader filters out hop-by-hop and sensitive headers that should not be injected.
+func isUnsafeHeader(h string) bool {
+	// Per RFC 7230 section 6.1 hop-by-hop headers and other sensitive headers.
+	switch http.CanonicalHeaderKey(h) {
+	case "Connection", "Proxy-Connection", "Keep-Alive", "Transfer-Encoding", "Upgrade", "Trailer", "Host":
+		return true
+	default:
+		return false
+	}
 }

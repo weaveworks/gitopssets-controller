@@ -1,22 +1,21 @@
 package matrix
 
 import (
-	"context"
 	"testing"
 	"time"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/tar"
-	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/pullrequests"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators/list"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators/pullrequests"
-	"github.com/weaveworks/gitopssets-controller/test"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -333,7 +332,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 				"List":          list.GeneratorFactory,
 				"GitRepository": gitrepository.GeneratorFactory(fetch.NewArchiveFetcher(1, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, "")),
 			})
-			matrix, err := g.Generate(context.TODO(), tt.sg, tt.ks)
+			matrix, err := g.Generate(t.Context(), tt.sg, tt.ks)
 			test.AssertErrorMatch(t, tt.expectedErrorStr, err)
 
 			if diff := cmp.Diff(tt.expectedMatrix, matrix); diff != "" {
@@ -376,7 +375,7 @@ func TestDisabledGenerators(t *testing.T) {
 		},
 	}
 
-	_, err := gen.Generate(context.TODO(), sg, ks)
+	_, err := gen.Generate(t.Context(), sg, ks)
 	test.AssertErrorMatch(t, `generator GitRepository not enabled`, err)
 }
 
@@ -555,7 +554,7 @@ func newGitRepository(archiveURL, xsum string) *sourcev1beta2.GitRepository {
 			Namespace: testNamespace,
 		},
 		Status: sourcev1beta2.GitRepositoryStatus{
-			Artifact: &sourcev1.Artifact{
+			Artifact: &meta.Artifact{
 				URL:    archiveURL,
 				Digest: xsum,
 			},

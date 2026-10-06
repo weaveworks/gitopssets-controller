@@ -1,7 +1,6 @@
 package apiclient
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -22,16 +21,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/test"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/test"
 )
 
 var _ generators.Generator = (*APIClientGenerator)(nil)
 
 func TestGenerate_with_no_generator(t *testing.T) {
 	gen := GeneratorFactory(DefaultClientFactory)(logr.Discard(), nil)
-	_, err := gen.Generate(context.TODO(), nil, nil)
+	_, err := gen.Generate(t.Context(), nil, nil)
 
 	if err != generators.ErrEmptyGitOpsSet {
 		t.Errorf("got error %v", err)
@@ -40,7 +39,7 @@ func TestGenerate_with_no_generator(t *testing.T) {
 
 func TestGenerate_with_no_config(t *testing.T) {
 	gen := GeneratorFactory(DefaultClientFactory)(logr.Discard(), nil)
-	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
+	got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
 		t.Errorf("got an error with no pull requests: %s", err)
@@ -233,7 +232,7 @@ func TestGenerate(t *testing.T) {
 				APIClient: tt.apiClient,
 			}
 
-			got, err := gen.Generate(context.TODO(), &gsg,
+			got, err := gen.Generate(t.Context(), &gsg,
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo-set",
@@ -352,7 +351,7 @@ func TestGenerate_errors(t *testing.T) {
 				APIClient: tt.apiClient,
 			}
 
-			_, err := gen.Generate(context.TODO(), &gsg,
+			_, err := gen.Generate(t.Context(), &gsg,
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo-set",
@@ -522,7 +521,7 @@ func Test_addHeadersFromSecretToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := addHeadersFromSecretToRequest(context.TODO(), kc, req, client.ObjectKeyFromObject(secret)); err != nil {
+	if err := addHeadersFromSecretToRequest(t.Context(), kc, req, client.ObjectKeyFromObject(secret)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -540,7 +539,7 @@ func Test_addHeadersFromConfigMapToRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := addHeadersFromConfigMapToRequest(context.TODO(), kc, req, client.ObjectKeyFromObject(configMap)); err != nil {
+	if err := addHeadersFromConfigMapToRequest(t.Context(), kc, req, client.ObjectKeyFromObject(configMap)); err != nil {
 		t.Fatal(err)
 	}
 

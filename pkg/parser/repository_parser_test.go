@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"context"
 	"os"
 	"sort"
 	"strings"
@@ -12,8 +11,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/test"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/test"
 )
 
 func TestGenerateFromFiles(t *testing.T) {
@@ -51,7 +50,7 @@ func TestGenerateFromFiles(t *testing.T) {
 	for _, tt := range fetchTests {
 		t.Run(tt.description, func(t *testing.T) {
 			parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
-			parsed, err := parser.GenerateFromFiles(context.TODO(), srv.URL+tt.filename, strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
+			parsed, err := parser.GenerateFromFiles(t.Context(), srv.URL+tt.filename, strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +66,7 @@ func TestGenerateFromFiles_bad_yaml(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/bad_files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/bad_files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/dev.yaml"}})
+	_, err := parser.GenerateFromFiles(t.Context(), srv.URL+"/bad_files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/bad_files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/dev.yaml"}})
 	if err.Error() != `failed to parse archive file "files/dev.yaml": error converting YAML to JSON: yaml: line 4: could not find expected ':'` {
 		t.Fatalf("got error %v", err)
 	}
@@ -77,7 +76,7 @@ func TestGenerateFromFiles_missing_file(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
+	_, err := parser.GenerateFromFiles(t.Context(), srv.URL+"/files.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to read from archive file \"files/test.yaml\"") {
 		t.Fatalf("got error %v", err)
 	}
@@ -87,7 +86,7 @@ func TestGenerateFromFiles_missing_url(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromFiles(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
+	_, err := parser.GenerateFromFiles(t.Context(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")), []templatesv1.RepositoryGeneratorFileItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to get archive URL") {
 		t.Fatalf("got error %v", err)
 	}
@@ -165,7 +164,7 @@ func TestGenerateFromDirectories(t *testing.T) {
 	for _, tt := range fetchTests {
 		t.Run(tt.description, func(t *testing.T) {
 			parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
-			parsed, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+tt.filename,
+			parsed, err := parser.GenerateFromDirectories(t.Context(), srv.URL+tt.filename,
 				strings.TrimSpace(mustReadFile(t, "testdata"+tt.filename+".sum")), tt.items)
 			if err != nil {
 				t.Fatal(err)
@@ -183,7 +182,7 @@ func TestGenerateFromDirectories_missing_dir(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	generated, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/directories.tar.gz",
+	generated, err := parser.GenerateFromDirectories(t.Context(), srv.URL+"/directories.tar.gz",
 		strings.TrimSpace(mustReadFile(t, "testdata/directories.tar.gz.sum")), []templatesv1.RepositoryGeneratorDirectoryItem{{Path: "files"}})
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +197,7 @@ func TestGenerateFromDirectories_missing_url(t *testing.T) {
 	parser := NewRepositoryParser(logr.Discard(), fetch.NewArchiveFetcher(2, tar.UnlimitedUntarSize, tar.UnlimitedUntarSize, ""))
 	srv := test.StartFakeArchiveServer(t, "testdata")
 
-	_, err := parser.GenerateFromDirectories(context.TODO(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")),
+	_, err := parser.GenerateFromDirectories(t.Context(), srv.URL+"/missing.tar.gz", strings.TrimSpace(mustReadFile(t, "testdata/files.tar.gz.sum")),
 		[]templatesv1.RepositoryGeneratorDirectoryItem{{Path: "files/test.yaml"}})
 	if !strings.Contains(err.Error(), "failed to get archive URL") {
 		t.Fatalf("got error %v", err)

@@ -1,19 +1,18 @@
 package pullrequests
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
 	fakescm "github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/jenkins-x/go-scm/scm/factory"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,7 +24,7 @@ var _ generators.Generator = (*PullRequestGenerator)(nil)
 
 func TestGenerate_with_no_generator(t *testing.T) {
 	gen := GeneratorFactory(logr.Discard(), nil)
-	_, err := gen.Generate(context.TODO(), nil, nil)
+	_, err := gen.Generate(t.Context(), nil, nil)
 
 	if err != generators.ErrEmptyGitOpsSet {
 		t.Errorf("got error %v", err)
@@ -34,7 +33,7 @@ func TestGenerate_with_no_generator(t *testing.T) {
 
 func TestGenerate_with_no_config(t *testing.T) {
 	gen := GeneratorFactory(logr.Discard(), nil)
-	got, err := gen.Generate(context.TODO(), &templatesv1.GitOpsSetGenerator{}, nil)
+	got, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{}, nil)
 
 	if err != nil {
 		t.Errorf("got an error with no pull requests: %s", err)
@@ -306,7 +305,7 @@ func TestGenerate(t *testing.T) {
 				},
 			}
 
-			got, err := gen.Generate(context.TODO(), &gsg,
+			got, err := gen.Generate(t.Context(), &gsg,
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo-set",
@@ -374,7 +373,7 @@ func TestGenerate_errors(t *testing.T) {
 				},
 			}
 
-			_, err := gen.Generate(context.TODO(), &gsg,
+			_, err := gen.Generate(t.Context(), &gsg,
 				&templatesv1.GitOpsSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "demo-set",

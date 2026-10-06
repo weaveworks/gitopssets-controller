@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/go-logr/logr"
 	"github.com/google/go-containerregistry/pkg/name"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,7 +56,7 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 
 	result := []map[string]any{}
 
-	if imagePolicy.Status.LatestImage == "" {
+	if imagePolicy.Status.LatestRef == nil {
 		g.Logger.Info("image policy has not calculated the latest image")
 		return nil, generators.ArtifactError("ImagePolicy",
 			types.NamespacedName{
@@ -65,19 +65,22 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 			})
 	}
 
-	latestTag, err := name.NewTag(imagePolicy.Status.LatestImage)
+	latestTag, err := name.NewTag(imagePolicy.Status.LatestRef.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing latest ref tag: %w", err)
 	}
 
-	g.Logger.Info("image policy", "latestImage", imagePolicy.Status.LatestImage, "latestTag", latestTag.TagStr(), "previousImage", imagePolicy.Status.ObservedPreviousImage)
+	g.Logger.Info("image policy",
+		"latestImage", imageRefString(imagePolicy.Status.LatestRef),
+		"latestTag", latestTag.TagStr(),
+		"previousImage", imageRefString(imagePolicy.Status.ObservedPreviousRef))
 
-	// This stores empty strings the for the previous tag if it's empty because
+	// This stores empty strings for the previous tag if it's empty because
 	// that saves users having to check for the existence of the fields in their
 	// templates.
 	previousTag := ""
-	if imagePolicy.Status.ObservedPreviousImage != "" {
-		parsedTag, err := name.NewTag(imagePolicy.Status.ObservedPreviousImage)
+	if imagePolicy.Status.ObservedPreviousRef != nil {
+		parsedTag, err := name.NewTag(imagePolicy.Status.ObservedPreviousRef.String())
 		if err != nil {
 			return nil, err
 		}
@@ -86,10 +89,10 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 	}
 
 	generated := map[string]any{
-		"latestImage":   imagePolicy.Status.LatestImage,
+		"latestImage":   imageRefString(imagePolicy.Status.LatestRef),
 		"image":         latestTag.Repository.Name(),
 		"latestTag":     latestTag.TagStr(),
-		"previousImage": imagePolicy.Status.ObservedPreviousImage,
+		"previousImage": imageRefString(imagePolicy.Status.ObservedPreviousRef),
 		"previousTag":   previousTag,
 	}
 
@@ -103,4 +106,12 @@ func (g *ImagePolicyGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 // ImagePolicyGenerator is driven by watching a Flux ImagePolicy resource.
 func (g *ImagePolicyGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
 	return generators.NoRequeueInterval
+}
+
+func imageRefString(s *imagev1.ImageRef) string {
+	if s == nil {
+		return ""
+	}
+
+	return s.String()
 }

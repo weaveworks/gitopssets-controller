@@ -1,7 +1,7 @@
 package test
 
 import (
-	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
+	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +13,7 @@ const testNamespace = "default"
 func NewImagePolicy(opts ...func(*imagev1.ImagePolicy)) *imagev1.ImagePolicy {
 	ip := &imagev1.ImagePolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "image.toolkit.fluxcd.io/v1beta2",
+			APIVersion: "image.toolkit.fluxcd.io/v1",
 			Kind:       "ImagePolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,7 +87,7 @@ func NewGitRepository(opts ...func(*sourcev1.GitRepository)) *sourcev1.GitReposi
 			Namespace: testNamespace,
 		},
 		Spec: sourcev1.GitRepositorySpec{
-			URL: "https://github.com/weaveworks/gitopssets-controller",
+			URL: "https://github.com/gitops-tools/gitopssets-controller",
 		},
 	}
 

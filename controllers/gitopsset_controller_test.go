@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"encoding/json"
 	"path/filepath"
 	"sort"
@@ -31,12 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
+	"github.com/gitops-tools/gitopssets-controller/pkg/generators/list"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators/gitrepository"
-	"github.com/weaveworks/gitopssets-controller/pkg/generators/list"
-	"github.com/weaveworks/gitopssets-controller/test"
 )
 
 var kustomizationGVK = schema.GroupVersionKind{
@@ -100,10 +99,10 @@ func TestReconciliation(t *testing.T) {
 	}
 
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
-	test.AssertNoError(t, k8sClient.Create(context.TODO(), test.NewNamespace("test-ns")))
+	test.AssertNoError(t, k8sClient.Create(t.Context(), test.NewNamespace("test-ns")))
 
 	t.Run("reconciling creation of new resources", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t))
 		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
 
@@ -124,7 +123,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling creation of resources in different namespaces", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 
 		// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
 		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("engineering-dev-ns")))
@@ -156,7 +155,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling cleanup when deleted", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t))
 		// manually deletes below
 
@@ -179,7 +178,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("error conditions", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -191,7 +190,7 @@ func TestReconciliation(t *testing.T) {
 								"testing":         "newVersion",
 							}
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: &meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -218,7 +217,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling removal of resources", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
 				{
@@ -271,7 +270,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling update of resources", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -317,7 +316,7 @@ func TestReconciliation(t *testing.T) {
 							"testing":         "newVersion",
 						}
 						ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
-						ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
+						ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: &meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 						ks.Spec.Force = true
 					})),
 				},
@@ -339,7 +338,7 @@ func TestReconciliation(t *testing.T) {
 				"sets.gitops.pro/namespace": "default",
 			}
 			k.Spec.Path = "./templated/clusters/engineering-dev/"
-			k.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "engineering-dev"}}
+			k.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: &meta.SecretKeyReference{Name: "engineering-dev"}}
 			k.Spec.Force = true
 		})
 
@@ -358,7 +357,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling update of configmaps", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -450,7 +449,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling with no generated resources", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			// No templates to generate resources from
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{}
@@ -475,7 +474,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling update of deleted resource", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -487,7 +486,7 @@ func TestReconciliation(t *testing.T) {
 								"testing":         "newVersion",
 							}
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: &meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -533,7 +532,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("service account impersonation", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.ServiceAccountName = "test-sa"
 		})
@@ -564,7 +563,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("default service account impersonation", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t)
 		gs = createAndReconcileToFinalizedState(t, k8sClient, reconciler, gs)
 		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
@@ -598,7 +597,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling update of resources with service account", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -701,7 +700,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling with annotation-triggered reconciliation", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.ObjectMeta.Annotations = map[string]string{
 				fluxMeta.ReconcileRequestAnnotation: time.Now().Format(time.RFC3339Nano),
@@ -722,7 +721,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling creation when suspended", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Suspend = true
 		}))
@@ -737,7 +736,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("reconciling when gitrepository has no artifact", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		emptyGR := test.NewGitRepository()
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, emptyGR)))
 		defer deleteObject(t, k8sClient, emptyGR)
@@ -768,7 +767,7 @@ func TestReconciliation(t *testing.T) {
 	})
 
 	t.Run("error conditions - existing resource", func(t *testing.T) {
-		ctx := context.TODO()
+		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
 			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
 				{
@@ -780,7 +779,7 @@ func TestReconciliation(t *testing.T) {
 								"testing":         "newVersion",
 							}
 							ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
-							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
+							ks.Spec.KubeConfig = &meta.KubeConfigReference{SecretRef: &meta.SecretKeyReference{Name: "{{ .Element.cluster }}"}}
 							ks.Spec.Force = true
 						})),
 					},
@@ -1064,7 +1063,7 @@ func deleteAllKustomizations(t *testing.T, cl client.Client) {
 	u := &unstructured.Unstructured{}
 	u.SetGroupVersionKind(kustomizationGVK)
 
-	err := cl.DeleteAllOf(context.TODO(), u, client.InNamespace("default"))
+	err := cl.DeleteAllOf(t.Context(), u, client.InNamespace("default"))
 	if client.IgnoreNotFound(err) != nil {
 		t.Fatal(err)
 	}
@@ -1075,7 +1074,7 @@ func assertResourceDoesNotExist(t *testing.T, cl client.Client, gs *kustomizev1.
 	check := &unstructured.Unstructured{}
 	check.SetGroupVersionKind(kustomizationGVK)
 
-	if err := cl.Get(context.TODO(), client.ObjectKeyFromObject(gs), check); !apierrors.IsNotFound(err) {
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(gs), check); !apierrors.IsNotFound(err) {
 		t.Fatalf("object %v still exists", gs)
 	}
 }
@@ -1084,7 +1083,7 @@ func assertKustomizationsExist(t *testing.T, cl client.Client, ns string, want .
 	t.Helper()
 	gss := &unstructured.UnstructuredList{}
 	gss.SetGroupVersionKind(kustomizationGVK)
-	test.AssertNoError(t, cl.List(context.TODO(), gss, client.InNamespace(ns)))
+	test.AssertNoError(t, cl.List(t.Context(), gss, client.InNamespace(ns)))
 
 	existingNames := func(l []unstructured.Unstructured) []string {
 		names := []string{}
@@ -1105,7 +1104,7 @@ func assertNoKustomizationsExistInNamespace(t *testing.T, cl client.Client, ns s
 	t.Helper()
 	gss := &unstructured.UnstructuredList{}
 	gss.SetGroupVersionKind(kustomizationGVK)
-	test.AssertNoError(t, cl.List(context.TODO(), gss, client.InNamespace(ns)))
+	test.AssertNoError(t, cl.List(t.Context(), gss, client.InNamespace(ns)))
 
 	if len(gss.Items) != 0 {
 		t.Fatalf("want no Kustomizations to exist, got %v", len(gss.Items))
@@ -1136,7 +1135,7 @@ func assertInventoryHasNoItems(t *testing.T, gs *templatesv1.GitOpsSet) {
 
 func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
-	if err := cl.Delete(context.TODO(), obj); err != nil {
+	if err := cl.Delete(t.Context(), obj); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1144,7 +1143,7 @@ func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 // Create the provided GitOpsSet and ensure that it has been setup for
 // finalization.
 func createAndReconcileToFinalizedState(t *testing.T, k8sClient client.Client, r *GitOpsSetReconciler, gs *templatesv1.GitOpsSet) *templatesv1.GitOpsSet {
-	test.AssertNoError(t, k8sClient.Create(context.TODO(), gs))
+	test.AssertNoError(t, k8sClient.Create(t.Context(), gs))
 	reconcileAndAssertFinalizerExists(t, k8sClient, r, gs)
 
 	return gs
@@ -1155,7 +1154,7 @@ func createAndReconcileToFinalizedState(t *testing.T, k8sClient client.Client, r
 // This is needed because the reconciler returns after applying the finalizer to
 // avoid race conditions.
 func reconcileAndAssertFinalizerExists(t *testing.T, cl client.Client, reconciler *GitOpsSetReconciler, gs *templatesv1.GitOpsSet) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
 	test.AssertNoError(t, err)
 
@@ -1196,7 +1195,7 @@ func makeTestGitOpsSet(t *testing.T, opts ...func(*templatesv1.GitOpsSet)) *temp
 									Name: "demo-repo",
 								},
 								KubeConfig: &meta.KubeConfigReference{
-									SecretRef: meta.SecretKeyReference{
+									SecretRef: &meta.SecretKeyReference{
 										Name: "{{ .Element.cluster }}",
 									},
 								},
@@ -1258,7 +1257,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 		ObjectMeta: metav1.ObjectMeta{Name: "test-role", Namespace: namespace},
 		Rules:      rules,
 	}
-	if err := cl.Create(context.TODO(), role); err != nil {
+	if err := cl.Create(t.Context(), role); err != nil {
 		t.Fatalf("failed to write role: %s", err)
 	}
 	t.Cleanup(func() {
@@ -1280,7 +1279,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
-	if err := cl.Create(context.TODO(), binding); err != nil {
+	if err := cl.Create(t.Context(), binding); err != nil {
 		t.Fatalf("failed to write role-binding: %s", err)
 	}
 	t.Cleanup(func() {
@@ -1289,7 +1288,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 }
 func deleteGitOpsSetAndFinalize(t *testing.T, cl client.Client, reconciler *GitOpsSetReconciler, gs *templatesv1.GitOpsSet) {
 	t.Helper()
-	ctx := context.TODO()
+	ctx := t.Context()
 	if gs.Spec.Suspend {
 		gs.Spec.Suspend = false
 		test.AssertNoError(t, cl.Update(ctx, gs))

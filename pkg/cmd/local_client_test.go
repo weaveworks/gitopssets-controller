@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/gitops-tools/gitopssets-controller/test"
 	"github.com/go-logr/logr"
-	"github.com/weaveworks/gitopssets-controller/test"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,7 +17,7 @@ func TestLocalObjectReader_Get_v1GitRepository(t *testing.T) {
 	v := localObjectReader{logger: logr.Discard(), repositoryRoot: "testdata"}
 
 	gr := sourcev1.GitRepository{}
-	test.AssertNoError(t, v.Get(context.TODO(), client.ObjectKey{Name: "testing", Namespace: "testing"}, &gr))
+	test.AssertNoError(t, v.Get(t.Context(), client.ObjectKey{Name: "testing", Namespace: "testing"}, &gr))
 
 	rootURL, err := filepath.Abs("testdata")
 	test.AssertNoError(t, err)
@@ -32,7 +31,7 @@ func TestLocalObjectReader_Get_v1beta2GitRepository(t *testing.T) {
 	v := localObjectReader{logger: logr.Discard(), repositoryRoot: "testdata"}
 
 	gr := v1beta2.GitRepository{}
-	test.AssertNoError(t, v.Get(context.TODO(), client.ObjectKey{Name: "demo-gr", Namespace: "testing"}, &gr))
+	test.AssertNoError(t, v.Get(t.Context(), client.ObjectKey{Name: "demo-gr", Namespace: "testing"}, &gr))
 
 	rootURL, err := filepath.Abs("testdata")
 	test.AssertNoError(t, err)
@@ -46,7 +45,7 @@ func TestLocalObjectReader_Get_v1beta2OCIRepository(t *testing.T) {
 	v := localObjectReader{logger: logr.Discard(), repositoryRoot: "testdata"}
 
 	gr := v1beta2.OCIRepository{}
-	test.AssertNoError(t, v.Get(context.TODO(), client.ObjectKey{Name: "demo-or", Namespace: "testing"}, &gr))
+	test.AssertNoError(t, v.Get(t.Context(), client.ObjectKey{Name: "demo-or", Namespace: "testing"}, &gr))
 
 	rootURL, err := filepath.Abs("testdata")
 	test.AssertNoError(t, err)

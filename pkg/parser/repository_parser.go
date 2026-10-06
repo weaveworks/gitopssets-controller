@@ -11,13 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
 
-	templatesv1 "github.com/weaveworks/gitopssets-controller/api/v1alpha1"
+	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 )
 
 // ArchiveFetcher implementations should get the URL, validate the contents
 // against the checksum and leave the unpacked version in the dir.
 type ArchiveFetcher interface {
-	Fetch(archiveURL, checksum, dir string) error
+	FetchWithContext(ctx context.Context, archiveURL, checksum, dir string) error
 }
 
 // RepositoryParser fetches archives from a Repository and parses the
@@ -44,7 +44,7 @@ func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, ch
 		}
 	}()
 
-	if err := p.fetcher.Fetch(archiveURL, checksum, tempDir); err != nil {
+	if err := p.fetcher.FetchWithContext(ctx, archiveURL, checksum, tempDir); err != nil {
 		return nil, fmt.Errorf("failed to get archive URL %s: %w", archiveURL, err)
 	}
 
@@ -82,7 +82,7 @@ func (p *RepositoryParser) GenerateFromDirectories(ctx context.Context, archiveU
 		}
 	}()
 
-	if err := p.fetcher.Fetch(archiveURL, checksum, tempDir); err != nil {
+	if err := p.fetcher.FetchWithContext(ctx, archiveURL, checksum, tempDir); err != nil {
 		return nil, fmt.Errorf("failed to get archive URL %s: %w", archiveURL, err)
 	}
 
