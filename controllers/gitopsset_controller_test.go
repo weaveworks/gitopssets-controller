@@ -124,6 +124,34 @@ func TestReconciliation(t *testing.T) {
 		assertKustomizationsExist(t, k8sClient, "default", "engineering-dev-demo", "engineering-prod-demo", "engineering-preprod-demo")
 	})
 
+	t.Run("namespace is applied before objects in that namespace", func(t *testing.T) {
+		ctx := t.Context()
+		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Name = "namespace-order"
+			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{{
+				List: &templatesv1.ListGenerator{Elements: []apiextensionsv1.JSON{{Raw: []byte(`{"ns":"preview-order"}`)}}},
+			}}
+			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{
+				{Content: runtime.RawExtension{Raw: []byte(`{"apiVersion":"v1","kind":"ConfigMap","metadata":{"name":"app","namespace":"{{ .Element.ns }}"},"data":{"ok":"yes"}}`)}},
+				{Content: runtime.RawExtension{Raw: []byte(`{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"{{ .Element.ns }}"}}`)}},
+			}
+		}))
+		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
+
+		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
+		test.AssertNoError(t, err)
+
+		updated := &templatesv1.GitOpsSet{}
+		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
+		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "2 resources created")
+
+		cm := &corev1.ConfigMap{}
+		test.AssertNoError(t, k8sClient.Get(ctx, types.NamespacedName{Namespace: "preview-order", Name: "app"}, cm))
+		if cm.Data["ok"] != "yes" {
+			t.Fatalf("configmap data = %#v", cm.Data)
+		}
+	})
+
 	t.Run("reconciling creation of resources in different namespaces", func(t *testing.T) {
 		ctx := t.Context()
 

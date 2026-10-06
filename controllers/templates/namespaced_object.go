@@ -16,7 +16,9 @@ func IsNamespacedObject(obj runtime.Object) bool {
 	return kind(obj) != "Namespace"
 }
 
-func objectIsNamespaced(mapper meta.RESTMapper, obj runtime.Object) (bool, error) {
+// ObjectIsNamespaced reports whether obj is a namespaced resource.
+// A nil mapper keeps the historical kind check.
+func ObjectIsNamespaced(mapper meta.RESTMapper, obj runtime.Object) (bool, error) {
 	if mapper == nil {
 		return IsNamespacedObject(obj), nil
 	}

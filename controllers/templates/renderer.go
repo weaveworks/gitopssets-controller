@@ -184,7 +184,7 @@ func renderTemplateParams(mapper meta.RESTMapper, index int, tmpl templatesv1.Gi
 			}
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
-			namespaced, err := objectIsNamespaced(mapper, uns)
+			namespaced, err := ObjectIsNamespaced(mapper, uns)
 			if err != nil {
 				return nil, err
 			}

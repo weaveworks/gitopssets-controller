@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	imagev1 "github.com/fluxcd/image-reflector-controller/api/v1"
@@ -181,6 +182,15 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 
+	var retry *retryAfterError
+	if errors.As(err, &retry) {
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.WaitingForNamespaceReason, err.Error())
+		if patchErr := r.patchStatus(ctx, req, gitOpsSet.Status); patchErr != nil {
+			return ctrl.Result{}, patchErr
+		}
+		return ctrl.Result{RequeueAfter: retry.after}, nil
+	}
+
 	if err != nil {
 		// We can return here because when the resource artifact is updated, this
 		// will trigger a reconciliation.
@@ -243,6 +253,10 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	if err != nil {
 		return nil, err
 	}
+	resources, err = orderResourcesForApply(r.Mapper, resources)
+	if err != nil {
+		return nil, err
+	}
 	logger.Info("rendered templates", "resourceCount", len(resources))
 
 	var inventoryErr error
@@ -299,6 +313,9 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		}
 
 		if err := k8sClient.Create(ctx, newResource); err != nil {
+			if missingNamespace(err) {
+				return &templatesv1.ResourceInventory{Entries: entries.list()}, &retryAfterError{after: 5 * time.Second, err: err}
+			}
 			if apierrors.IsAlreadyExists(err) {
 				if err := r.adoptExistingResource(ctx, k8sClient, gitOpsSet, ref, newResource); err != nil {
 					recordFailure(err)
@@ -326,6 +343,43 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	}
 
 	return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
+}
+
+type retryAfterError struct {
+	after time.Duration
+	err   error
+}
+
+func (e *retryAfterError) Error() string { return e.err.Error() }
+
+func (e *retryAfterError) Unwrap() error { return e.err }
+
+func missingNamespace(err error) bool {
+	return apierrors.IsNotFound(err) && strings.Contains(err.Error(), "namespaces ")
+}
+
+func orderResourcesForApply(mapper meta.RESTMapper, resources []*unstructured.Unstructured) ([]*unstructured.Unstructured, error) {
+	ordered := append([]*unstructured.Unstructured(nil), resources...)
+	var scopeErr error
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return applyRank(mapper, ordered[i], &scopeErr) < applyRank(mapper, ordered[j], &scopeErr)
+	})
+	return ordered, scopeErr
+}
+
+func applyRank(mapper meta.RESTMapper, obj *unstructured.Unstructured, scopeErr *error) int {
+	namespaced, err := templates.ObjectIsNamespaced(mapper, obj)
+	if err != nil {
+		*scopeErr = err
+		return 2
+	}
+	if !namespaced && obj.GetKind() == "Namespace" {
+		return 0
+	}
+	if !namespaced {
+		return 1
+	}
+	return 2
 }
 
 func appliedResourceRef(ref templatesv1.ResourceRef, sourceRevision string) templatesv1.ResourceRef {

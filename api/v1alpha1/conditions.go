@@ -18,6 +18,10 @@ const (
 	// SuspendedReason represents a GitOpsSet that is not reconciling because
 	// spec.suspend is true.
 	SuspendedReason string = "Suspended"
+
+	// WaitingForNamespaceReason represents a rendered object whose namespace
+	// does not exist yet.
+	WaitingForNamespaceReason string = "WaitingForNamespace"
 )
 
 // SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.
