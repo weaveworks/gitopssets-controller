@@ -237,6 +237,13 @@ spec:
                       - kind
                       - name
                       type: object
+                    filter:
+                      description: |-
+                        Filter is a CEL expression evaluated against each generated element.
+                        The element map is available as the variable `element`. The expression
+                        must return a boolean. An empty filter keeps every element. For a matrix
+                        generator the filter runs after the cartesian product.
+                      type: string
                     gitRepository:
                       description: GitRepositoryGenerator generates from files in
                         a Flux GitRepository resource.

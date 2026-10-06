@@ -57,6 +57,16 @@ func TestFindRelevantGenerators(t *testing.T) {
 				&matrix.MatrixGenerator{},
 			},
 		},
+		{
+			name: "filter is not a generator",
+			set: templatesv1.GitOpsSetGenerator{
+				Filter: `element.env == "prod"`,
+				List:   &templatesv1.ListGenerator{},
+			},
+			want: []generators.Generator{
+				&list.ListGenerator{},
+			},
+		},
 	}
 
 	for _, tt := range tests {

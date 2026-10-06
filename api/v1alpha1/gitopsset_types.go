@@ -263,6 +263,13 @@ type GitOpsSetGenerator struct {
 	APIClient     *APIClientGenerator     `json:"apiClient,omitempty"`
 	ImagePolicy   *ImagePolicyGenerator   `json:"imagePolicy,omitempty"`
 	Config        *ConfigGenerator        `json:"config,omitempty"`
+
+	// Filter is a CEL expression evaluated against each generated element.
+	// The element map is available as the variable `element`. The expression
+	// must return a boolean. An empty filter keeps every element. For a matrix
+	// generator the filter runs after the cartesian product.
+	// +optional
+	Filter string `json:"filter,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet

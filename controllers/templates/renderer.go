@@ -46,10 +46,16 @@ func RenderWithMapper(ctx context.Context, r *templatesv1.GitOpsSet, configuredG
 	rendered := []*unstructured.Unstructured{}
 
 	index := 0
-	for _, gen := range r.Spec.Generators {
+	for genIndex, gen := range r.Spec.Generators {
 		generated, err := generate(ctx, gen, configuredGenerators, r)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate template for set %s: %w", r.GetName(), err)
+		}
+		for i := range generated {
+			generated[i], err = filterElements(genIndex, gen.Filter, generated[i])
+			if err != nil {
+				return nil, fmt.Errorf("failed to filter generator %d on set %s: %w", genIndex, r.GetName(), err)
+			}
 		}
 
 		for _, params := range generated {

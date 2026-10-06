@@ -26,7 +26,7 @@ func FindRelevantGenerators(setGenerator any, enabledGenerators map[string]Gener
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldName := v.Type().Field(i).Name
-		if !field.CanInterface() || fieldName == "Name" {
+		if !field.CanInterface() || fieldName == "Name" || !nillable(field.Kind()) {
 			continue
 		}
 
@@ -41,4 +41,13 @@ func FindRelevantGenerators(setGenerator any, enabledGenerators map[string]Gener
 	}
 
 	return res, nil
+}
+
+func nillable(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+		return true
+	default:
+		return false
+	}
 }
