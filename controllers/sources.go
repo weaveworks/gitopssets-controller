@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -131,7 +132,10 @@ func (r *GitOpsSetReconciler) snapshotOCI(ctx context.Context, k8sClient client.
 	if gen == nil || gen.RepositoryRef == "" {
 		return templatesv1.AppliedSource{}, true, nil
 	}
-	var repo sourcev1.OCIRepository
+	// The controller watches source.toolkit.fluxcd.io/v1beta2 OCIRepositories.
+	// Reading that version keeps the snapshot on the same cache as the watch,
+	// so an artifact update is not hidden by a stale v1 informer.
+	var repo sourcev1beta2.OCIRepository
 	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: namespace, Name: gen.RepositoryRef}, &repo); err != nil {
 		return templatesv1.AppliedSource{}, false, fmt.Errorf("failed to read OCIRepository %s: %w", gen.RepositoryRef, err)
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,6 +94,9 @@ func TestSnapshotRecordsGitDigestAndAPIInputs(t *testing.T) {
 	if err := sourcev1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
+	if err := sourcev1beta2.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
 	repo := &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "demo"},
 		Status: sourcev1.GitRepositoryStatus{Artifact: &meta.Artifact{
@@ -100,10 +104,20 @@ func TestSnapshotRecordsGitDigestAndAPIInputs(t *testing.T) {
 			Revision: "main@abc",
 		}},
 	}
+	oci := &sourcev1beta2.OCIRepository{
+		ObjectMeta: metav1.ObjectMeta{Name: "charts", Namespace: "demo"},
+		Status: sourcev1beta2.OCIRepositoryStatus{Artifact: &meta.Artifact{
+			Digest:   "sha256:oci",
+			Revision: "1.2.3",
+		}},
+	}
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "demo"}}
 	headers := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "headers", Namespace: "demo"}}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(repo).WithRuntimeObjects(repo, secret, headers).Build()
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(repo, oci).WithRuntimeObjects(repo, oci, secret, headers).Build()
 	if err := cl.Status().Update(t.Context(), repo); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Status().Update(t.Context(), oci); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,6 +125,7 @@ func TestSnapshotRecordsGitDigestAndAPIInputs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "demo"},
 		Spec: templatesv1.GitOpsSetSpec{Generators: []templatesv1.GitOpsSetGenerator{{
 			GitRepository: &templatesv1.GitRepositoryGenerator{RepositoryRef: "app"},
+			OCIRepository: &templatesv1.OCIRepositoryGenerator{RepositoryRef: "charts"},
 			APIClient: &templatesv1.APIClientGenerator{
 				SecretRef:  &templatesv1.LocalObjectReference{Name: "ca"},
 				HeadersRef: &templatesv1.HeadersReference{Kind: "ConfigMap", Name: "headers"},
@@ -121,7 +136,7 @@ func TestSnapshotRecordsGitDigestAndAPIInputs(t *testing.T) {
 	if err != nil || !complete {
 		t.Fatalf("sources=%#v complete=%v err=%v", sources, complete, err)
 	}
-	if len(sources) != 3 || sources[0].Digest != "sha256:abc" || sources[0].Revision != "main@abc" || sources[1].Name != "ca" || sources[2].Name != "headers" {
+	if len(sources) != 4 || sources[0].Digest != "sha256:abc" || sources[0].Revision != "main@abc" || sources[1].Kind != "OCIRepository" || sources[1].Digest != "sha256:oci" || sources[2].Name != "ca" || sources[3].Name != "headers" {
 		t.Fatalf("sources = %#v", sources)
 	}
 
