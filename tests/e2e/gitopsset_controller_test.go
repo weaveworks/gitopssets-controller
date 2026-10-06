@@ -160,21 +160,22 @@ func TestReconcilingPartialApply(t *testing.T) {
 	test.AssertNoError(t, testEnv.Create(ctx, gs))
 	defer deleteGitOpsSetAndWaitForNotFound(t, testEnv, gs)
 
-	waitForGitOpsSetCondition(t, testEnv, gs, `failed to create Resource: configmaps \"engineering-prod-cm\" already exists`)
+	waitForGitOpsSetCondition(t, testEnv, gs, "2 resources created")
 
 	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKeyFromObject(gs), gs))
-	if l := len(gs.Status.Inventory.Entries); l != 1 {
-		t.Errorf("didn't record created resources correctly, got %d, want 1", l)
+	if l := len(gs.Status.Inventory.Entries); l != 2 {
+		t.Errorf("didn't record created resources correctly, got %d, want 2", l)
 	}
 
-	var cm corev1.ConfigMap
-	test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: "engineering-dev-cm", Namespace: "default"}, &cm))
-
-	want := map[string]string{
-		"testing": "engineering-dev",
-	}
-	if diff := cmp.Diff(want, cm.Data); diff != "" {
-		t.Fatalf("failed to generate ConfigMap:\n%s", diff)
+	for _, name := range []string{"engineering-prod", "engineering-dev"} {
+		var cm corev1.ConfigMap
+		test.AssertNoError(t, testEnv.Get(ctx, client.ObjectKey{Name: name + "-cm", Namespace: "default"}, &cm))
+		want := map[string]string{
+			"testing": name,
+		}
+		if diff := cmp.Diff(want, cm.Data); diff != "" {
+			t.Fatalf("failed to generate ConfigMap %s:\n%s", name, diff)
+		}
 	}
 }
 
@@ -985,6 +986,10 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 		c.Data = map[string]string{
 			"testing": "testing-element",
 		}
+		c.SetLabels(map[string]string{
+			"sets.gitops.pro/name":      "other-set",
+			"sets.gitops.pro/namespace": "default",
+		})
 	})
 	test.AssertNoError(t, testEnv.Create(ctx, prodCM))
 	defer deleteObject(t, testEnv, prodCM)
@@ -1025,7 +1030,7 @@ func TestEventsWithFailingReconciling(t *testing.T) {
 
 	g := gomega.NewWithT(t)
 	g.Eventually(func() string {
-		// reconciliation should fail because there is an existing resource.
+		// reconciliation should fail because another GitOpsSet owns the resource.
 		want := []*test.EventData{
 			{
 				EventType: corev1.EventTypeWarning,
@@ -1050,7 +1055,7 @@ func deleteGitOpsSetAndWaitForNotFound(t *testing.T, cl client.Client, gs *templ
 
 func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
-	if err := cl.Delete(t.Context(), obj); err != nil {
+	if err := cl.Delete(t.Context(), obj); err != nil && !apierrors.IsNotFound(err) {
 		t.Fatal(err)
 	}
 }
