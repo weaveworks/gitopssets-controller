@@ -261,8 +261,13 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 func makeTemplateFunctions() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	unwanted := []string{
-		"env", "expandenv", "getHostByName", "genPrivateKey", "derivePassword", "sha256sum",
-		"base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs"}
+		"env", "expandenv", "getHostByName",
+		"genPrivateKey", "derivePassword", "genCA", "genSelfSignedCert", "genSignedCert",
+		"bcrypt", "htpasswd",
+		"uuidv4", "now", "date", "dateInZone", "dateModify", "ago", "unixEpoch",
+		"randNumeric", "randAlpha", "randAlphaNum", "randAscii",
+		"base", "dir", "ext", "clean", "isAbs", "osBase", "osDir", "osExt", "osClean", "osIsAbs",
+	}
 
 	for _, v := range unwanted {
 		delete(f, v)
