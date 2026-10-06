@@ -234,22 +234,43 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet) (*templatesv1.ResourceInventory, time.Duration, error) {
 	logger := log.FromContext(ctx)
-	instantiatedGenerators := map[string]generators.Generator{}
-	for k, factory := range r.Generators {
-		instantiatedGenerators[k] = factory(log.FromContext(ctx), k8sClient)
+	sources, sourcesComplete, err := r.snapshotSources(ctx, k8sClient, gitOpsSet)
+	if err != nil {
+		return nil, generators.NoRequeueInterval, err
+	}
+	instantiatedGenerators := generatorMap(ctx, r, k8sClient)
+	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
+	if err != nil {
+		return nil, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
+	}
+	if canSkipApply(gitOpsSet, sources, sourcesComplete) {
+		logger.Info("skipping render because sources are unchanged")
+		return gitOpsSet.Status.Inventory, requeueAfter, nil
 	}
 
 	inventory, err := r.renderAndReconcile(ctx, logger, k8sClient, gitOpsSet, instantiatedGenerators)
 	if err != nil {
 		return inventory, generators.NoRequeueInterval, err
 	}
-
-	requeueAfter, err := calculateInterval(gitOpsSet, instantiatedGenerators)
-	if err != nil {
-		return inventory, generators.NoRequeueInterval, fmt.Errorf("failed to calculate requeue interval: %w", err)
+	if sourcesComplete && inventory != nil {
+		revision := appliedSourceRevision(sources)
+		for i := range inventory.Entries {
+			if inventory.Entries[i].LastError == "" {
+				inventory.Entries[i].SourceRevision = revision
+			}
+		}
+		gitOpsSet.Status.LastAppliedSources = sources
 	}
 
 	return inventory, requeueAfter, nil
+}
+
+func generatorMap(ctx context.Context, r *GitOpsSetReconciler, k8sClient client.Client) map[string]generators.Generator {
+	instantiated := map[string]generators.Generator{}
+	for name, factory := range r.Generators {
+		instantiated[name] = factory(log.FromContext(ctx), k8sClient)
+	}
+	return instantiated
 }
 
 func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {

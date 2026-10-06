@@ -886,6 +886,37 @@ spec:
                       type: object
                     type: array
                 type: object
+              lastAppliedSources:
+                description: |-
+                  LastAppliedSources records the source digests and resource versions used
+                  for the last successful apply.
+                items:
+                  description: AppliedSource identifies a source input that was current
+                    when resources were applied.
+                  properties:
+                    digest:
+                      description: Digest is the artifact digest for a GitRepository
+                        or OCIRepository.
+                      type: string
+                    kind:
+                      description: Kind is GitRepository, OCIRepository, Secret, or
+                        ConfigMap.
+                      type: string
+                    name:
+                      description: Name is the source object name.
+                      type: string
+                    resourceVersion:
+                      description: ResourceVersion is the Secret or ConfigMap resourceVersion.
+                      type: string
+                    revision:
+                      description: Revision is the artifact revision for a GitRepository
+                        or OCIRepository.
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  type: object
+                type: array
               lastHandledReconcileAt:
                 description: |-
                   LastHandledReconcileAt holds the value of the most recent

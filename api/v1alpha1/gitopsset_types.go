@@ -345,6 +345,28 @@ type GitOpsSetStatus struct {
 	// have been successfully applied
 	// +optional
 	Inventory *ResourceInventory `json:"inventory,omitempty"`
+
+	// LastAppliedSources records the source digests and resource versions used
+	// for the last successful apply.
+	// +optional
+	LastAppliedSources []AppliedSource `json:"lastAppliedSources,omitempty"`
+}
+
+// AppliedSource identifies a source input that was current when resources were applied.
+type AppliedSource struct {
+	// Kind is GitRepository, OCIRepository, Secret, or ConfigMap.
+	Kind string `json:"kind"`
+	// Name is the source object name.
+	Name string `json:"name"`
+	// Digest is the artifact digest for a GitRepository or OCIRepository.
+	// +optional
+	Digest string `json:"digest,omitempty"`
+	// Revision is the artifact revision for a GitRepository or OCIRepository.
+	// +optional
+	Revision string `json:"revision,omitempty"`
+	// ResourceVersion is the Secret or ConfigMap resourceVersion.
+	// +optional
+	ResourceVersion string `json:"resourceVersion,omitempty"`
 }
 
 //+genclient

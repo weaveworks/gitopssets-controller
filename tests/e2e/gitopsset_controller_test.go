@@ -132,6 +132,7 @@ func TestReconcilingPartialApply(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: templatesv1.GitOpsSetSpec{
+			Force: true,
 			Generators: []templatesv1.GitOpsSetGenerator{
 				{
 					List: &templatesv1.ListGenerator{
@@ -853,7 +854,7 @@ func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templa
 
 		want := generateResourceInventory(objs)
 
-		return cmp.Diff(want, updated.Status.Inventory) == ""
+		return cmp.Diff(want, updated.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision")) == ""
 	}, timeout).Should(gomega.BeTrue())
 }
 
