@@ -216,6 +216,11 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionTrue, templatesv1.ReconciliationSucceededReason,
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
 
+		healthAfter := r.observeHealth(ctx, k8sClient, &gitOpsSet, inventory)
+		if healthAfter > 0 && (requeue == 0 || healthAfter < requeue) {
+			requeue = healthAfter
+		}
+
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 			templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.ReconciliationFailedReason, err.Error())

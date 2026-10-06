@@ -293,6 +293,26 @@ type GitOpsSetSpec struct {
 	// when reconciling this Kustomization.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// HealthCheck controls whether applied resources are checked for readiness.
+	// Checks are enabled when this is omitted.
+	// +optional
+	HealthCheck *HealthCheck `json:"healthCheck,omitempty"`
+}
+
+// HealthCheck configures the Healthy condition.
+type HealthCheck struct {
+	// Enabled turns health checks on or off. Nil means enabled.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// HealthChecksEnabled reports whether this set should check resource health.
+func (gs *GitOpsSet) HealthChecksEnabled() bool {
+	if gs.Spec.HealthCheck == nil || gs.Spec.HealthCheck.Enabled == nil {
+		return true
+	}
+	return *gs.Spec.HealthCheck.Enabled
 }
 
 // GitOpsSetStatus defines the observed state of GitOpsSet
@@ -321,6 +341,7 @@ type GitOpsSetStatus struct {
 //+kubebuilder:resource:shortName="gs"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description=""
 //+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
+//+kubebuilder:printcolumn:name="Healthy",type="string",JSONPath=".status.conditions[?(@.type==\"Healthy\")].status",description=""
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 
 // GitOpsSet is the Schema for the gitopssets API

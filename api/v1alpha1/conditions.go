@@ -22,6 +22,23 @@ const (
 	// WaitingForNamespaceReason represents a rendered object whose namespace
 	// does not exist yet.
 	WaitingForNamespaceReason string = "WaitingForNamespace"
+
+	// HealthyCondition is true when the default health checks pass.
+	// It is independent of the Ready condition, which reports whether the
+	// resources were applied.
+	HealthyCondition string = "Healthy"
+
+	// HealthDisabledReason is used when spec.healthCheck.enabled is false.
+	HealthDisabledReason string = "Disabled"
+
+	// HealthProgressingReason is used while a checked resource is not ready.
+	HealthProgressingReason string = "Progressing"
+
+	// HealthSucceededReason is used when every checked resource is ready.
+	HealthSucceededReason string = "Succeeded"
+
+	// HealthFailedReason is used when a checked resource cannot be read.
+	HealthFailedReason string = "HealthCheckFailed"
 )
 
 // SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.
