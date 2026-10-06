@@ -124,11 +124,18 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Skip reconciliation if the GitOpsSet is suspended.
-	if gitOpsSet.Spec.Suspend {
-		logger.Info("Reconciliation is suspended for this GitOpsSet")
-		return ctrl.Result{}, nil
-	}
+	defer func() {
+		// Record Prometheus metrics.
+		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
+		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
+		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
+
+		// Log and emit success event.
+		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s",
+				time.Since(reconcileStart).String())
+		}
+	}()
 
 	k8sClient := r.Client
 	if gitOpsSet.Spec.ServiceAccountName != "" || r.DefaultServiceAccount != "" {
@@ -147,24 +154,19 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.finalize(ctx, &gitOpsSet, k8sClient)
 	}
 
+	if gitOpsSet.Spec.Suspend {
+		logger.Info("Reconciliation is suspended for this GitOpsSet")
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, nil, metav1.ConditionFalse, templatesv1.SuspendedReason, "reconciliation is suspended")
+		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// Set the value of the reconciliation request in status.
 	if v, ok := fluxMeta.ReconcileAnnotationValue(gitOpsSet.GetAnnotations()); ok {
 		gitOpsSet.Status.LastHandledReconcileAt = v
 	}
-
-	defer func() {
-		// Record Prometheus metrics.
-		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
-		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
-		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
-
-		// Log and emit success event.
-		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
-			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s",
-				time.Since(reconcileStart).String())
-
-		}
-	}()
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 
@@ -447,8 +449,7 @@ func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitO
 	logger := ctrl.LoggerFrom(ctx)
 	logger.Info("finalizing resources")
 
-	if !gs.Spec.Suspend &&
-		gs.Status.Inventory != nil &&
+	if gs.Status.Inventory != nil &&
 		gs.Status.Inventory.Entries != nil {
 
 		if _, err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {

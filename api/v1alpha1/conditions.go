@@ -14,6 +14,10 @@ const (
 	// ReconciliationSucceededReason represents the fact that
 	// the reconciliation succeeded.
 	ReconciliationSucceededReason string = "ReconciliationSucceeded"
+
+	// SuspendedReason represents a GitOpsSet that is not reconciling because
+	// spec.suspend is true.
+	SuspendedReason string = "Suspended"
 )
 
 // SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.
@@ -38,5 +42,9 @@ func SetGitOpsSetReadiness(set *GitOpsSet, inventory *ResourceInventory, status 
 
 // GetGitOpsSetReadiness returns the readiness condition of the GitOpsSet.
 func GetGitOpsSetReadiness(set *GitOpsSet) metav1.ConditionStatus {
-	return apimeta.FindStatusCondition(set.Status.Conditions, meta.ReadyCondition).Status
+	condition := apimeta.FindStatusCondition(set.Status.Conditions, meta.ReadyCondition)
+	if condition == nil {
+		return metav1.ConditionUnknown
+	}
+	return condition.Status
 }
