@@ -11,6 +11,15 @@ import (
 // up resources.
 const GitOpsSetFinalizer = "finalizers.sets.gitops.pro"
 
+const (
+	// DeletionPolicyDelete removes rendered resources when they leave the set
+	// and when the GitOpsSet itself is deleted.
+	DeletionPolicyDelete = "Delete"
+	// DeletionPolicyOrphan leaves rendered resources in the cluster and drops
+	// them from the inventory.
+	DeletionPolicyOrphan = "Orphan"
+)
+
 // LocalObjectReference contains enough information to locate the referenced Kubernetes resource object.
 type LocalObjectReference struct {
 	// Name of the referent.
@@ -256,6 +265,16 @@ type GitOpsSetSpec struct {
 	// GitOpsSet.
 	// +optional
 	Suspend bool `json:"suspend,omitempty"`
+
+	// DeletionPolicy controls whether rendered resources are deleted when they
+	// are no longer produced, and when the GitOpsSet is deleted.
+	//
+	// Delete removes those resources. Orphan leaves them in the cluster and
+	// removes them from the inventory. An empty value means Delete.
+	// +kubebuilder:validation:Enum=Delete;Orphan
+	// +kubebuilder:default=Delete
+	// +optional
+	DeletionPolicy string `json:"deletionPolicy,omitempty"`
 
 	// Generators generate the data to be inserted into the provided templates.
 	Generators []GitOpsSetGenerator `json:"generators,omitempty"`

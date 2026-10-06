@@ -304,7 +304,7 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		entries.Insert(ref)
 	}
 
-	if gitOpsSet.Status.Inventory == nil {
+	if gitOpsSet.Status.Inventory == nil || orphansResources(gitOpsSet) {
 		return &templatesv1.ResourceInventory{Entries: entries.SortedList(func(x, y templatesv1.ResourceRef) bool {
 			return x.ID < y.ID
 		})}, inventoryErr
@@ -468,7 +468,7 @@ func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitO
 	logger := ctrl.LoggerFrom(ctx)
 	logger.Info("finalizing resources")
 
-	if gs.Status.Inventory != nil &&
+	if !orphansResources(gs) && gs.Status.Inventory != nil &&
 		gs.Status.Inventory.Entries != nil {
 
 		if _, err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
@@ -482,6 +482,10 @@ func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitO
 	// Remove our finalizer from the list and update it
 	controllerutil.RemoveFinalizer(gs, templatesv1.GitOpsSetFinalizer)
 	return ctrl.Result{}, r.Update(ctx, gs)
+}
+
+func orphansResources(gs *templatesv1.GitOpsSet) bool {
+	return gs.Spec.DeletionPolicy == templatesv1.DeletionPolicyOrphan
 }
 
 func matchCluster(gitOpsCluster *clustersv1.GitopsCluster, gitOpsSet *templatesv1.GitOpsSet) bool {

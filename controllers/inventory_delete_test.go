@@ -111,6 +111,78 @@ func TestRenderAndReconcileKeepsFailedDeletesInInventory(t *testing.T) {
 	}
 }
 
+func TestOrphanDeletionPolicyLeavesDroppedResources(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := templatesv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	kept := newConfigMap("demo", "kept")
+	dropped := newConfigMap("demo", "dropped")
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(kept, dropped).Build()
+
+	gs := gitOpsSetRendering("kept")
+	gs.Spec.DeletionPolicy = templatesv1.DeletionPolicyOrphan
+	gs.Status.Inventory = &templatesv1.ResourceInventory{Entries: []templatesv1.ResourceRef{
+		mustResourceRef(t, kept),
+		mustResourceRef(t, dropped),
+	}}
+
+	inventory, err := (&GitOpsSetReconciler{}).renderAndReconcile(t.Context(), logr.Discard(), cl, gs, map[string]generators.Generator{
+		"List": list.NewGenerator(logr.Discard()),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantIDs := []string{mustResourceRef(t, kept).ID}
+	if diff := cmp.Diff(wantIDs, inventoryIDs(inventory)); diff != "" {
+		t.Fatalf("inventory mismatch (-want +got):\n%s", diff)
+	}
+	if err := cl.Get(t.Context(), types.NamespacedName{Namespace: "demo", Name: "dropped"}, &corev1.ConfigMap{}); err != nil {
+		t.Fatalf("orphaned configmap should remain: %v", err)
+	}
+}
+
+func TestFinalizeOrphanSkipsInventoryDelete(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := templatesv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	kept := newConfigMap("demo", "kept")
+	now := metav1.Now()
+	grace := int64(0)
+	gs := gitOpsSetRendering("kept")
+	gs.Finalizers = []string{templatesv1.GitOpsSetFinalizer}
+	gs.DeletionTimestamp = &now
+	gs.DeletionGracePeriodSeconds = &grace
+	gs.Spec.DeletionPolicy = templatesv1.DeletionPolicyOrphan
+	gs.Status.Inventory = &templatesv1.ResourceInventory{Entries: []templatesv1.ResourceRef{mustResourceRef(t, kept)}}
+
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(kept, gs).Build()
+	reconciler := &GitOpsSetReconciler{Client: cl}
+	if _, err := reconciler.finalize(t.Context(), gs, cl); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(t.Context(), types.NamespacedName{Namespace: "demo", Name: "kept"}, &corev1.ConfigMap{}); err != nil {
+		t.Fatalf("orphaned configmap should remain: %v", err)
+	}
+	updated := &templatesv1.GitOpsSet{}
+	err := cl.Get(t.Context(), types.NamespacedName{Namespace: "demo", Name: "set"}, updated)
+	if err != nil && !apierrors.IsNotFound(err) {
+		t.Fatal(err)
+	}
+	if err == nil && len(updated.Finalizers) != 0 {
+		t.Fatalf("finalizers = %v", updated.Finalizers)
+	}
+}
+
 func TestRenderAndReconcileTreatsNotFoundDeleteAsSuccess(t *testing.T) {
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {

@@ -51,6 +51,18 @@ spec:
           spec:
             description: GitOpsSetSpec defines the desired state of GitOpsSet
             properties:
+              deletionPolicy:
+                default: Delete
+                description: |-
+                  DeletionPolicy controls whether rendered resources are deleted when they
+                  are no longer produced, and when the GitOpsSet is deleted.
+
+                  Delete removes those resources. Orphan leaves them in the cluster and
+                  removes them from the inventory. An empty value means Delete.
+                enum:
+                - Delete
+                - Orphan
+                type: string
               generators:
                 description: Generators generate the data to be inserted into the
                   provided templates.
