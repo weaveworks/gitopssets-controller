@@ -35,6 +35,21 @@ type ResourceRef struct {
 	// SourceRevision is the source digest recorded when this object was applied.
 	// +optional
 	SourceRevision string `json:"sourceRevision,omitempty"`
+
+	// RenderHash is the hash of the rendered object that was applied.
+	// An unchanged hash is not applied again.
+	// +optional
+	RenderHash string `json:"renderHash,omitempty"`
+
+	// DeletionPolicy is the policy stored for this object when it was applied.
+	// Delete and Orphan match GitOpsSetSpec. Empty means the set policy.
+	// +optional
+	DeletionPolicy string `json:"deletionPolicy,omitempty"`
+
+	// ServiceAccountName is the account that applied this object.
+	// Deletes and health reads use it. Empty means the set account.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // ResourceRefFromObject returns a ResourceRef from a runtime.Object.

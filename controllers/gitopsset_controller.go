@@ -2,6 +2,9 @@ package controllers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -68,6 +71,10 @@ type GitOpsSetReconciler struct {
 
 	Scheme *runtime.Scheme
 	Mapper meta.RESTMapper
+
+	// impersonationClient, when set, replaces the Kubernetes impersonation
+	// config. Tests use it to supply one client per service account.
+	impersonationClient func(namespace, serviceAccountName string) (client.Client, error)
 }
 
 // event emits a Kubernetes event using EventRecorder
@@ -135,14 +142,22 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+	stats := &applyStats{}
+	ctx = context.WithValue(ctx, applyStatsKey, stats)
+	previousHealthy := ""
+	if cond := meta.FindStatusCondition(gitOpsSet.Status.Conditions, templatesv1.HealthyCondition); cond != nil {
+		previousHealthy = cond.Reason
+	}
+
 	defer func() {
 		// Record Prometheus metrics.
 		r.Metrics.RecordReadiness(ctx, &gitOpsSet)
 		r.Metrics.RecordDuration(ctx, &gitOpsSet, reconcileStart)
 		r.Metrics.RecordSuspend(ctx, &gitOpsSet, gitOpsSet.Spec.Suspend)
 
-		// Log and emit success event.
-		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
+		// A pass that only rechecks health or finds unchanged objects does not
+		// emit a success event.
+		if r.EventRecorder != nil && stats.patched && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
 			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s: %s",
 				time.Since(reconcileStart).String(), conditions.GetMessage(&gitOpsSet, fluxMeta.ReadyCondition))
 		}
@@ -228,6 +243,14 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			fmt.Sprintf("%d resources created", len(inventory.Entries)))
 
 		healthAfter := r.observeHealth(ctx, k8sClient, &gitOpsSet, inventory)
+		if len(stats.waiting) > 0 {
+			message := waitingMessage(stats.waiting)
+			setHealthy(&gitOpsSet, metav1.ConditionFalse, templatesv1.WaitingForDependencyReason, message)
+			healthAfter = healthRequeueInterval
+			if r.EventRecorder != nil && previousHealthy != templatesv1.WaitingForDependencyReason {
+				r.event(&gitOpsSet, eventv1.EventSeverityInfo, "waiting for dependency: %s", message)
+			}
+		}
 		if healthAfter > 0 && (requeue == 0 || healthAfter < requeue) {
 			requeue = healthAfter
 		}
@@ -293,16 +316,17 @@ func generatorMap(ctx context.Context, r *GitOpsSetReconciler, k8sClient client.
 }
 
 func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger logr.Logger, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, instantiatedGenerators map[string]generators.Generator) (*templatesv1.ResourceInventory, error) {
-	resources, err := templates.RenderWithMapper(ctx, gitOpsSet, instantiatedGenerators, r.Mapper)
+	rendered, err := templates.RenderObjects(ctx, gitOpsSet, instantiatedGenerators, r.Mapper)
 	if err != nil {
 		return nil, err
 	}
-	resources, err = orderResourcesForApply(r.Mapper, resources)
+	rendered, err = orderRendered(r.Mapper, rendered)
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("rendered templates", "resourceCount", len(resources))
+	logger.Info("rendered templates", "resourceCount", len(rendered))
 
+	clients := newClientSet(r, gitOpsSet, k8sClient)
 	var inventoryErr error
 	budget := rolloutBudget(gitOpsSet)
 
@@ -311,20 +335,46 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		existingEntries = newResourceRefSet(gitOpsSet.Status.Inventory.Entries)
 	}
 	desired := newResourceRefSet(nil)
-	for _, resource := range resources {
-		ref, err := templatesv1.ResourceRefFromObject(resource)
-		if err == nil {
-			desired.insert(ref)
+	eligible := newResourceRefSet(nil)
+	held := map[string]heldDependency{}
+	for _, item := range rendered {
+		ref, err := templatesv1.ResourceRefFromObject(item.Object)
+		if err != nil {
+			continue
 		}
+		desired.insert(ref)
+		if _, hadPrevious := existingEntries.get(ref); hadPrevious || len(item.Requires) == 0 {
+			eligible.insert(ref)
+			continue
+		}
+		blocker, ready, err := r.dependencyReady(ctx, clients, item, rendered)
+		if err != nil {
+			return nil, err
+		}
+		if ready {
+			eligible.insert(ref)
+			continue
+		}
+		held[resourceRefKey(ref)] = heldDependency{held: ref.ID, blocker: blocker}
+	}
+	if stats := statsFrom(ctx); stats != nil {
+		for _, item := range held {
+			stats.waiting = append(stats.waiting, item)
+		}
+		sort.Slice(stats.waiting, func(i, j int) bool { return stats.waiting[i].held < stats.waiting[j].held })
 	}
 
 	entries := newResourceRefSet(nil)
 	appliedNew := 0
 	stopped := false
-	for _, newResource := range resources {
+	for _, item := range rendered {
+		newResource := item.Object
 		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
 			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to update inventory: %w", err))
+			continue
+		}
+		if _, ok := held[resourceRefKey(ref)]; ok {
 			continue
 		}
 		previous, hadPrevious := existingEntries.get(ref)
@@ -341,6 +391,44 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			inventoryErr = errors.Join(inventoryErr, applyErr)
 		}
 
+		hash, err := objectRenderHash(newResource)
+		if err != nil {
+			recordFailure(err)
+			if budget > 0 {
+				return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+			}
+			continue
+		}
+		policy := resolvedDeletionPolicy(item.DeletionPolicy, gitOpsSet)
+		account := resolvedServiceAccount(item.ServiceAccountName, clients.reconcileAccount)
+		if hadPrevious && previous.RenderHash != "" && previous.RenderHash == hash && previous.LastError == "" {
+			applyClient, err := clients.get(account)
+			if err != nil {
+				recordFailure(err)
+				if budget > 0 {
+					return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+				}
+				continue
+			}
+			current := &unstructured.Unstructured{}
+			current.SetGroupVersionKind(newResource.GroupVersionKind())
+			if err := applyClient.Get(ctx, client.ObjectKeyFromObject(newResource), current); err != nil {
+				if !apierrors.IsNotFound(err) {
+					recordFailure(fmt.Errorf("failed to load existing Resource: %w", err))
+					if budget > 0 {
+						return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+					}
+					continue
+				}
+			} else {
+				updated := previous
+				updated.DeletionPolicy = policy
+				updated.ServiceAccountName = account
+				entries.insert(updated)
+				continue
+			}
+		}
+
 		if err := logResourceMessage(logger, "applying resource", newResource); err != nil {
 			recordFailure(err)
 			if budget > 0 {
@@ -348,7 +436,15 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			}
 			continue
 		}
-		if err := r.applyResource(ctx, k8sClient, gitOpsSet, newResource); err != nil {
+		applyClient, err := clients.get(account)
+		if err != nil {
+			recordFailure(err)
+			if budget > 0 {
+				return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+			}
+			continue
+		}
+		if err := r.applyResource(ctx, applyClient, gitOpsSet, newResource); err != nil {
 			if missingNamespace(err) {
 				retainUnreached(entries, existingEntries, desired)
 				return &templatesv1.ResourceInventory{Entries: entries.list()}, &retryAfterError{after: 5 * time.Second, err: err}
@@ -363,7 +459,12 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		if hadPrevious {
 			revision = previous.SourceRevision
 		}
-		entries.insert(appliedResourceRef(ref, revision))
+		applied := appliedResourceRef(ref, revision)
+		applied.RenderHash = hash
+		applied.DeletionPolicy = policy
+		applied.ServiceAccountName = account
+		entries.insert(applied)
+		notePatched(ctx)
 		if !hadPrevious {
 			appliedNew++
 		}
@@ -372,24 +473,27 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		retainUnreached(entries, existingEntries, desired)
 	}
 
-	if gitOpsSet.Status.Inventory == nil || orphansResources(gitOpsSet) {
-		if progress := progressAfterStop(stopped, entries, desired, appliedNew); progress != nil {
-			return &templatesv1.ResourceInventory{Entries: entries.list()}, progress
+	if gitOpsSet.Status.Inventory != nil {
+		removed := existingEntries.difference(entries)
+		if budget > 0 {
+			removed = existingEntries.difference(desired)
 		}
-		return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
+		var deleting []templatesv1.ResourceRef
+		for _, ref := range removed {
+			if entryOrphans(ref, gitOpsSet) {
+				continue
+			}
+			deleting = append(deleting, ref)
+		}
+		failedDeletes, err := r.removeResourceRefs(ctx, clients, deleting)
+		if err != nil {
+			inventoryErr = errors.Join(inventoryErr, err)
+		}
+		for _, failed := range failedDeletes {
+			entries.insert(failed)
+		}
 	}
-	removed := existingEntries.difference(entries)
-	if budget > 0 {
-		removed = existingEntries.difference(desired)
-	}
-	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, removed)
-	if err != nil {
-		inventoryErr = errors.Join(inventoryErr, err)
-	}
-	for _, failed := range failedDeletes {
-		entries.insert(failed)
-	}
-	if progress := progressAfterStop(stopped, entries, desired, appliedNew); progress != nil {
+	if progress := progressAfterStop(stopped, entries, eligible, appliedNew); progress != nil {
 		return &templatesv1.ResourceInventory{Entries: entries.list()}, progress
 	}
 
@@ -486,6 +590,169 @@ func applyRank(mapper meta.RESTMapper, obj *unstructured.Unstructured, scopeErr 
 	return 2
 }
 
+type applyStatsKeyType struct{}
+
+var applyStatsKey applyStatsKeyType
+
+type heldDependency struct {
+	held    string
+	blocker string
+}
+
+type applyStats struct {
+	patched bool
+	waiting []heldDependency
+}
+
+func statsFrom(ctx context.Context) *applyStats {
+	stats, _ := ctx.Value(applyStatsKey).(*applyStats)
+	return stats
+}
+
+func notePatched(ctx context.Context) {
+	if stats := statsFrom(ctx); stats != nil {
+		stats.patched = true
+	}
+}
+
+func waitingMessage(waiting []heldDependency) string {
+	const maxShown = 5
+	parts := make([]string, 0, len(waiting))
+	for _, item := range waiting {
+		parts = append(parts, item.held+" is waiting for "+item.blocker)
+	}
+	shown := parts
+	extra := ""
+	if len(parts) > maxShown {
+		shown = parts[:maxShown]
+		extra = fmt.Sprintf(", and %d more", len(parts)-maxShown)
+	}
+	return fmt.Sprintf("%d resources are waiting for a dependency: %s%s", len(parts), strings.Join(shown, ", "), extra)
+}
+
+func objectRenderHash(obj *unstructured.Unstructured) (string, error) {
+	raw, err := json.Marshal(obj.Object)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func resolvedDeletionPolicy(templatePolicy string, gitOpsSet *templatesv1.GitOpsSet) string {
+	if templatePolicy != "" {
+		return templatePolicy
+	}
+	if gitOpsSet.Spec.DeletionPolicy == templatesv1.DeletionPolicyOrphan {
+		return templatesv1.DeletionPolicyOrphan
+	}
+	return templatesv1.DeletionPolicyDelete
+}
+
+func resolvedServiceAccount(templateAccount, reconcileAccount string) string {
+	if templateAccount != "" {
+		return templateAccount
+	}
+	return reconcileAccount
+}
+
+func entryOrphans(ref templatesv1.ResourceRef, gitOpsSet *templatesv1.GitOpsSet) bool {
+	switch ref.DeletionPolicy {
+	case templatesv1.DeletionPolicyOrphan:
+		return true
+	case templatesv1.DeletionPolicyDelete:
+		return false
+	default:
+		return orphansResources(gitOpsSet)
+	}
+}
+
+type clientSet struct {
+	fallback         client.Client
+	reconcileAccount string
+	namespace        string
+	cache            map[string]client.Client
+	r                *GitOpsSetReconciler
+}
+
+func newClientSet(r *GitOpsSetReconciler, gitOpsSet *templatesv1.GitOpsSet, fallback client.Client) *clientSet {
+	account := gitOpsSet.Spec.ServiceAccountName
+	if account == "" {
+		account = r.DefaultServiceAccount
+	}
+	return &clientSet{
+		fallback:         fallback,
+		reconcileAccount: account,
+		namespace:        gitOpsSet.Namespace,
+		cache:            map[string]client.Client{},
+		r:                r,
+	}
+}
+
+func (s *clientSet) get(account string) (client.Client, error) {
+	if account == "" || account == s.reconcileAccount {
+		return s.fallback, nil
+	}
+	if existing, ok := s.cache[account]; ok {
+		return existing, nil
+	}
+	var (
+		next client.Client
+		err  error
+	)
+	if s.r.impersonationClient != nil {
+		next, err = s.r.impersonationClient(s.namespace, account)
+	} else {
+		next, err = s.r.makeImpersonationClient(s.namespace, account)
+	}
+	if err != nil {
+		return nil, err
+	}
+	s.cache[account] = next
+	return next, nil
+}
+
+func (r *GitOpsSetReconciler) dependencyReady(ctx context.Context, clients *clientSet, item templates.RenderedObject, all []templates.RenderedObject) (string, bool, error) {
+	for _, name := range item.Requires {
+		found := false
+		for _, other := range all {
+			if other.ElementKey != item.ElementKey || other.TemplateName != name {
+				continue
+			}
+			found = true
+			ref, err := templatesv1.ResourceRefFromObject(other.Object)
+			if err != nil {
+				return name, false, nil
+			}
+			account := resolvedServiceAccount(other.ServiceAccountName, clients.reconcileAccount)
+			reader, err := clients.get(account)
+			if err != nil {
+				return "", false, err
+			}
+			live := other.Object.DeepCopy()
+			if err := reader.Get(ctx, client.ObjectKeyFromObject(live), live); err != nil {
+				return ref.ID, false, nil
+			}
+			if !objectIsHealthy(live) {
+				return ref.ID, false, nil
+			}
+		}
+		if !found {
+			return name, false, nil
+		}
+	}
+	return "", true, nil
+}
+
+func orderRendered(mapper meta.RESTMapper, rendered []templates.RenderedObject) ([]templates.RenderedObject, error) {
+	ordered := append([]templates.RenderedObject(nil), rendered...)
+	var scopeErr error
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return applyRank(mapper, ordered[i].Object, &scopeErr) < applyRank(mapper, ordered[j].Object, &scopeErr)
+	})
+	return ordered, scopeErr
+}
+
 func appliedResourceRef(ref templatesv1.ResourceRef, sourceRevision string) templatesv1.ResourceRef {
 	now := metav1.Now()
 	ref.LastAppliedTime = &now
@@ -555,7 +822,7 @@ func (r *GitOpsSetReconciler) patchStatus(ctx context.Context, req ctrl.Request,
 	return r.Status().Patch(ctx, &set, patch)
 }
 
-func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient client.Client, deletions []templatesv1.ResourceRef) ([]templatesv1.ResourceRef, error) {
+func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, clients *clientSet, deletions []templatesv1.ResourceRef) ([]templatesv1.ResourceRef, error) {
 	logger := log.FromContext(ctx)
 	var failed []templatesv1.ResourceRef
 	var deleteErr error
@@ -574,6 +841,13 @@ func (r *GitOpsSetReconciler) removeResourceRefs(ctx context.Context, k8sClient 
 			continue
 		}
 
+		k8sClient, err := clients.get(v.ServiceAccountName)
+		if err != nil {
+			v.LastError = err.Error()
+			failed = append(failed, v)
+			deleteErr = errors.Join(deleteErr, err)
+			continue
+		}
 		if err := k8sClient.Delete(ctx, u); err != nil && !apierrors.IsNotFound(err) {
 			deleteErr = errors.Join(deleteErr, fmt.Errorf("failed to delete %s: %w", v.ID, err))
 			v.LastError = err.Error()
@@ -692,13 +966,18 @@ func (r *GitOpsSetReconciler) finalize(ctx context.Context, gs *templatesv1.GitO
 	logger := ctrl.LoggerFrom(ctx)
 	logger.Info("finalizing resources")
 
-	if !orphansResources(gs) && gs.Status.Inventory != nil &&
-		gs.Status.Inventory.Entries != nil {
-
-		if _, err := r.removeResourceRefs(ctx, k8sClient, gs.Status.Inventory.Entries); err != nil {
+	if gs.Status.Inventory != nil && gs.Status.Inventory.Entries != nil {
+		clients := newClientSet(r, gs, k8sClient)
+		var deleting []templatesv1.ResourceRef
+		for _, entry := range gs.Status.Inventory.Entries {
+			if entryOrphans(entry, gs) {
+				continue
+			}
+			deleting = append(deleting, entry)
+		}
+		if _, err := r.removeResourceRefs(ctx, clients, deleting); err != nil {
 			return ctrl.Result{}, err
 		}
-
 		logger.Info("cleaned resources")
 	}
 

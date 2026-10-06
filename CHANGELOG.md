@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* The default install no longer runs kube-rbac-proxy. Metrics stay on 127.0.0.1:8080. An overlay that deletes containers/0, including gcp-infrastructure `platform/gitopssets`, must drop that patch before upgrading or it deletes the manager. (#300)
+
 ## [0.18.0](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.3...v0.18.0) (2026-10-06)
 
 

@@ -854,7 +854,7 @@ func waitForGitOpsSetInventory(t *testing.T, k8sClient client.Client, gs *templa
 
 		want := generateResourceInventory(objs)
 
-		return cmp.Diff(want, updated.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision")) == ""
+		return cmp.Diff(want, updated.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision", "RenderHash", "DeletionPolicy", "ServiceAccountName")) == ""
 	}, timeout).Should(gomega.BeTrue())
 }
 

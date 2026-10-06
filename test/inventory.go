@@ -31,7 +31,7 @@ func AssertInventoryHasItems(t *testing.T, gs *templatesv1.GitOpsSet, objs ...ru
 		return entries[i].ID < entries[j].ID
 	})
 	want := &templatesv1.ResourceInventory{Entries: entries}
-	if diff := cmp.Diff(want, gs.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision")); diff != "" {
+	if diff := cmp.Diff(want, gs.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision", "RenderHash", "DeletionPolicy", "ServiceAccountName")); diff != "" {
 		t.Errorf("failed to get inventory:\n%s", diff)
 	}
 }

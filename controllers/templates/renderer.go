@@ -40,17 +40,45 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 	return RenderWithMapper(ctx, r, configuredGenerators, nil)
 }
 
+// RenderedObject is one object produced from a template and one element.
+type RenderedObject struct {
+	Object             *unstructured.Unstructured
+	ElementKey         int
+	TemplateName       string
+	Requires           []string
+	DeletionPolicy     string
+	ServiceAccountName string
+}
+
 // RenderWithMapper renders templates and uses mapper to decide whether an
 // object is namespaced. A nil mapper keeps the historical kind check.
 func RenderWithMapper(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator, mapper meta.RESTMapper) ([]*unstructured.Unstructured, error) {
+	rendered, err := RenderObjects(ctx, r, configuredGenerators, mapper)
+	if err != nil {
+		return nil, err
+	}
+	objects := make([]*unstructured.Unstructured, len(rendered))
+	for i := range rendered {
+		objects[i] = rendered[i].Object
+	}
+	return objects, nil
+}
+
+// RenderObjects renders templates and keeps the element and template that
+// produced each object. ElementKey is shared by every template of one element.
+func RenderObjects(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator, mapper meta.RESTMapper) ([]RenderedObject, error) {
+	if err := validateTemplates(r); err != nil {
+		return nil, err
+	}
 	for i, template := range r.Spec.Templates {
 		if len(template.Content.Raw) == 0 {
 			return nil, fmt.Errorf("template %d content must not be empty", i)
 		}
 	}
-	rendered := []*unstructured.Unstructured{}
+	var rendered []RenderedObject
 
 	index := 0
+	elementKey := 0
 	for genIndex, gen := range r.Spec.Generators {
 		generated, err := generate(ctx, gen, configuredGenerators, r)
 		if err != nil {
@@ -70,15 +98,58 @@ func RenderWithMapper(ctx context.Context, r *templatesv1.GitOpsSet, configuredG
 					if err != nil {
 						return nil, fmt.Errorf("failed to render template params for set %s: %w", r.GetName(), err)
 					}
-
-					rendered = append(rendered, res...)
+					requires := append([]string(nil), template.Requires...)
+					for _, obj := range res {
+						rendered = append(rendered, RenderedObject{
+							Object:             obj,
+							ElementKey:         elementKey,
+							TemplateName:       template.Name,
+							Requires:           requires,
+							DeletionPolicy:     template.DeletionPolicy,
+							ServiceAccountName: template.ServiceAccountName,
+						})
+					}
 					index++
 				}
+				elementKey++
 			}
 		}
 	}
 
 	return rendered, nil
+}
+
+func validateTemplates(r *templatesv1.GitOpsSet) error {
+	names := map[string]struct{}{}
+	for _, template := range r.Spec.Templates {
+		if template.Name == "" {
+			continue
+		}
+		if _, ok := names[template.Name]; ok {
+			return fmt.Errorf("duplicate template name %q", template.Name)
+		}
+		names[template.Name] = struct{}{}
+	}
+	for _, template := range r.Spec.Templates {
+		switch template.DeletionPolicy {
+		case "", templatesv1.DeletionPolicyDelete, templatesv1.DeletionPolicyOrphan:
+		default:
+			return fmt.Errorf("template %q deletionPolicy %q is invalid", template.Name, template.DeletionPolicy)
+		}
+		for _, required := range template.Requires {
+			if _, ok := names[required]; !ok {
+				label := template.Name
+				if label == "" {
+					label = "unnamed"
+				}
+				return fmt.Errorf("template %q requires unknown template %q", label, required)
+			}
+			if required == template.Name {
+				return fmt.Errorf("template %q cannot require itself", template.Name)
+			}
+		}
+	}
+	return nil
 }
 
 func repeat(index int, tmpl templatesv1.GitOpsSetTemplate, params map[string]any) ([]map[string]any, error) {

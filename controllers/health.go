@@ -3,8 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -14,7 +16,11 @@ import (
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 )
 
-const healthRequeueInterval = 10 * time.Second
+const (
+	healthRequeueInterval = 10 * time.Second
+	healthRecheckInterval = time.Minute
+	healthMessageLimit    = 5
+)
 
 var healthCheckKinds = map[string]struct{}{
 	"Kustomization": {},
@@ -34,21 +40,34 @@ func (r *GitOpsSetReconciler) observeHealth(ctx context.Context, k8sClient clien
 		return 0
 	}
 
+	kinds := healthKinds(gitOpsSet)
+	clients := newClientSet(r, gitOpsSet, k8sClient)
 	var waiting []string
+	checked := 0
 	for _, entry := range inventory.Entries {
 		objMeta, err := object.ParseObjMetadata(entry.ID)
 		if err != nil {
 			continue
 		}
-		if _, ok := healthCheckKinds[objMeta.GroupKind.Kind]; !ok {
+		if _, ok := kinds[objMeta.GroupKind.Kind]; !ok {
 			continue
 		}
+		checked++
 
 		current := &unstructured.Unstructured{}
 		current.SetGroupVersionKind(objMeta.GroupKind.WithVersion(entry.Version))
 		current.SetName(objMeta.Name)
 		current.SetNamespace(objMeta.Namespace)
-		if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(current), current); err != nil {
+		reader, err := clients.get(entry.ServiceAccountName)
+		if err != nil {
+			setHealthy(gitOpsSet, metav1.ConditionFalse, templatesv1.HealthFailedReason, fmt.Sprintf("failed to read %s: %s", entry.ID, err.Error()))
+			return healthRequeueInterval
+		}
+		if err := reader.Get(ctx, client.ObjectKeyFromObject(current), current); err != nil {
+			if apierrors.IsForbidden(err) {
+				setHealthy(gitOpsSet, metav1.ConditionFalse, templatesv1.AccessDeniedReason, fmt.Sprintf("%s: service account cannot get object: %s", entry.ID, err.Error()))
+				return healthRequeueInterval
+			}
 			setHealthy(gitOpsSet, metav1.ConditionFalse, templatesv1.HealthFailedReason, fmt.Sprintf("failed to read %s: %s", entry.ID, err.Error()))
 			return healthRequeueInterval
 		}
@@ -57,11 +76,36 @@ func (r *GitOpsSetReconciler) observeHealth(ctx context.Context, k8sClient clien
 		}
 	}
 	if len(waiting) > 0 {
-		setHealthy(gitOpsSet, metav1.ConditionFalse, templatesv1.HealthProgressingReason, fmt.Sprintf("%d resources are not ready", len(waiting)))
+		setHealthy(gitOpsSet, metav1.ConditionFalse, templatesv1.HealthProgressingReason, healthWaitingMessage(waiting))
 		return healthRequeueInterval
 	}
+	if checked == 0 {
+		setHealthy(gitOpsSet, metav1.ConditionTrue, templatesv1.HealthSucceededReason, "checked resources are ready")
+		return 0
+	}
 	setHealthy(gitOpsSet, metav1.ConditionTrue, templatesv1.HealthSucceededReason, "checked resources are ready")
-	return 0
+	return healthRecheckInterval
+}
+
+func healthKinds(gitOpsSet *templatesv1.GitOpsSet) map[string]struct{} {
+	if gitOpsSet.Spec.HealthCheck == nil || len(gitOpsSet.Spec.HealthCheck.Kinds) == 0 {
+		return healthCheckKinds
+	}
+	kinds := make(map[string]struct{}, len(gitOpsSet.Spec.HealthCheck.Kinds))
+	for _, kind := range gitOpsSet.Spec.HealthCheck.Kinds {
+		kinds[kind] = struct{}{}
+	}
+	return kinds
+}
+
+func healthWaitingMessage(waiting []string) string {
+	shown := waiting
+	extra := ""
+	if len(waiting) > healthMessageLimit {
+		shown = waiting[:healthMessageLimit]
+		extra = fmt.Sprintf(", and %d more", len(waiting)-healthMessageLimit)
+	}
+	return fmt.Sprintf("%d resources are not ready: %s%s", len(waiting), strings.Join(shown, ", "), extra)
 }
 
 func setHealthy(gitOpsSet *templatesv1.GitOpsSet, status metav1.ConditionStatus, reason, message string) {

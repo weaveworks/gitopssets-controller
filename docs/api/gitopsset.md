@@ -996,6 +996,65 @@ object, so an explicit empty object is rejected by the controller render.</p>
 <tbody>
 <tr>
 <td>
+<code>name</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name identifies this template so another template can require it.
+Optional unless another template lists it in requires. Names are unique
+within the GitOpsSet.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>requires</code><br />
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Requires lists template names. For the same generated element, objects
+from this template are not applied for the first time until every object
+rendered from those templates exists and is ready. Objects already in the
+inventory are still applied. Readiness is the same check the Healthy
+condition uses. A ConfigMap has no Ready condition, so it never satisfies
+requires.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deletionPolicy</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DeletionPolicy overrides spec.deletionPolicy for objects rendered from
+this template. Empty means spec.deletionPolicy, and an empty spec value
+means Delete.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the account to impersonate when applying, deleting,
+and reading this template&rsquo;s objects. Empty means spec.serviceAccountName.
+Generators keep using spec.serviceAccountName.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>repeat</code><br />
 <em>
 string
@@ -1143,6 +1202,21 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Enabled turns health checks on or off. Nil means enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>kinds</code><br />
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Kinds replaces the default health check kinds when non-empty.
+The default is Kustomization, HelmRelease, Deployment, DaemonSet, and
+StatefulSet. Entries are Kubernetes kinds, for example Kustomization or
+RuntimeEnvironment.</p>
 </td>
 </tr>
 </tbody>
@@ -1618,6 +1692,45 @@ string
 <td>
 <em>(Optional)</em>
 <p>SourceRevision is the source digest recorded when this object was applied.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>renderHash</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RenderHash is the hash of the rendered object that was applied.
+An unchanged hash is not applied again.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deletionPolicy</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DeletionPolicy is the policy stored for this object when it was applied.
+Delete and Orphan match GitOpsSetSpec. Empty means the set policy.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br />
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the account that applied this object.
+Deletes and health reads use it. Empty means the set account.</p>
 </td>
 </tr>
 </tbody>

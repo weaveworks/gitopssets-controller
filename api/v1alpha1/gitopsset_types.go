@@ -31,6 +31,36 @@ type LocalObjectReference struct {
 // Content is required. The API schema cannot measure the size of the raw
 // object, so an explicit empty object is rejected by the controller render.
 type GitOpsSetTemplate struct {
+	// Name identifies this template so another template can require it.
+	// Optional unless another template lists it in requires. Names are unique
+	// within the GitOpsSet.
+	// +optional
+	// +kubebuilder:validation:MaxLength=253
+	Name string `json:"name,omitempty"`
+
+	// Requires lists template names. For the same generated element, objects
+	// from this template are not applied for the first time until every object
+	// rendered from those templates exists and is ready. Objects already in the
+	// inventory are still applied. Readiness is the same check the Healthy
+	// condition uses. A ConfigMap has no Ready condition, so it never satisfies
+	// requires.
+	// +optional
+	// +kubebuilder:validation:MaxItems=16
+	Requires []string `json:"requires,omitempty"`
+
+	// DeletionPolicy overrides spec.deletionPolicy for objects rendered from
+	// this template. Empty means spec.deletionPolicy, and an empty spec value
+	// means Delete.
+	// +kubebuilder:validation:Enum=Delete;Orphan
+	// +optional
+	DeletionPolicy string `json:"deletionPolicy,omitempty"`
+
+	// ServiceAccountName is the account to impersonate when applying, deleting,
+	// and reading this template's objects. Empty means spec.serviceAccountName.
+	// Generators keep using spec.serviceAccountName.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	// Repeat is a JSONPath string defining that the template content should be
 	// repeated for each of the matching elements in the JSONPath expression.
 	// https://kubernetes.io/docs/reference/kubectl/jsonpath/
@@ -344,6 +374,14 @@ type HealthCheck struct {
 	// Enabled turns health checks on or off. Nil means enabled.
 	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Kinds replaces the default health check kinds when non-empty.
+	// The default is Kustomization, HelmRelease, Deployment, DaemonSet, and
+	// StatefulSet. Entries are Kubernetes kinds, for example Kustomization or
+	// RuntimeEnvironment.
+	// +optional
+	// +kubebuilder:validation:MaxItems=16
+	Kinds []string `json:"kinds,omitempty"`
 }
 
 // HealthChecksEnabled reports whether this set should check resource health.

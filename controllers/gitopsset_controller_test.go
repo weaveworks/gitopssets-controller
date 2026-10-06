@@ -690,7 +690,7 @@ func TestReconciliation(t *testing.T) {
 				Content: runtime.RawExtension{
 					Raw: mustMarshalJSON(t, test.MakeTestKustomization(nsn("", "unused"), func(ks *kustomizev1.Kustomization) {
 						ks.Name = "{{ .Element.cluster }}-demo"
-						ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/"
+						ks.Spec.Path = "./templated/clusters/{{ .Element.cluster }}/changed"
 						ks.Spec.Force = true
 					})),
 				},
@@ -735,7 +735,7 @@ func TestReconciliation(t *testing.T) {
 				"sets.gitops.pro/name":      "demo-set",
 				"sets.gitops.pro/namespace": "default",
 			}
-			k.Spec.Path = "./templated/clusters/engineering-dev/"
+			k.Spec.Path = "./templated/clusters/engineering-dev/changed"
 			k.Spec.Force = true
 		})
 
@@ -863,6 +863,79 @@ func TestReconciliation(t *testing.T) {
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
 		if cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition); cond == nil || !strings.Contains(cond.Message, "owned by GitOpsSet default/other-set") {
 			t.Fatalf("ready condition = %#v", cond)
+		}
+	})
+
+	t.Run("template service accounts are separate", func(t *testing.T) {
+		ctx := t.Context()
+		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("flux-system")))
+		test.AssertNoError(t, k8sClient.Create(ctx, test.NewNamespace("crossplane-system")))
+		// The account lives in flux-system. The Role that lets it write claims is in crossplane-system.
+		runtimeRole := &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{Name: "gitopssets-runtime-role", Namespace: "crossplane-system"},
+			Rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{""},
+				Resources: []string{"configmaps"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			}},
+		}
+		test.AssertNoError(t, k8sClient.Create(ctx, runtimeRole))
+		test.AssertNoError(t, k8sClient.Create(ctx, &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "gitopssets-runtime", Namespace: "crossplane-system"},
+			Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: "gitopssets-runtime", Namespace: "flux-system"}},
+			RoleRef:    rbacv1.RoleRef{Kind: "Role", Name: runtimeRole.Name, APIGroup: "rbac.authorization.k8s.io"},
+		}))
+		createRBACForServiceAccount(t, k8sClient, "gitopssets-flux", "flux-system",
+			rbacv1.PolicyRule{
+				APIGroups: []string{""},
+				Resources: []string{"configmaps"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+			rbacv1.PolicyRule{
+				APIGroups: []string{"kustomize.toolkit.fluxcd.io"},
+				Resources: []string{"kustomizations"},
+				Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
+			},
+		)
+
+		gs := runtimeGitOpsSet()
+		gs.Name = "runtime-accounts"
+		gs.Namespace = "flux-system"
+		gs.Spec.Generators[0].List.Elements = gs.Spec.Generators[0].List.Elements[:1]
+		gs.Spec.ServiceAccountName = "gitopssets-flux"
+		gs.Spec.Templates[0].ServiceAccountName = "gitopssets-runtime"
+		gs.Spec.Templates[2].Content = runtime.RawExtension{Raw: []byte(`{"apiVersion":"kustomize.toolkit.fluxcd.io/v1beta2","kind":"Kustomization","metadata":{"name":"runtime-{{ .Element.env }}","namespace":"flux-system"},"spec":{"interval":"10m","path":"./clusters/runtime/{{ .Element.env }}","prune":true,"sourceRef":{"kind":"GitRepository","name":"flux-system"}}}`)}
+		gs = createAndReconcileToFinalizedState(t, k8sClient, reconciler, gs)
+		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
+
+		if _, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)}); err != nil {
+			t.Fatal(err)
+		}
+		if !objectExists(t, k8sClient, "crossplane-system", "pp", "v1", "ConfigMap") {
+			t.Fatal("claim was not created")
+		}
+		if !objectExists(t, k8sClient, "flux-system", "runtime-pp-kubeconfig", "v1", "ConfigMap") {
+			t.Fatal("kubeconfig was not created")
+		}
+		if !objectExists(t, k8sClient, "flux-system", "runtime-pp", "kustomize.toolkit.fluxcd.io/v1beta2", "Kustomization") {
+			t.Fatal("kustomization was not created")
+		}
+
+		fluxClient, err := reconciler.makeImpersonationClient("flux-system", "gitopssets-flux")
+		test.AssertNoError(t, err)
+		runtimeSA, err := reconciler.makeImpersonationClient("flux-system", "gitopssets-runtime")
+		test.AssertNoError(t, err)
+		denied := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "not-allowed", Namespace: "crossplane-system"}}
+		if err := fluxClient.Create(ctx, denied); !apierrors.IsForbidden(err) {
+			t.Fatalf("flux account create claim configmap = %v", err)
+		}
+		deniedKustomization := &unstructured.Unstructured{}
+		deniedKustomization.SetAPIVersion("kustomize.toolkit.fluxcd.io/v1beta2")
+		deniedKustomization.SetKind("Kustomization")
+		deniedKustomization.SetName("not-allowed")
+		deniedKustomization.SetNamespace("flux-system")
+		if err := runtimeSA.Create(ctx, deniedKustomization); !apierrors.IsForbidden(err) {
+			t.Fatalf("runtime account create kustomization = %v", err)
 		}
 	})
 }

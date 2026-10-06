@@ -770,6 +770,16 @@ spec:
                     description: Enabled turns health checks on or off. Nil means
                       enabled.
                     type: boolean
+                  kinds:
+                    description: |-
+                      Kinds replaces the default health check kinds when non-empty.
+                      The default is Kustomization, HelmRelease, Deployment, DaemonSet, and
+                      StatefulSet. Entries are Kubernetes kinds, for example Kustomization or
+                      RuntimeEnvironment.
+                    items:
+                      type: string
+                    maxItems: 16
+                    type: array
                 type: object
               rollout:
                 description: |-
@@ -808,11 +818,45 @@ spec:
                       description: Content is the YAML to be templated and generated.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
+                    deletionPolicy:
+                      description: |-
+                        DeletionPolicy overrides spec.deletionPolicy for objects rendered from
+                        this template. Empty means spec.deletionPolicy, and an empty spec value
+                        means Delete.
+                      enum:
+                      - Delete
+                      - Orphan
+                      type: string
+                    name:
+                      description: |-
+                        Name identifies this template so another template can require it.
+                        Optional unless another template lists it in requires. Names are unique
+                        within the GitOpsSet.
+                      maxLength: 253
+                      type: string
                     repeat:
                       description: |-
                         Repeat is a JSONPath string defining that the template content should be
                         repeated for each of the matching elements in the JSONPath expression.
                         https://kubernetes.io/docs/reference/kubectl/jsonpath/
+                      type: string
+                    requires:
+                      description: |-
+                        Requires lists template names. For the same generated element, objects
+                        from this template are not applied for the first time until every object
+                        rendered from those templates exists and is ready. Objects already in the
+                        inventory are still applied. Readiness is the same check the Healthy
+                        condition uses. A ConfigMap has no Ready condition, so it never satisfies
+                        requires.
+                      items:
+                        type: string
+                      maxItems: 16
+                      type: array
+                    serviceAccountName:
+                      description: |-
+                        ServiceAccountName is the account to impersonate when applying, deleting,
+                        and reading this template's objects. Empty means spec.serviceAccountName.
+                        Generators keep using spec.serviceAccountName.
                       type: string
                   required:
                   - content
@@ -895,6 +939,11 @@ spec:
                       description: ResourceRef contains the information necessary
                         to locate a resource within a cluster.
                       properties:
+                        deletionPolicy:
+                          description: |-
+                            DeletionPolicy is the policy stored for this object when it was applied.
+                            Delete and Orphan match GitOpsSetSpec. Empty means the set policy.
+                          type: string
                         id:
                           description: |-
                             ID is the string representation of the Kubernetes resource object's metadata,
@@ -909,6 +958,16 @@ spec:
                           description: |-
                             LastError is the most recent apply or delete error for this object.
                             It is cleared after a successful apply.
+                          type: string
+                        renderHash:
+                          description: |-
+                            RenderHash is the hash of the rendered object that was applied.
+                            An unchanged hash is not applied again.
+                          type: string
+                        serviceAccountName:
+                          description: |-
+                            ServiceAccountName is the account that applied this object.
+                            Deletes and health reads use it. Empty means the set account.
                           type: string
                         sourceRevision:
                           description: SourceRevision is the source digest recorded

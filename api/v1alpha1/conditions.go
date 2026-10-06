@@ -40,6 +40,14 @@ const (
 	// HealthFailedReason is used when a checked resource cannot be read.
 	HealthFailedReason string = "HealthCheckFailed"
 
+	// AccessDeniedReason is used when the impersonated account cannot get a
+	// checked resource.
+	AccessDeniedReason string = "AccessDenied"
+
+	// WaitingForDependencyReason is used when a template is held until another
+	// rendered object is ready.
+	WaitingForDependencyReason string = "WaitingForDependency"
+
 	// RolloutProgressingReason is used when spec.rollout stops a reconcile
 	// before every rendered object has been applied.
 	RolloutProgressingReason string = "RolloutProgressing"
