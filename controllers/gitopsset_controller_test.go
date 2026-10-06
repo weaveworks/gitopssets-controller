@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -204,16 +206,22 @@ func TestReconciliation(t *testing.T) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
+			k.ObjectMeta.Labels = map[string]string{
+				"sets.gitops.pro/name":      "other-set",
+				"sets.gitops.pro/namespace": "default",
+			}
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
 		defer deleteObject(t, k8sClient, test.ToUnstructured(t, devKS))
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
+		test.AssertErrorMatch(t, "owned by GitOpsSet default/other-set", err)
 
 		updated := &templatesv1.GitOpsSet{}
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
-		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "failed to create Resource: kustomizations.kustomize.toolkit.fluxcd.io \"engineering-dev-demo\" already exists")
+		if cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition); cond == nil || !strings.Contains(cond.Message, "owned by GitOpsSet default/other-set") {
+			t.Fatalf("ready condition = %#v", cond)
+		}
 	})
 
 	t.Run("reconciling removal of resources", func(t *testing.T) {
@@ -656,7 +664,7 @@ func TestReconciliation(t *testing.T) {
 
 		// Switch the permissions to allow updating.
 		var role rbacv1.Role
-		if err := k8sClient.Get(ctx, client.ObjectKey{Name: "test-role", Namespace: "default"}, &role); err != nil {
+		if err := k8sClient.Get(ctx, client.ObjectKey{Name: "test-sa-role", Namespace: "default"}, &role); err != nil {
 			t.Fatal(err)
 		}
 		role.Rules = []rbacv1.PolicyRule{
@@ -793,16 +801,22 @@ func TestReconciliation(t *testing.T) {
 			k.ObjectMeta.Annotations = map[string]string{
 				"testing": "existingResource",
 			}
+			k.ObjectMeta.Labels = map[string]string{
+				"sets.gitops.pro/name":      "other-set",
+				"sets.gitops.pro/namespace": "default",
+			}
 		})
 		test.AssertNoError(t, k8sClient.Create(ctx, test.ToUnstructured(t, devKS)))
 		defer deleteObject(t, k8sClient, gs)
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, "failed to create Resource.*already exists", err)
+		test.AssertErrorMatch(t, "owned by GitOpsSet default/other-set", err)
 
 		updated := &templatesv1.GitOpsSet{}
 		test.AssertNoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(gs), updated))
-		assertGitOpsSetCondition(t, updated, meta.ReadyCondition, "failed to create Resource: kustomizations.kustomize.toolkit.fluxcd.io \"engineering-dev-demo\" already exists")
+		if cond := apimeta.FindStatusCondition(updated.Status.Conditions, meta.ReadyCondition); cond == nil || !strings.Contains(cond.Message, "owned by GitOpsSet default/other-set") {
+			t.Fatalf("ready condition = %#v", cond)
+		}
 	})
 }
 
@@ -1135,7 +1149,8 @@ func assertInventoryHasNoItems(t *testing.T, gs *templatesv1.GitOpsSet) {
 
 func deleteObject(t *testing.T, cl client.Client, obj client.Object) {
 	t.Helper()
-	if err := cl.Delete(t.Context(), obj); err != nil {
+	// Cleanup runs after t.Context() is canceled.
+	if err := cl.Delete(context.Background(), obj); err != nil && !apierrors.IsNotFound(err) {
 		t.Fatal(err)
 	}
 }
@@ -1254,7 +1269,7 @@ func createRBACForServiceAccount(t *testing.T, cl client.Client, serviceAccountN
 
 	}
 	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-role", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName + "-role", Namespace: namespace},
 		Rules:      rules,
 	}
 	if err := cl.Create(t.Context(), role); err != nil {

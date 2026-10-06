@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gitops-tools/gitopssets-controller/pkg/setup"
+	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -90,5 +91,28 @@ spec:
 `
 	if diff := cmp.Diff(want, out.String()); diff != "" {
 		t.Fatalf("failed to generate:\n%s", diff)
+	}
+}
+
+func TestNewGenerateCommand(t *testing.T) {
+	cmd := NewGenerateCommand("gitopssets")
+	cmd.SetArgs([]string{"--disable-cluster-access", "testdata/list_set.yaml"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMakeClientsWithoutClusterAccess(t *testing.T) {
+	scheme, err := setup.NewSchemeForGenerators(setup.DefaultGenerators)
+	if err != nil {
+		t.Fatal(err)
+	}
+	services, reader, err := makeClients(true, "", scheme, logr.Discard())
+	if err != nil || services == nil || reader == nil {
+		t.Fatalf("in-memory clients: services=%v reader=%v err=%v", services, reader, err)
+	}
+	services, reader, err = makeClients(true, t.TempDir(), scheme, logr.Discard())
+	if err != nil || services == nil || reader == nil {
+		t.Fatalf("local repository clients: services=%v reader=%v err=%v", services, reader, err)
 	}
 }
