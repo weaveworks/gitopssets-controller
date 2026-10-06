@@ -1,7 +1,9 @@
 package pullrequests
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -408,6 +410,104 @@ func TestPullRequestGenerator_GetInterval(t *testing.T) {
 	if d != interval {
 		t.Fatalf("got %#v want %#v", d, interval)
 	}
+}
+
+func TestListPullRequestsFollowsPages(t *testing.T) {
+	first := testPullRequest(1, "one")
+	second := testPullRequest(2, "two")
+	client, _ := fakescm.NewDefault()
+	client.PullRequests = &pagingPulls{
+		PullRequestService: client.PullRequests,
+		pages:              [][]*scm.PullRequest{{first}, {second}},
+	}
+	gen := NewGenerator(logr.Discard(), fake.NewFakeClient())
+	gen.clientFactory = func(_, _, _ string, _ ...factory.ClientOptionFunc) (*scm.Client, error) {
+		return client, nil
+	}
+
+	got, err := gen.Generate(t.Context(), pullRequestGenerator(), gitOpsSetForPulls())
+	test.AssertNoError(t, err)
+	if len(got) != 2 {
+		t.Fatalf("got %d pull requests, want 2: %#v", len(got), got)
+	}
+	if got[0]["Number"] != "1" || got[1]["Number"] != "2" {
+		t.Fatalf("numbers = %v %v, want 1 and 2", got[0]["Number"], got[1]["Number"])
+	}
+}
+
+func TestListPullRequestsErrorsWhenPageCapIsExceeded(t *testing.T) {
+	previous := maxPullRequestPages
+	maxPullRequestPages = 2
+	t.Cleanup(func() { maxPullRequestPages = previous })
+
+	client, _ := fakescm.NewDefault()
+	client.PullRequests = &pagingPulls{
+		PullRequestService: client.PullRequests,
+		pages: [][]*scm.PullRequest{
+			{testPullRequest(1, "one")},
+			{testPullRequest(2, "two")},
+			{testPullRequest(3, "three")},
+		},
+	}
+	gen := NewGenerator(logr.Discard(), fake.NewFakeClient())
+	gen.clientFactory = func(_, _, _ string, _ ...factory.ClientOptionFunc) (*scm.Client, error) {
+		return client, nil
+	}
+
+	_, err := gen.Generate(t.Context(), pullRequestGenerator(), gitOpsSetForPulls())
+	if err == nil || !strings.Contains(err.Error(), "exceeded 2 pages") {
+		t.Fatalf("error = %v, want a page cap error", err)
+	}
+}
+
+type pagingPulls struct {
+	scm.PullRequestService
+	pages [][]*scm.PullRequest
+}
+
+func (p *pagingPulls) List(_ context.Context, _ string, opts *scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+	page := opts.Page
+	if page < 1 {
+		page = 1
+	}
+	if page > len(p.pages) {
+		return nil, &scm.Response{}, nil
+	}
+	next := 0
+	if page < len(p.pages) {
+		next = page + 1
+	}
+	return p.pages[page-1], &scm.Response{Page: scm.Page{Next: next}}, nil
+}
+
+func testPullRequest(number int, branch string) *scm.PullRequest {
+	return &scm.PullRequest{
+		Number: number,
+		Fork:   "test-org/my-repo",
+		Head: scm.PullRequestBranch{
+			Ref: branch,
+			Sha: "abc",
+			Repo: scm.Repository{
+				Clone:    "https://github.com/test-org/my-repo.git",
+				CloneSSH: "git@github.com:test-org/my-repo.git",
+			},
+		},
+	}
+}
+
+func pullRequestGenerator() *templatesv1.GitOpsSetGenerator {
+	return &templatesv1.GitOpsSetGenerator{
+		PullRequests: &templatesv1.PullRequestGenerator{
+			Driver:    "fake",
+			ServerURL: "https://example.com",
+			Repo:      "test-org/my-repo",
+			Forks:     true,
+		},
+	}
+}
+
+func gitOpsSetForPulls() *templatesv1.GitOpsSet {
+	return &templatesv1.GitOpsSet{ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "default"}}
 }
 
 func newSecret(name types.NamespacedName, opts ...func(*corev1.Secret)) *corev1.Secret {

@@ -80,9 +80,9 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 
-	prs, _, err := scmClient.PullRequests.List(ctx, sg.PullRequests.Repo, listOptionsFromConfig(sg.PullRequests))
+	prs, err := g.listPullRequests(ctx, scmClient, sg.PullRequests)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pull requests: %w", err)
+		return nil, err
 	}
 
 	g.Logger.Info("queried pull requests", "repo", sg.PullRequests.Repo, "count", len(prs))
@@ -118,6 +118,28 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 // Interval is an implementation of the Generator interface.
 func (g *PullRequestGenerator) Interval(sg *templatesv1.GitOpsSetGenerator) time.Duration {
 	return sg.PullRequests.Interval.Duration
+}
+
+// maxPullRequestPages stops a provider that never clears Page.Next from
+// looping forever. 50 pages of 20 is 1000 open pull requests.
+var maxPullRequestPages = 50
+
+func (g *PullRequestGenerator) listPullRequests(ctx context.Context, scmClient *scm.Client, cfg *templatesv1.PullRequestGenerator) ([]*scm.PullRequest, error) {
+	opts := listOptionsFromConfig(cfg)
+	opts.Page = 1
+	var all []*scm.PullRequest
+	for range maxPullRequestPages {
+		prs, resp, err := scmClient.PullRequests.List(ctx, cfg.Repo, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list pull requests: %w", err)
+		}
+		all = append(all, prs...)
+		if resp == nil || resp.Page.Next == 0 {
+			return all, nil
+		}
+		opts.Page = resp.Page.Next
+	}
+	return nil, fmt.Errorf("pull request list for %s exceeded %d pages", cfg.Repo, maxPullRequestPages)
 }
 
 // label filtering is only supported by GitLab (that I'm aware of)
