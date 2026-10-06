@@ -24,6 +24,18 @@ import (
 
 var _ generators.Generator = (*PullRequestGenerator)(nil)
 
+func TestSafeBranchName(t *testing.T) {
+	if got := safeBranchName("Feature/Preview_1"); got != "feature-preview1" {
+		t.Fatalf("safe branch = %q", got)
+	}
+	if got := safeBranchName(""); got != "" {
+		t.Fatalf("empty branch = %q", got)
+	}
+	if got := safeBranchName(strings.Repeat("a", 70)); got != "" {
+		t.Fatalf("long branch = %q", got)
+	}
+}
+
 func TestGenerate_with_no_generator(t *testing.T) {
 	gen := GeneratorFactory(logr.Discard(), nil)
 	_, err := gen.Generate(t.Context(), nil, nil)
@@ -84,6 +96,11 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
+					"SafeBranch":  "new-topic",
+					"BaseBranch":  "main",
+					"Title":       "",
+					"Author":      "",
+					"Labels":      []string{},
 					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
@@ -139,6 +156,11 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "2",
 					"Branch":      "new-topic",
+					"SafeBranch":  "new-topic",
+					"BaseBranch":  "main",
+					"Title":       "",
+					"Author":      "",
+					"Labels":      []string{"testing"},
 					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
@@ -191,6 +213,11 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
+					"SafeBranch":  "new-topic",
+					"BaseBranch":  "main",
+					"Title":       "",
+					"Author":      "",
+					"Labels":      []string{},
 					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
@@ -226,6 +253,11 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "1",
 					"Branch":      "new-topic",
+					"SafeBranch":  "new-topic",
+					"BaseBranch":  "main",
+					"Title":       "",
+					"Author":      "",
+					"Labels":      []string{},
 					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
@@ -280,7 +312,53 @@ func TestGenerate(t *testing.T) {
 				{
 					"Number":      "2",
 					"Branch":      "new-topic",
+					"SafeBranch":  "new-topic",
+					"BaseBranch":  "main",
+					"Title":       "",
+					"Author":      "",
+					"Labels":      []string{"testing"},
 					"HeadSHA":     "6dcb09b5b57875f334f61aebed695e2e4193db5e",
+					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
+					"CloneURL":    "https://github.com/test-org/my-repo.git",
+					"Fork":        false,
+				},
+			},
+		},
+		{
+			name: "branch, author, title, and labels",
+			dataFunc: func(d *fakescm.Data) {
+				d.PullRequests[1] = &scm.PullRequest{
+					Number: 4,
+					Title:  "Add preview",
+					Author: scm.User{Login: "octocat"},
+					Labels: []*scm.Label{{Name: "preview"}, {Name: "env"}},
+					Base: scm.PullRequestBranch{
+						Ref:  "release",
+						Repo: scm.Repository{FullName: "test-org/my-repo"},
+					},
+					Head: scm.PullRequestBranch{
+						Ref: "feature/preview",
+						Sha: "abc123",
+						Repo: scm.Repository{
+							Clone:    "https://github.com/test-org/my-repo.git",
+							CloneSSH: "git@github.com:test-org/my-repo.git",
+						},
+					},
+					Fork: "test-org/my-repo",
+				}
+			},
+			forks:         false,
+			clientFactory: defaultClientFactory,
+			want: []map[string]any{
+				{
+					"Number":      "4",
+					"Branch":      "feature/preview",
+					"SafeBranch":  "feature-preview",
+					"BaseBranch":  "release",
+					"Title":       "Add preview",
+					"Author":      "octocat",
+					"Labels":      []string{"preview", "env"},
+					"HeadSHA":     "abc123",
 					"CloneSSHURL": "git@github.com:test-org/my-repo.git",
 					"CloneURL":    "https://github.com/test-org/my-repo.git",
 					"Fork":        false,

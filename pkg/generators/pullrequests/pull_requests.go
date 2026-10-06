@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
+	"github.com/gitops-tools/pkg/sanitize"
 	"github.com/go-logr/logr"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
@@ -97,19 +99,7 @@ func (g *PullRequestGenerator) Generate(ctx context.Context, sg *templatesv1.Git
 		if !sg.PullRequests.Forks && isFork {
 			continue
 		}
-		// TODO: This should provide additional fields, including the
-		// destination branch ...etc.
-		// It should also sanitise the branches, for example, a branch can
-		// contain a `/` or do we delegate this to the `sanitize` function in
-		// the template rendering?
-		res = append(res, map[string]any{
-			"Number":      strconv.Itoa(pr.Number),
-			"Branch":      pr.Head.Ref,
-			"HeadSHA":     pr.Head.Sha,
-			"CloneURL":    pr.Head.Repo.Clone,
-			"CloneSSHURL": pr.Head.Repo.CloneSSH,
-			"Fork":        isFork,
-		})
+		res = append(res, pullRequestElement(pr, isFork))
 	}
 
 	return res, nil
@@ -153,6 +143,36 @@ func listOptionsFromConfig(c *templatesv1.PullRequestGenerator) *scm.PullRequest
 		Labels: c.Labels,
 		Open:   true,
 	}
+}
+
+func pullRequestElement(pr *scm.PullRequest, isFork bool) map[string]any {
+	labels := make([]string, 0, len(pr.Labels))
+	for _, label := range pr.Labels {
+		if label != nil && label.Name != "" {
+			labels = append(labels, label.Name)
+		}
+	}
+	return map[string]any{
+		"Number":      strconv.Itoa(pr.Number),
+		"Branch":      pr.Head.Ref,
+		"SafeBranch":  safeBranchName(pr.Head.Ref),
+		"BaseBranch":  pr.Base.Ref,
+		"Title":       pr.Title,
+		"Author":      pr.Author.Login,
+		"Labels":      labels,
+		"HeadSHA":     pr.Head.Sha,
+		"CloneURL":    pr.Head.Repo.Clone,
+		"CloneSSHURL": pr.Head.Repo.CloneSSH,
+		"Fork":        isFork,
+	}
+}
+
+func safeBranchName(ref string) string {
+	sanitized, err := sanitize.SanitizeDNSName(strings.ReplaceAll(ref, "/", "-"))
+	if err != nil {
+		return ""
+	}
+	return sanitized
 }
 
 func prMatchesLabels(pr *scm.PullRequest, labels []string) bool {
