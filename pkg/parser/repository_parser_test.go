@@ -28,9 +28,9 @@ func TestGenerateFromFiles(t *testing.T) {
 			items: []templatesv1.RepositoryGeneratorFileItem{
 				{Path: "files/dev.yaml"}, {Path: "files/production.yaml"}, {Path: "files/staging.yaml"}},
 			want: []map[string]any{
-				{"environment": "dev", "instances": 2.0},
-				{"environment": "production", "instances": 10.0},
-				{"environment": "staging", "instances": 5.0},
+				{"environment": "dev", "instances": 2.0, "FilePath": "files/dev.yaml", "FileName": "dev.yaml"},
+				{"environment": "production", "instances": 10.0, "FilePath": "files/production.yaml", "FileName": "production.yaml"},
+				{"environment": "staging", "instances": 5.0, "FilePath": "files/staging.yaml", "FileName": "staging.yaml"},
 			},
 		},
 		{
@@ -39,9 +39,9 @@ func TestGenerateFromFiles(t *testing.T) {
 			items: []templatesv1.RepositoryGeneratorFileItem{
 				{Path: "files/dev.json"}, {Path: "files/production.json"}, {Path: "files/staging.json"}},
 			want: []map[string]any{
-				{"environment": "dev", "instances": 1.0},
-				{"environment": "production", "instances": 10.0},
-				{"environment": "staging", "instances": 5.0},
+				{"environment": "dev", "instances": 1.0, "FilePath": "files/dev.json", "FileName": "dev.json"},
+				{"environment": "production", "instances": 10.0, "FilePath": "files/production.json", "FileName": "production.json"},
+				{"environment": "staging", "instances": 5.0, "FilePath": "files/staging.json", "FileName": "staging.json"},
 			},
 		},
 	}
@@ -59,6 +59,17 @@ func TestGenerateFromFiles(t *testing.T) {
 				t.Fatalf("failed to parse artifacts:\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestWithFileIdentityKeepsFileValues(t *testing.T) {
+	got := withFileIdentity(map[string]any{"FilePath": "from-file", "env": "dev"}, "files/dev.yaml")
+	if got["FilePath"] != "from-file" || got["FileName"] != "dev.yaml" || got["env"] != "dev" {
+		t.Fatalf("element = %#v", got)
+	}
+	got = withFileIdentity(map[string]any{"FileName": "kept"}, "/files/../files/dev.yaml")
+	if got["FileName"] != "kept" || got["FilePath"] != "files/dev.yaml" {
+		t.Fatalf("cleaned element = %#v", got)
 	}
 }
 

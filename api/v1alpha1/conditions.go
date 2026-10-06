@@ -39,6 +39,10 @@ const (
 
 	// HealthFailedReason is used when a checked resource cannot be read.
 	HealthFailedReason string = "HealthCheckFailed"
+
+	// RolloutProgressingReason is used when spec.rollout stops a reconcile
+	// before every rendered object has been applied.
+	RolloutProgressingReason string = "RolloutProgressing"
 )
 
 // SetGitOpsSetReadiness sets the ready condition with the given status, reason and message.

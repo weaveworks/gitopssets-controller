@@ -43,6 +43,21 @@ func TestFilterElements(t *testing.T) {
 	}
 }
 
+func TestRenderRejectsEmptyTemplateContent(t *testing.T) {
+	set := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "demo"},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{{
+				List: &templatesv1.ListGenerator{Elements: []apiextensionsv1.JSON{{Raw: []byte(`{"name":"app"}`)}}},
+			}},
+			Templates: []templatesv1.GitOpsSetTemplate{{}},
+		},
+	}
+	if _, err := Render(t.Context(), set, map[string]generators.Generator{"List": list.NewGenerator(logr.Discard())}); err == nil {
+		t.Fatal("expected empty template content to fail")
+	}
+}
+
 func TestRenderAppliesFilterBeforeTemplates(t *testing.T) {
 	set := &templatesv1.GitOpsSet{
 		ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "demo"},

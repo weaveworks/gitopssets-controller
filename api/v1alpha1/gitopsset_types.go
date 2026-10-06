@@ -27,7 +27,9 @@ type LocalObjectReference struct {
 	Name string `json:"name"`
 }
 
-// GitOpsSetTemplate describes a resource to create
+// GitOpsSetTemplate describes a resource to create.
+// Content is required. The API schema cannot measure the size of the raw
+// object, so an explicit empty object is rejected by the controller render.
 type GitOpsSetTemplate struct {
 	// Repeat is a JSONPath string defining that the template content should be
 	// repeated for each of the matching elements in the JSONPath expression.
@@ -214,6 +216,7 @@ type OCIRepositoryGenerator struct {
 // The matrix is a cartesian product of the generators.
 type MatrixGenerator struct {
 	// Generators is a list of generators to be combined.
+	// +kubebuilder:validation:MaxItems=16
 	Generators []GitOpsSetNestedGenerator `json:"generators,omitempty"`
 
 	// SingleElement means generate a single element with the result of the
@@ -229,6 +232,7 @@ type MatrixGenerator struct {
 
 // GitOpsSetNestedGenerator describes the generators usable by the MatrixGenerator.
 // This is a subset of the generators allowed by the GitOpsSetGenerator because the CRD format doesn't support recursive declarations.
+// +kubebuilder:validation:XValidation:rule="(has(self.list) ? 1 : 0) + (has(self.pullRequests) ? 1 : 0) + (has(self.gitRepository) ? 1 : 0) + (has(self.ociRepository) ? 1 : 0) + (has(self.cluster) ? 1 : 0) + (has(self.apiClient) ? 1 : 0) + (has(self.imagePolicy) ? 1 : 0) + (has(self.config) ? 1 : 0) == 1",message="exactly one generator type must be set"
 type GitOpsSetNestedGenerator struct {
 	// Name is an optional field that will be used to prefix the values generated
 	// by the nested generators, this allows multiple generators of the same
@@ -253,6 +257,7 @@ type ImagePolicyGenerator struct {
 }
 
 // GitOpsSetGenerator is the top-level set of generators for this GitOpsSet.
+// +kubebuilder:validation:XValidation:rule="(has(self.list) ? 1 : 0) + (has(self.pullRequests) ? 1 : 0) + (has(self.gitRepository) ? 1 : 0) + (has(self.ociRepository) ? 1 : 0) + (has(self.matrix) ? 1 : 0) + (has(self.cluster) ? 1 : 0) + (has(self.apiClient) ? 1 : 0) + (has(self.imagePolicy) ? 1 : 0) + (has(self.config) ? 1 : 0) == 1",message="exactly one generator type must be set"
 type GitOpsSetGenerator struct {
 	List          *ListGenerator          `json:"list,omitempty"`
 	PullRequests  *PullRequestGenerator   `json:"pullRequests,omitempty"`
@@ -270,6 +275,16 @@ type GitOpsSetGenerator struct {
 	// generator the filter runs after the cartesian product.
 	// +optional
 	Filter string `json:"filter,omitempty"`
+}
+
+// Rollout controls how many rendered objects are applied per reconcile.
+type Rollout struct {
+	// MaxResources is the maximum number of new objects to apply in one reconcile.
+	// Objects already in the inventory are reapplied and do not consume this budget.
+	// Zero, or an omitted rollout, applies every rendered object.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MaxResources *int `json:"maxResources,omitempty"`
 }
 
 // GitOpsSetSpec defines the desired state of GitOpsSet
@@ -290,11 +305,22 @@ type GitOpsSetSpec struct {
 	DeletionPolicy string `json:"deletionPolicy,omitempty"`
 
 	// Generators generate the data to be inserted into the provided templates.
-	Generators []GitOpsSetGenerator `json:"generators,omitempty"`
+	// +required
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=32
+	Generators []GitOpsSetGenerator `json:"generators"`
 
 	// Templates are a set of YAML templates that are rendered into resources
 	// from the data supplied by the generators.
-	Templates []GitOpsSetTemplate `json:"templates,omitempty"`
+	// +required
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=32
+	Templates []GitOpsSetTemplate `json:"templates"`
+
+	// Rollout limits how many rendered objects are applied in one reconcile.
+	// When omitted, every rendered object is applied.
+	// +optional
+	Rollout *Rollout `json:"rollout,omitempty"`
 
 	// The name of the Kubernetes service account to impersonate
 	// when reconciling this Kustomization.

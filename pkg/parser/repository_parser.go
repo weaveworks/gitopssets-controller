@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/go-logr/logr"
@@ -64,10 +65,26 @@ func (p *RepositoryParser) GenerateFromFiles(ctx context.Context, archiveURL, ch
 			return nil, fmt.Errorf("failed to parse archive file %q: %w", file.Path, err)
 		}
 
-		result = append(result, r)
+		result = append(result, withFileIdentity(r, file.Path))
 	}
 
 	return result, nil
+}
+
+// withFileIdentity adds FilePath and FileName when the parsed document does not
+// already set them. Values from the file win so a document can use those names.
+func withFileIdentity(parsed map[string]any, path string) map[string]any {
+	if parsed == nil {
+		parsed = map[string]any{}
+	}
+	cleaned := strings.TrimPrefix(filepath.Clean(path), "/")
+	if _, exists := parsed["FilePath"]; !exists {
+		parsed["FilePath"] = cleaned
+	}
+	if _, exists := parsed["FileName"]; !exists {
+		parsed["FileName"] = filepath.Base(cleaned)
+	}
+	return parsed
 }
 
 // GenerateFromDirectories extracts the archive and processes the directories.

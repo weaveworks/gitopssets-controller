@@ -43,6 +43,11 @@ func Render(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators 
 // RenderWithMapper renders templates and uses mapper to decide whether an
 // object is namespaced. A nil mapper keeps the historical kind check.
 func RenderWithMapper(ctx context.Context, r *templatesv1.GitOpsSet, configuredGenerators map[string]generators.Generator, mapper meta.RESTMapper) ([]*unstructured.Unstructured, error) {
+	for i, template := range r.Spec.Templates {
+		if len(template.Content.Raw) == 0 {
+			return nil, fmt.Errorf("template %d content must not be empty", i)
+		}
+	}
 	rendered := []*unstructured.Unstructured{}
 
 	index := 0

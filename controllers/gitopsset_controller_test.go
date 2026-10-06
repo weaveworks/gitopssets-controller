@@ -103,6 +103,34 @@ func TestReconciliation(t *testing.T) {
 	test.AssertNoError(t, reconciler.SetupWithManager(mgr))
 	test.AssertNoError(t, k8sClient.Create(t.Context(), test.NewNamespace("test-ns")))
 
+	t.Run("rejects an empty spec", func(t *testing.T) {
+		gs := &templatesv1.GitOpsSet{ObjectMeta: metav1.ObjectMeta{Name: "empty-set", Namespace: "default"}}
+		err := k8sClient.Create(t.Context(), gs)
+		if err == nil || !apierrors.IsInvalid(err) {
+			t.Fatalf("empty spec err = %v", err)
+		}
+	})
+
+	t.Run("rejects two generator types in one entry", func(t *testing.T) {
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Name = "two-generators"
+			gs.Spec.Generators[0].Cluster = &templatesv1.ClusterGenerator{}
+		})
+		err := k8sClient.Create(t.Context(), gs)
+		if err == nil || !apierrors.IsInvalid(err) {
+			t.Fatalf("two generators err = %v", err)
+		}
+	})
+
+	t.Run("accepts a minimal set", func(t *testing.T) {
+		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
+			gs.Name = "minimal-set"
+			gs.Spec.Suspend = true
+		})
+		test.AssertNoError(t, k8sClient.Create(t.Context(), gs))
+		test.AssertNoError(t, k8sClient.Delete(t.Context(), gs))
+	})
+
 	t.Run("reconciling creation of new resources", func(t *testing.T) {
 		ctx := t.Context()
 		gs := createAndReconcileToFinalizedState(t, k8sClient, reconciler, makeTestGitOpsSet(t))
@@ -487,17 +515,8 @@ func TestReconciliation(t *testing.T) {
 	t.Run("reconciling with no generated resources", func(t *testing.T) {
 		ctx := t.Context()
 		gs := makeTestGitOpsSet(t, func(gs *templatesv1.GitOpsSet) {
-			// No templates to generate resources from
-			gs.Spec.Templates = []templatesv1.GitOpsSetTemplate{}
-			gs.Spec.Generators = []templatesv1.GitOpsSetGenerator{
-				{
-					List: &templatesv1.ListGenerator{
-						Elements: []apiextensionsv1.JSON{
-							{Raw: []byte(`{"cluster": "engineering-dev"}`)},
-						},
-					},
-				},
-			}
+			// A template is required, but the list has no elements to render.
+			gs.Spec.Generators[0].List.Elements = nil
 		})
 		gs = createAndReconcileToFinalizedState(t, k8sClient, reconciler, gs)
 		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)

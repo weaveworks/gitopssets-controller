@@ -59,9 +59,9 @@ func TestGenerate(t *testing.T) {
 				withArchiveURLAndChecksum(srv.URL+"/files.tar.gz",
 					"sha256:f0a57ec1cdebda91cf00d89dfa298c6ac27791e7fdb0329990478061755eaca8"))},
 			[]map[string]any{
-				{"environment": "dev", "instances": 2.0},
-				{"environment": "production", "instances": 10.0},
-				{"environment": "staging", "instances": 5.0},
+				{"environment": "dev", "instances": 2.0, "FilePath": "files/dev.yaml", "FileName": "dev.yaml"},
+				{"environment": "production", "instances": 10.0, "FilePath": "files/production.yaml", "FileName": "production.yaml"},
+				{"environment": "staging", "instances": 5.0, "FilePath": "files/staging.yaml", "FileName": "staging.yaml"},
 			},
 		},
 		{

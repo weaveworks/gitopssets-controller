@@ -181,6 +181,18 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	inventory, requeue, err := r.reconcileResources(ctx, k8sClient, &gitOpsSet)
 
+	var progress *rolloutProgressError
+	if errors.As(err, &progress) {
+		if requeue == 0 {
+			requeue = 10 * time.Second
+		}
+		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.RolloutProgressingReason, err.Error())
+		if patchErr := r.patchStatus(ctx, req, gitOpsSet.Status); patchErr != nil {
+			return ctrl.Result{}, patchErr
+		}
+		return ctrl.Result{RequeueAfter: requeue}, nil
+	}
+
 	var retry *retryAfterError
 	if errors.As(err, &retry) {
 		templatesv1.SetGitOpsSetReadiness(&gitOpsSet, inventory, metav1.ConditionFalse, templatesv1.WaitingForNamespaceReason, err.Error())
@@ -250,6 +262,13 @@ func (r *GitOpsSetReconciler) reconcileResources(ctx context.Context, k8sClient 
 
 	inventory, err := r.renderAndReconcile(ctx, logger, k8sClient, gitOpsSet, instantiatedGenerators)
 	if err != nil {
+		var progress *rolloutProgressError
+		if errors.As(err, &progress) {
+			if requeueAfter == 0 {
+				requeueAfter = 10 * time.Second
+			}
+			return inventory, requeueAfter, err
+		}
 		return inventory, generators.NoRequeueInterval, err
 	}
 	if sourcesComplete && inventory != nil {
@@ -285,13 +304,23 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 	logger.Info("rendered templates", "resourceCount", len(resources))
 
 	var inventoryErr error
+	budget := rolloutBudget(gitOpsSet)
 
 	existingEntries := newResourceRefSet(nil)
 	if gitOpsSet.Status.Inventory != nil {
 		existingEntries = newResourceRefSet(gitOpsSet.Status.Inventory.Entries)
 	}
+	desired := newResourceRefSet(nil)
+	for _, resource := range resources {
+		ref, err := templatesv1.ResourceRefFromObject(resource)
+		if err == nil {
+			desired.insert(ref)
+		}
+	}
 
 	entries := newResourceRefSet(nil)
+	appliedNew := 0
+	stopped := false
 	for _, newResource := range resources {
 		ref, err := templatesv1.ResourceRefFromObject(newResource)
 		if err != nil {
@@ -299,6 +328,10 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			continue
 		}
 		previous, hadPrevious := existingEntries.get(ref)
+		if budget > 0 && !hadPrevious && appliedNew >= budget {
+			stopped = true
+			break
+		}
 		recordFailure := func(applyErr error) {
 			if hadPrevious {
 				failed := previous
@@ -310,13 +343,20 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 
 		if err := logResourceMessage(logger, "applying resource", newResource); err != nil {
 			recordFailure(err)
+			if budget > 0 {
+				return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+			}
 			continue
 		}
 		if err := r.applyResource(ctx, k8sClient, gitOpsSet, newResource); err != nil {
 			if missingNamespace(err) {
+				retainUnreached(entries, existingEntries, desired)
 				return &templatesv1.ResourceInventory{Entries: entries.list()}, &retryAfterError{after: 5 * time.Second, err: err}
 			}
 			recordFailure(err)
+			if budget > 0 {
+				return rolloutResult(entries, existingEntries, desired, appliedNew, err)
+			}
 			continue
 		}
 		revision := ""
@@ -324,20 +364,89 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 			revision = previous.SourceRevision
 		}
 		entries.insert(appliedResourceRef(ref, revision))
+		if !hadPrevious {
+			appliedNew++
+		}
+	}
+	if budget > 0 {
+		retainUnreached(entries, existingEntries, desired)
 	}
 
 	if gitOpsSet.Status.Inventory == nil || orphansResources(gitOpsSet) {
+		if progress := progressAfterStop(stopped, entries, desired, appliedNew); progress != nil {
+			return &templatesv1.ResourceInventory{Entries: entries.list()}, progress
+		}
 		return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
 	}
-	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, existingEntries.difference(entries))
+	removed := existingEntries.difference(entries)
+	if budget > 0 {
+		removed = existingEntries.difference(desired)
+	}
+	failedDeletes, err := r.removeResourceRefs(ctx, k8sClient, removed)
 	if err != nil {
 		inventoryErr = errors.Join(inventoryErr, err)
 	}
 	for _, failed := range failedDeletes {
 		entries.insert(failed)
 	}
+	if progress := progressAfterStop(stopped, entries, desired, appliedNew); progress != nil {
+		return &templatesv1.ResourceInventory{Entries: entries.list()}, progress
+	}
 
 	return &templatesv1.ResourceInventory{Entries: entries.list()}, inventoryErr
+}
+
+func progressAfterStop(stopped bool, entries, desired *resourceRefSet, applied int) *rolloutProgressError {
+	if !stopped {
+		return nil
+	}
+	return newRolloutProgress(entries, desired, applied)
+}
+
+func rolloutBudget(gitOpsSet *templatesv1.GitOpsSet) int {
+	if gitOpsSet.Spec.Rollout == nil || gitOpsSet.Spec.Rollout.MaxResources == nil || *gitOpsSet.Spec.Rollout.MaxResources <= 0 {
+		return 0
+	}
+	return *gitOpsSet.Spec.Rollout.MaxResources
+}
+
+func retainUnreached(entries, existing, desired *resourceRefSet) {
+	for _, prev := range existing.list() {
+		if _, wanted := desired.get(prev); !wanted {
+			continue
+		}
+		if _, present := entries.get(prev); present {
+			continue
+		}
+		entries.insert(prev)
+	}
+}
+
+func rolloutResult(entries, existing, desired *resourceRefSet, applied int, err error) (*templatesv1.ResourceInventory, error) {
+	retainUnreached(entries, existing, desired)
+	return &templatesv1.ResourceInventory{Entries: entries.list()}, err
+}
+
+func newRolloutProgress(entries, desired *resourceRefSet, applied int) *rolloutProgressError {
+	remaining := 0
+	for _, ref := range desired.list() {
+		if _, present := entries.get(ref); !present {
+			remaining++
+		}
+	}
+	if remaining == 0 {
+		return nil
+	}
+	return &rolloutProgressError{applied: applied, remaining: remaining}
+}
+
+type rolloutProgressError struct {
+	applied   int
+	remaining int
+}
+
+func (e *rolloutProgressError) Error() string {
+	return fmt.Sprintf("rollout applied %d resources, %d remaining", e.applied, e.remaining)
 }
 
 type retryAfterError struct {

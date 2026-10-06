@@ -637,6 +637,14 @@ spec:
                                 - repo
                                 type: object
                             type: object
+                            x-kubernetes-validations:
+                            - message: exactly one generator type must be set
+                              rule: '(has(self.list) ? 1 : 0) + (has(self.pullRequests)
+                                ? 1 : 0) + (has(self.gitRepository) ? 1 : 0) + (has(self.ociRepository)
+                                ? 1 : 0) + (has(self.cluster) ? 1 : 0) + (has(self.apiClient)
+                                ? 1 : 0) + (has(self.imagePolicy) ? 1 : 0) + (has(self.config)
+                                ? 1 : 0) == 1'
+                          maxItems: 16
                           type: array
                         singleElement:
                           description: |-
@@ -743,6 +751,15 @@ spec:
                       - repo
                       type: object
                   type: object
+                  x-kubernetes-validations:
+                  - message: exactly one generator type must be set
+                    rule: '(has(self.list) ? 1 : 0) + (has(self.pullRequests) ? 1
+                      : 0) + (has(self.gitRepository) ? 1 : 0) + (has(self.ociRepository)
+                      ? 1 : 0) + (has(self.matrix) ? 1 : 0) + (has(self.cluster) ?
+                      1 : 0) + (has(self.apiClient) ? 1 : 0) + (has(self.imagePolicy)
+                      ? 1 : 0) + (has(self.config) ? 1 : 0) == 1'
+                maxItems: 32
+                minItems: 1
                 type: array
               healthCheck:
                 description: |-
@@ -753,6 +770,19 @@ spec:
                     description: Enabled turns health checks on or off. Nil means
                       enabled.
                     type: boolean
+                type: object
+              rollout:
+                description: |-
+                  Rollout limits how many rendered objects are applied in one reconcile.
+                  When omitted, every rendered object is applied.
+                properties:
+                  maxResources:
+                    description: |-
+                      MaxResources is the maximum number of new objects to apply in one reconcile.
+                      Objects already in the inventory are reapplied and do not consume this budget.
+                      Zero, or an omitted rollout, applies every rendered object.
+                    minimum: 0
+                    type: integer
                 type: object
               serviceAccountName:
                 description: |-
@@ -769,7 +799,10 @@ spec:
                   Templates are a set of YAML templates that are rendered into resources
                   from the data supplied by the generators.
                 items:
-                  description: GitOpsSetTemplate describes a resource to create
+                  description: |-
+                    GitOpsSetTemplate describes a resource to create.
+                    Content is required. The API schema cannot measure the size of the raw
+                    object, so an explicit empty object is rejected by the controller render.
                   properties:
                     content:
                       description: Content is the YAML to be templated and generated.
@@ -784,7 +817,12 @@ spec:
                   required:
                   - content
                   type: object
+                maxItems: 32
+                minItems: 1
                 type: array
+            required:
+            - generators
+            - templates
             type: object
           status:
             description: GitOpsSetStatus defines the observed state of GitOpsSet

@@ -123,6 +123,21 @@ from the data supplied by the generators.</p>
 </tr>
 <tr>
 <td>
+<code>rollout</code><br />
+<em>
+<a href="#sets.gitops.pro/v1alpha1.Rollout">
+Rollout
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Rollout limits how many rendered objects are applied in one reconcile.
+When omitted, every rendered object is applied.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>serviceAccountName</code><br />
 <em>
 string
@@ -816,6 +831,21 @@ from the data supplied by the generators.</p>
 </tr>
 <tr>
 <td>
+<code>rollout</code><br />
+<em>
+<a href="#sets.gitops.pro/v1alpha1.Rollout">
+Rollout
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Rollout limits how many rendered objects are applied in one reconcile.
+When omitted, every rendered object is applied.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>serviceAccountName</code><br />
 <em>
 string
@@ -953,7 +983,9 @@ for the last successful apply.</p>
 (<em>Appears on:</em>
 <a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
 </p>
-<p>GitOpsSetTemplate describes a resource to create</p>
+<p>GitOpsSetTemplate describes a resource to create.
+Content is required. The API schema cannot measure the size of the raw
+object, so an explicit empty object is rejected by the controller render.</p>
 <table>
 <thead>
 <tr>
@@ -1586,6 +1618,37 @@ string
 <td>
 <em>(Optional)</em>
 <p>SourceRevision is the source digest recorded when this object was applied.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sets.gitops.pro/v1alpha1.Rollout">Rollout
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#sets.gitops.pro/v1alpha1.GitOpsSetSpec">GitOpsSetSpec</a>)
+</p>
+<p>Rollout controls how many rendered objects are applied per reconcile.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>maxResources</code><br />
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxResources is the maximum number of new objects to apply in one reconcile.
+Objects already in the inventory are reapplied and do not consume this budget.
+Zero, or an omitted rollout, applies every rendered object.</p>
 </td>
 </tr>
 </tbody>
