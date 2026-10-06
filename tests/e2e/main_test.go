@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,6 +18,7 @@ import (
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
@@ -59,7 +59,11 @@ func TestMain(m *testing.M) {
 		filepath.Join("..", "..", "controllers", "testdata", "crds"),
 		filepath.Join("testdata", "crds"),
 	))
-	mapper, err := apiutil.NewDynamicRESTMapper(testEnv.GetConfig(), http.DefaultClient)
+	httpClient, err := rest.HTTPClientFor(testEnv.GetConfig())
+	if err != nil {
+		panic(fmt.Sprintf("failed to create RESTMapper HTTP client: %v", err))
+	}
+	mapper, err := apiutil.NewDynamicRESTMapper(testEnv.GetConfig(), httpClient)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create RESTMapper:  %v", err))
 	}
