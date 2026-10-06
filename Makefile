@@ -4,8 +4,10 @@ VERSION ?= $(shell git describe --tags --always)
 # Seems to be idiomatic for chart versions: https://helm.sh/docs/topics/charts/#the-chart-file
 CHART_VERSION := $(shell echo $(VERSION) | sed 's/^v//')
 
-# Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/gitops-tools/gitopssets-controller:${VERSION}
+# Image URL to use all building/pushing image targets.
+# Published images live on the weaveworks registry. The gitops-tools
+# upstream does not publish a public image.
+IMG ?= ghcr.io/weaveworks/gitopssets-controller:${VERSION}
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 GEN_API_REF_DOCS_VERSION ?= e327d0730470cbd61b06300f81c5fcf91c23c113
