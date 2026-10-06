@@ -44,11 +44,12 @@ import (
 var accessor = meta.NewAccessor()
 
 const (
-	gitRepositoryIndexKey string = ".metadata.gitRepository"
-	ociRepositoryIndexKey string = ".metadata.ociRepository"
-	imagePolicyIndexKey   string = ".metadata.imagePolicy"
-	configMapIndexKey     string = ".metadata.configMap"
-	secretIndexKey        string = ".metadata.secret"
+	gitRepositoryIndexKey    string = ".metadata.gitRepository"
+	ociRepositoryIndexKey    string = ".metadata.ociRepository"
+	imagePolicyIndexKey      string = ".metadata.imagePolicy"
+	configMapIndexKey        string = ".metadata.configMap"
+	secretIndexKey           string = ".metadata.secret"
+	clusterGeneratorIndexKey string = ".metadata.clusterGenerator"
 )
 
 type eventRecorder interface {
@@ -400,6 +401,10 @@ func (r *GitOpsSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Only watch for GitopsCluster objects if the Cluster generator is enabled.
 	if r.Generators["Cluster"] != nil {
+		if err := mgr.GetCache().IndexField(
+			context.TODO(), &templatesv1.GitOpsSet{}, clusterGeneratorIndexKey, indexClusterGenerators); err != nil {
+			return fmt.Errorf("failed setting index field for Cluster generator: %w", err)
+		}
 		builder.Watches(
 			&clustersv1.GitopsCluster{},
 			handler.EnqueueRequestsFromMapFunc(r.gitOpsClusterToGitOpsSet),
@@ -433,8 +438,9 @@ func (r *GitOpsSetReconciler) gitOpsClusterToGitOpsSet(ctx context.Context, o cl
 
 	list := &templatesv1.GitOpsSetList{}
 
-	err := r.List(ctx, list, &client.ListOptions{})
+	err := r.List(ctx, list, client.MatchingFields{clusterGeneratorIndexKey: "true"})
 	if err != nil {
+		log.FromContext(ctx).Error(err, "failed to list GitOpsSets for GitopsCluster")
 		return nil
 	}
 
@@ -563,6 +569,19 @@ func (r *GitOpsSetReconciler) makeImpersonationClient(namespace, serviceAccountN
 	}
 
 	return client.New(copyCfg, client.Options{Scheme: r.Scheme, Mapper: r.Mapper})
+}
+
+func indexClusterGenerators(o client.Object) []string {
+	ks, ok := o.(*templatesv1.GitOpsSet)
+	if !ok {
+		panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
+	}
+	for _, generator := range ks.Spec.Generators {
+		if len(getClusterSelectors(generator)) > 0 {
+			return []string{"true"}
+		}
+	}
+	return nil
 }
 
 func indexGitRepositories(o client.Object) []string {
