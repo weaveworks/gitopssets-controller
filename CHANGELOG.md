@@ -4,6 +4,16 @@
 
 * The default install no longer runs kube-rbac-proxy. Metrics stay on 127.0.0.1:8080. An overlay that deletes containers/0, including gcp-infrastructure `platform/gitopssets`, must drop that patch before upgrading or it deletes the manager. (#300)
 
+## [0.19.0](https://github.com/weaveworks/gitopssets-controller/compare/v0.18.0...v0.19.0) (2026-10-06)
+
+
+### Features
+
+* publish gitopssets-cli binaries with the GitHub release ([1b642e4](https://github.com/weaveworks/gitopssets-controller/commit/1b642e43ec370f70bf8b1ca241ea0d6141ae9bf1))
+* publish the CLI image and multi-arch controller images ([db0b93f](https://github.com/weaveworks/gitopssets-controller/commit/db0b93fdd1ca4295f7807d55cfc6505ec7d88681))
+* skip unchanged applies and let templates wait, orphan, and impersonate ([769a8fc](https://github.com/weaveworks/gitopssets-controller/commit/769a8fc1e30d23a43a3a189ab3cf5c3b0d7a7b6e)), closes [#295](https://github.com/weaveworks/gitopssets-controller/issues/295) [#296](https://github.com/weaveworks/gitopssets-controller/issues/296) [#297](https://github.com/weaveworks/gitopssets-controller/issues/297) [#298](https://github.com/weaveworks/gitopssets-controller/issues/298) [#299](https://github.com/weaveworks/gitopssets-controller/issues/299) [#300](https://github.com/weaveworks/gitopssets-controller/issues/300)
+* validate specs, expose file paths, and limit rollout batches ([aaa8fc8](https://github.com/weaveworks/gitopssets-controller/commit/aaa8fc83cce95ad1c987ed038a165bd53c5fc021)), closes [#14](https://github.com/weaveworks/gitopssets-controller/issues/14) [#159](https://github.com/weaveworks/gitopssets-controller/issues/159) [#80](https://github.com/weaveworks/gitopssets-controller/issues/80)
+
 ## [0.18.0](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.3...v0.18.0) (2026-10-06)
 
 
