@@ -298,6 +298,12 @@ type GitOpsSetSpec struct {
 	// Checks are enabled when this is omitted.
 	// +optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty"`
+
+	// Force acquires ownership of conflicting fields during server-side apply.
+	// Without this, a field owned by another manager is left unchanged and the
+	// apply returns a conflict.
+	// +optional
+	Force bool `json:"force,omitempty"`
 }
 
 // HealthCheck configures the Healthy condition.

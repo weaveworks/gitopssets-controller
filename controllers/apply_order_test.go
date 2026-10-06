@@ -51,10 +51,10 @@ type orderedCreateClient struct {
 	missingNamespace bool
 }
 
-func (c *orderedCreateClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+func (c *orderedCreateClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	c.created = append(c.created, obj.GetObjectKind().GroupVersionKind().Kind+"/"+obj.GetName())
 	if c.missingNamespace && obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
 		return apierrors.NewNotFound(schema.GroupResource{Resource: "namespaces"}, obj.GetNamespace())
 	}
-	return c.Client.Create(ctx, obj, opts...)
+	return c.Client.Patch(ctx, obj, patch, opts...)
 }

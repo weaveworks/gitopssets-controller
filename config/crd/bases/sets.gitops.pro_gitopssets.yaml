@@ -66,6 +66,12 @@ spec:
                 - Delete
                 - Orphan
                 type: string
+              force:
+                description: |-
+                  Force acquires ownership of conflicting fields during server-side apply.
+                  Without this, a field owned by another manager is left unchanged and the
+                  apply returns a conflict.
+                type: boolean
               generators:
                 description: Generators generate the data to be inserted into the
                   provided templates.

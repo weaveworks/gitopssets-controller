@@ -576,7 +576,7 @@ func TestReconciliation(t *testing.T) {
 		defer deleteGitOpsSetAndFinalize(t, k8sClient, reconciler, gs)
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, `create Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
+		test.AssertErrorMatch(t, `failed to load existing Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
 
 		// Now create a service account granting the right permissions to create
 		// Kustomizations in the right namespace.
@@ -610,7 +610,7 @@ func TestReconciliation(t *testing.T) {
 		}()
 
 		_, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, `create Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:default-test-sa"`, err)
+		test.AssertErrorMatch(t, `failed to load existing Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:default-test-sa"`, err)
 
 		// Now create a service account granting the right permissions to create
 		// Kustomizations in the right namespace.
@@ -688,7 +688,7 @@ func TestReconciliation(t *testing.T) {
 		})
 
 		_, err = reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(gs)})
-		test.AssertErrorMatch(t, `update Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
+		test.AssertErrorMatch(t, `failed to apply Resource: kustomizations.* is forbidden: User "system:serviceaccount:default:test-sa"`, err)
 
 		// Switch the permissions to allow updating.
 		var role rbacv1.Role

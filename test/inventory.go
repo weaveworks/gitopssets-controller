@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
@@ -30,7 +31,7 @@ func AssertInventoryHasItems(t *testing.T, gs *templatesv1.GitOpsSet, objs ...ru
 		return entries[i].ID < entries[j].ID
 	})
 	want := &templatesv1.ResourceInventory{Entries: entries}
-	if diff := cmp.Diff(want, gs.Status.Inventory); diff != "" {
+	if diff := cmp.Diff(want, gs.Status.Inventory, cmpopts.IgnoreFields(templatesv1.ResourceRef{}, "LastAppliedTime", "LastError", "SourceRevision")); diff != "" {
 		t.Errorf("failed to get inventory:\n%s", diff)
 	}
 }

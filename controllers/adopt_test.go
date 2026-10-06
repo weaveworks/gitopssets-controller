@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -26,6 +27,21 @@ func TestRenderAndReconcileAdoptsUnownedResource(t *testing.T) {
 	gs := gitOpsSetRendering("kept")
 	reconciler := &GitOpsSetReconciler{}
 
+	_, err := reconciler.renderAndReconcile(t.Context(), logr.Discard(), cl, gs, map[string]generators.Generator{
+		"List": list.NewGenerator(logr.Discard()),
+	})
+	if err == nil || !apierrors.IsConflict(err) {
+		t.Fatalf("err = %v, want a field-manager conflict", err)
+	}
+	got := &corev1.ConfigMap{}
+	if err := cl.Get(t.Context(), types.NamespacedName{Namespace: "demo", Name: "kept"}, got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Data["ok"] != "old" {
+		t.Fatalf("data = %v, want the existing value until force is set", got.Data)
+	}
+
+	gs.Spec.Force = true
 	inventory, err := reconciler.renderAndReconcile(t.Context(), logr.Discard(), cl, gs, map[string]generators.Generator{
 		"List": list.NewGenerator(logr.Discard()),
 	})
@@ -35,7 +51,6 @@ func TestRenderAndReconcileAdoptsUnownedResource(t *testing.T) {
 	if len(inventory.Entries) != 1 || inventory.Entries[0].ID != mustResourceRef(t, existing).ID {
 		t.Fatalf("inventory = %#v", inventory)
 	}
-	got := &corev1.ConfigMap{}
 	if err := cl.Get(t.Context(), types.NamespacedName{Namespace: "demo", Name: "kept"}, got); err != nil {
 		t.Fatal(err)
 	}

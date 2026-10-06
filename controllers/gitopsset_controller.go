@@ -16,7 +16,6 @@ import (
 	"github.com/fluxcd/pkg/runtime/predicates"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
-	"github.com/gitops-tools/pkg/sets"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -280,60 +279,30 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		}
 		previous, hadPrevious := existingEntries.get(ref)
 		recordFailure := func(applyErr error) {
-			failed := ref
 			if hadPrevious {
-				failed = previous
+				failed := previous
+				failed.LastError = applyErr.Error()
+				entries.insert(failed)
 			}
-			failed.LastError = applyErr.Error()
-			entries.insert(failed)
 			inventoryErr = errors.Join(inventoryErr, applyErr)
 		}
 
-		if hadPrevious {
-			existing, err := unstructuredFromResourceRef(ref)
-			if err != nil {
-				recordFailure(fmt.Errorf("failed to convert resource for update: %w", err))
-				continue
-			}
-			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
-			if err == nil {
-				newResource = copyUnstructuredContent(existing, newResource)
-				if err := k8sClient.Patch(ctx, newResource, client.MergeFrom(existing)); err != nil {
-					recordFailure(fmt.Errorf("failed to update Resource: %w", err))
-					continue
-				}
-				entries.insert(appliedResourceRef(ref, previous.SourceRevision))
-				continue
-			}
-
-			if !apierrors.IsNotFound(err) {
-				recordFailure(fmt.Errorf("failed to load existing Resource: %w", err))
-				continue
-			}
-		}
-
-		if err := logResourceMessage(logger, "creating new resource", newResource); err != nil {
+		if err := logResourceMessage(logger, "applying resource", newResource); err != nil {
 			recordFailure(err)
 			continue
 		}
-
-		if err := k8sClient.Create(ctx, newResource); err != nil {
+		if err := r.applyResource(ctx, k8sClient, gitOpsSet, newResource); err != nil {
 			if missingNamespace(err) {
 				return &templatesv1.ResourceInventory{Entries: entries.list()}, &retryAfterError{after: 5 * time.Second, err: err}
 			}
-			if apierrors.IsAlreadyExists(err) {
-				if err := r.adoptExistingResource(ctx, k8sClient, gitOpsSet, ref, newResource); err != nil {
-					recordFailure(err)
-					continue
-				}
-				entries.insert(appliedResourceRef(ref, previous.SourceRevision))
-				continue
-			}
-			recordFailure(fmt.Errorf("failed to create Resource: %w", err))
+			recordFailure(err)
 			continue
 		}
-
-		entries.insert(appliedResourceRef(ref, previous.SourceRevision))
+		revision := ""
+		if hadPrevious {
+			revision = previous.SourceRevision
+		}
+		entries.insert(appliedResourceRef(ref, revision))
 	}
 
 	if gitOpsSet.Status.Inventory == nil || orphansResources(gitOpsSet) {
@@ -892,22 +861,40 @@ func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Uns
 const (
 	gitOpsSetNameLabel      = "sets.gitops.pro/name"
 	gitOpsSetNamespaceLabel = "sets.gitops.pro/namespace"
+	gitOpsSetFieldManager   = "gitopssets-controller"
 )
 
-func (r *GitOpsSetReconciler) adoptExistingResource(ctx context.Context, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, ref templatesv1.ResourceRef, newResource *unstructured.Unstructured) error {
+func (r *GitOpsSetReconciler) applyResource(ctx context.Context, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, newResource *unstructured.Unstructured) error {
 	existing := &unstructured.Unstructured{}
 	existing.SetGroupVersionKind(newResource.GroupVersionKind())
-	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing); err != nil {
+	err := k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing)
+	if err == nil {
+		if owner, namespace, ok := ownedByGitOpsSet(existing.GetLabels()); ok {
+			if owner != gitOpsSet.GetName() || namespace != gitOpsSet.GetNamespace() {
+				ref, refErr := templatesv1.ResourceRefFromObject(newResource)
+				if refErr != nil {
+					return fmt.Errorf("resource is owned by GitOpsSet %s/%s", namespace, owner)
+				}
+				return fmt.Errorf("%s is owned by GitOpsSet %s/%s", ref.ID, namespace, owner)
+			}
+		}
+	} else if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to load existing Resource: %w", err)
 	}
-	if owner, namespace, ok := ownedByGitOpsSet(existing.GetLabels()); ok {
-		if owner != gitOpsSet.GetName() || namespace != gitOpsSet.GetNamespace() {
-			return fmt.Errorf("%s is owned by GitOpsSet %s/%s", ref.ID, namespace, owner)
-		}
+
+	applyObj := newResource.DeepCopy()
+	unstructured.RemoveNestedField(applyObj.Object, "status")
+	applyObj.SetResourceVersion("")
+	applyObj.SetManagedFields(nil)
+	applyObj.SetUID("")
+	applyObj.SetGeneration(0)
+
+	options := []client.PatchOption{&client.PatchOptions{FieldManager: gitOpsSetFieldManager}}
+	if gitOpsSet.Spec.Force {
+		options = append(options, client.ForceOwnership)
 	}
-	updated := copyUnstructuredContent(existing, newResource)
-	if err := k8sClient.Patch(ctx, updated, client.MergeFrom(existing)); err != nil {
-		return fmt.Errorf("failed to adopt Resource: %w", err)
+	if err := k8sClient.Patch(ctx, applyObj, client.Apply, options...); err != nil {
+		return fmt.Errorf("failed to apply Resource: %w", err)
 	}
 	return nil
 }
@@ -922,24 +909,6 @@ func ownedByGitOpsSet(labels map[string]string) (name, namespace string, ok bool
 		return "", "", false
 	}
 	return name, namespace, true
-}
-
-func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *unstructured.Unstructured {
-	result := unstructured.Unstructured{}
-	existing.DeepCopyInto(&result)
-
-	disallowedKeys := sets.New("status", "metadata", "kind", "apiVersion")
-
-	for k, v := range newValue.Object {
-		if !disallowedKeys.Has(k) {
-			result.Object[k] = v
-		}
-	}
-
-	result.SetAnnotations(newValue.GetAnnotations())
-	result.SetLabels(newValue.GetLabels())
-
-	return &result
 }
 
 func logResourceMessage(logger logr.Logger, msg string, obj runtime.Object) error {
