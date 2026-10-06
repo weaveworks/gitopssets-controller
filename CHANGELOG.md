@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.18.0](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.3...v0.18.0) (2026-10-06)
+
+
+### Features
+
+* add a deletion policy that can orphan rendered resources ([7b9d3d7](https://github.com/weaveworks/gitopssets-controller/commit/7b9d3d7ed7079b9cae9d4df870e4ea6050d75898)), closes [#287](https://github.com/weaveworks/gitopssets-controller/issues/287)
+* add pull request branch, author, and label fields ([6096d16](https://github.com/weaveworks/gitopssets-controller/commit/6096d16e34f36c6882faf85ef1be07a0fbb26c09)), closes [#286](https://github.com/weaveworks/gitopssets-controller/issues/286)
+* apply namespaces before the objects that use them ([0d85bca](https://github.com/weaveworks/gitopssets-controller/commit/0d85bca905433558060db96648508c52844fd43e)), closes [#282](https://github.com/weaveworks/gitopssets-controller/issues/282)
+* apply rendered resources with server-side apply ([256f2eb](https://github.com/weaveworks/gitopssets-controller/commit/256f2ebaba6981a818125d481121d87484d473f6)), closes [#284](https://github.com/weaveworks/gitopssets-controller/issues/284)
+* expose cluster secret, CAPI, and connectivity fields ([a911f0d](https://github.com/weaveworks/gitopssets-controller/commit/a911f0db36a54f31490ec692603f3b954acfaed8)), closes [#279](https://github.com/weaveworks/gitopssets-controller/issues/279)
+* filter generated elements with CEL ([8a105f1](https://github.com/weaveworks/gitopssets-controller/commit/8a105f1d8f2731020cf429424b4ffbbeb378d6bb)), closes [#289](https://github.com/weaveworks/gitopssets-controller/issues/289)
+* record per-object apply time and the last error ([163cd02](https://github.com/weaveworks/gitopssets-controller/commit/163cd02d76c8346588d4e11f2db5b40bb167fd48)), closes [#283](https://github.com/weaveworks/gitopssets-controller/issues/283)
+* refuse link-local and cluster addresses in the API client ([0c9dcfd](https://github.com/weaveworks/gitopssets-controller/commit/0c9dcfde7e4b750308be990c18d9a43f08892156)), closes [#288](https://github.com/weaveworks/gitopssets-controller/issues/288)
+* report resource health separately from Ready ([dc5178b](https://github.com/weaveworks/gitopssets-controller/commit/dc5178b68bc02d4fabcf596484ab9614ed66d28e)), closes [#280](https://github.com/weaveworks/gitopssets-controller/issues/280)
+* skip rendering when source digests are unchanged ([44e8943](https://github.com/weaveworks/gitopssets-controller/commit/44e8943de25118b28cb9b601d0bde86a53283a56)), closes [#290](https://github.com/weaveworks/gitopssets-controller/issues/290)
+
+
+### Bug Fixes
+
+* include the reconcile error in Kubernetes events ([beaddcc](https://github.com/weaveworks/gitopssets-controller/commit/beaddcc17e983472d7013badab1333fd3926026e)), closes [#281](https://github.com/weaveworks/gitopssets-controller/issues/281)
+* read OCI artifact digests from the watched API version ([a1b5f5a](https://github.com/weaveworks/gitopssets-controller/commit/a1b5f5a4b6628d2dc35245897ebdafb69ca82023))
+* watch pull request and API client secrets ([8064d0b](https://github.com/weaveworks/gitopssets-controller/commit/8064d0b681f8a1b2545aa4d204241ede8f360b77)), closes [#285](https://github.com/weaveworks/gitopssets-controller/issues/285)
+
 ## [0.17.3](https://github.com/weaveworks/gitopssets-controller/compare/v0.17.2...v0.17.3) (2026-10-06)
 
 
