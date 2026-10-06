@@ -3,6 +3,7 @@ package cluster
 import (
 	"testing"
 
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,10 +92,52 @@ func TestClusterGenerator_Generate(t *testing.T) {
 			},
 			wantParams: []map[string]any{
 				{
-					"ClusterName":        "cluster2",
-					"ClusterNamespace":   "ns2",
-					"ClusterLabels":      map[string]any{"foo": "bar"},
-					"ClusterAnnotations": map[string]any{"key1": "value1", "key2": "value2"},
+					"ClusterName":           "cluster2",
+					"ClusterNamespace":      "ns2",
+					"ClusterLabels":         map[string]any{"foo": "bar"},
+					"ClusterAnnotations":    map[string]any{"key1": "value1", "key2": "value2"},
+					"ClusterSecretRef":      "",
+					"ClusterCAPIClusterRef": "",
+					"ClusterReady":          "",
+					"ClusterConnected":      "",
+				},
+			},
+		},
+		{
+			name: "secret, CAPI reference, and connectivity conditions",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Cluster: &templatesv1.ClusterGenerator{
+					Selector: metav1.LabelSelector{MatchLabels: map[string]string{"env": "prod"}},
+				},
+			},
+			clusters: []runtime.Object{
+				&clustersv1.GitopsCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "prod",
+						Namespace: "clusters",
+						Labels:    map[string]string{"env": "prod"},
+					},
+					Spec: clustersv1.GitopsClusterSpec{
+						SecretRef: &fluxmeta.LocalObjectReference{Name: "prod-kubeconfig"},
+					},
+					Status: clustersv1.GitopsClusterStatus{
+						Conditions: []metav1.Condition{
+							{Type: "Ready", Status: metav1.ConditionTrue, Reason: "Ready"},
+							{Type: clustersv1.ClusterConnectivity, Status: metav1.ConditionFalse, Reason: "ClusterConnectionFailed"},
+						},
+					},
+				},
+			},
+			wantParams: []map[string]any{
+				{
+					"ClusterName":           "prod",
+					"ClusterNamespace":      "clusters",
+					"ClusterLabels":         map[string]any{"env": "prod"},
+					"ClusterAnnotations":    map[string]any{},
+					"ClusterSecretRef":      "prod-kubeconfig",
+					"ClusterCAPIClusterRef": "",
+					"ClusterReady":          "True",
+					"ClusterConnected":      "False",
 				},
 			},
 		},

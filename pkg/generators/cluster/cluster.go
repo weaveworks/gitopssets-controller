@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/go-logr/logr"
 	clustersv1 "github.com/weaveworks/cluster-controller/api/v1alpha1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -63,15 +65,34 @@ func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	var paramsList []map[string]any
 	for _, cluster := range clusterList.Items {
 		params := map[string]any{
-			"ClusterName":        cluster.Name,
-			"ClusterNamespace":   cluster.Namespace,
-			"ClusterLabels":      mapOrEmptyMap(cluster.Labels),
-			"ClusterAnnotations": mapOrEmptyMap(cluster.Annotations),
+			"ClusterName":           cluster.Name,
+			"ClusterNamespace":      cluster.Namespace,
+			"ClusterLabels":         mapOrEmptyMap(cluster.Labels),
+			"ClusterAnnotations":    mapOrEmptyMap(cluster.Annotations),
+			"ClusterSecretRef":      localRefName(cluster.Spec.SecretRef),
+			"ClusterCAPIClusterRef": localRefName(cluster.Spec.CAPIClusterRef),
+			"ClusterReady":          conditionStatus(cluster.Status.Conditions, fluxmeta.ReadyCondition),
+			"ClusterConnected":      conditionStatus(cluster.Status.Conditions, clustersv1.ClusterConnectivity),
 		}
 		paramsList = append(paramsList, params)
 	}
 
 	return paramsList, nil
+}
+
+func localRefName(ref *fluxmeta.LocalObjectReference) string {
+	if ref == nil {
+		return ""
+	}
+	return ref.Name
+}
+
+func conditionStatus(conditions []metav1.Condition, conditionType string) string {
+	condition := apimeta.FindStatusCondition(conditions, conditionType)
+	if condition == nil {
+		return ""
+	}
+	return string(condition.Status)
 }
 
 func mapOrEmptyMap(src map[string]string) map[string]any {
