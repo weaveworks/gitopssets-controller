@@ -142,9 +142,7 @@ func generate(ctx context.Context, generator templatesv1.GitOpsSetGenerator, all
 				return nil, err
 			}
 
-			if len(res) > 0 {
-				generated = append(generated, generatedElements{name: name, elements: res})
-			}
+			generated = append(generated, generatedElements{name: name, elements: res})
 		}
 	}
 
@@ -178,6 +176,9 @@ func cartesian(generated []generatedElements) ([]map[string]any, error) {
 
 	slices := [][]map[string]any{}
 	for _, res := range generated {
+		if len(res.elements) == 0 {
+			return []map[string]any{}, nil
+		}
 		if res.name != "" {
 			prefixed := make([]map[string]any, len(res.elements))
 			for i, g := range res.elements {

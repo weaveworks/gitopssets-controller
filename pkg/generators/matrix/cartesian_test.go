@@ -16,6 +16,20 @@ func TestCartesian(t *testing.T) {
 			generated: []generatedElements{},
 			expected:  []map[string]any{},
 		},
+		"empty axis yields no product": {
+			generated: []generatedElements{
+				{
+					elements: []map[string]any{
+						{"a": 1},
+						{"a": 2},
+					},
+				},
+				{
+					elements: []map[string]any{},
+				},
+			},
+			expected: []map[string]any{},
+		},
 		"one slice": {
 			generated: []generatedElements{
 				{

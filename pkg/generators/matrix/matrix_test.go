@@ -7,7 +7,7 @@ import (
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/tar"
-	sourcev1beta2 "github.com/fluxcd/source-controller/api/v1beta2"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	templatesv1 "github.com/gitops-tools/gitopssets-controller/api/v1alpha1"
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators/gitrepository"
@@ -57,6 +57,55 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 			ks:               nil,
 			expectedMatrix:   nil,
 			expectedErrorStr: "",
+		},
+		{
+			name: "empty axis yields no product",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"cluster": "dev"}`)},
+									{Raw: []byte(`{"cluster": "prod"}`)},
+								},
+							},
+						},
+						{
+							List: &templatesv1.ListGenerator{},
+						},
+					},
+				},
+			},
+			expectedMatrix: []map[string]any{},
+		},
+		{
+			name: "single element keeps an empty named axis",
+			sg: &templatesv1.GitOpsSetGenerator{
+				Matrix: &templatesv1.MatrixGenerator{
+					SingleElement: true,
+					Generators: []templatesv1.GitOpsSetNestedGenerator{
+						{
+							Name: "clusters",
+							List: &templatesv1.ListGenerator{},
+						},
+						{
+							Name: "apps",
+							List: &templatesv1.ListGenerator{
+								Elements: []apiextensionsv1.JSON{
+									{Raw: []byte(`{"name": "web"}`)},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedMatrix: []map[string]any{
+				{
+					"clusters": []map[string]any{},
+					"apps":     []map[string]any{{"name": "web"}},
+				},
+			},
 		},
 		{
 			name: "less than 2 generators",
@@ -164,12 +213,7 @@ func TestMatrixGenerator_Generate(t *testing.T) {
 					Generators: []templatesv1.GitOpsSetGenerator{},
 				},
 			},
-			expectedMatrix: []map[string]any{
-				{
-					"cluster": "cluster",
-					"url":     "url",
-				},
-			},
+			expectedMatrix:   []map[string]any{},
 			expectedErrorStr: "",
 		},
 		{
@@ -547,13 +591,13 @@ func TestSingleElement(t *testing.T) {
 	}
 }
 
-func newGitRepository(archiveURL, xsum string) *sourcev1beta2.GitRepository {
-	return &sourcev1beta2.GitRepository{
+func newGitRepository(archiveURL, xsum string) *sourcev1.GitRepository {
+	return &sourcev1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-repository",
 			Namespace: testNamespace,
 		},
-		Status: sourcev1beta2.GitRepositoryStatus{
+		Status: sourcev1.GitRepositoryStatus{
 			Artifact: &meta.Artifact{
 				URL:    archiveURL,
 				Digest: xsum,
@@ -567,7 +611,7 @@ func newFakeClient(t *testing.T, objs ...runtime.Object) client.WithWatch {
 
 	scheme := runtime.NewScheme()
 
-	if err := sourcev1beta2.AddToScheme(scheme); err != nil {
+	if err := sourcev1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
 
