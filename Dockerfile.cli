@@ -1,0 +1,23 @@
+# Build the gitopssets-cli binary
+FROM golang:1.26 AS builder
+ARG VERSION=dev
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+WORKDIR /workspace
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY api/ api/
+COPY controllers/ controllers/
+COPY pkg/ pkg/
+COPY cmd/gitopssets-cli/ cmd/gitopssets-cli/
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -o gitopssets-cli -ldflags "-s -w -X main.version=${VERSION}" ./cmd/gitopssets-cli
+
+# Use distroless as minimal base image to package the CLI binary
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/gitopssets-cli /gitopssets-cli
+USER 65532:65532
+
+ENTRYPOINT ["/gitopssets-cli"]

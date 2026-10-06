@@ -8,10 +8,16 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish controller and CLI images for
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
   IMAGE: ghcr.io/weaveworks/gitopssets-controller
+  CLI_IMAGE: ghcr.io/weaveworks/gitopssets-cli
   GOPRIVATE: github.com/weaveworks/cluster-controller
 
 jobs:
@@ -90,6 +96,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -100,13 +112,35 @@ jobs:
             type=ref,event=pr
             type=sha
 
-      - name: Build and push Docker image
+      - name: Extract metadata (tags, labels) for the CLI image
+        id: meta-cli
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.CLI_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha
+
+      - name: Build and push controller image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.get_version.outputs.VERSION }}
+
+      - name: Build and push CLI image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
           build-args: VERSION=${{ steps.get_version.outputs.VERSION }}
 
   release-please:
@@ -158,16 +192,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
       - name: Configure git for private modules
         env:
           GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
           GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
 
-      - name: Build and push release Docker image
+      - name: Build and push release controller image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/weaveworks/gitopssets-controller:${{ needs.release-please.outputs.tag_name }}
@@ -175,6 +216,27 @@ jobs:
           labels: |
             org.opencontainers.image.title=GitOpsSet Controller
             org.opencontainers.image.description=A controller for managing GitOpsSet resources
+            org.opencontainers.image.source=https://github.com/weaveworks/gitopssets-controller
+            org.opencontainers.image.url=https://github.com/weaveworks/gitopssets-controller
+            org.opencontainers.image.documentation=https://github.com/weaveworks/gitopssets-controller
+            org.opencontainers.image.version=${{ needs.release-please.outputs.tag_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+          build-args: VERSION=${{ needs.release-please.outputs.tag_name }}
+
+      - name: Build and push release CLI image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/weaveworks/gitopssets-cli:${{ needs.release-please.outputs.tag_name }}
+            ghcr.io/weaveworks/gitopssets-cli:latest
+          labels: |
+            org.opencontainers.image.title=gitopssets-cli
+            org.opencontainers.image.description=Render GitOpsSet resources locally
             org.opencontainers.image.source=https://github.com/weaveworks/gitopssets-controller
             org.opencontainers.image.url=https://github.com/weaveworks/gitopssets-controller
             org.opencontainers.image.documentation=https://github.com/weaveworks/gitopssets-controller
@@ -208,3 +270,85 @@ jobs:
           files: |
             release.yaml
             dist/cli/*
+
+  # Backfill an existing tag. v0.18.0 was cut before CLI publishing existed.
+  publish-tag:
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Configure git for private modules
+        env:
+          GITHUB_BUILD_USERNAME: ${{ secrets.BUILD_BOT_USER }}
+          GITHUB_BUILD_TOKEN: ${{ secrets.BUILD_BOT_PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://${GITHUB_BUILD_USERNAME}:${GITHUB_BUILD_TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Build and push controller image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/weaveworks/gitopssets-controller:${{ inputs.release_tag }}
+            ghcr.io/weaveworks/gitopssets-controller:latest
+          labels: |
+            org.opencontainers.image.title=GitOpsSet Controller
+            org.opencontainers.image.source=https://github.com/weaveworks/gitopssets-controller
+            org.opencontainers.image.version=${{ inputs.release_tag }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: VERSION=${{ inputs.release_tag }}
+
+      - name: Build and push CLI image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/weaveworks/gitopssets-cli:${{ inputs.release_tag }}
+            ghcr.io/weaveworks/gitopssets-cli:latest
+          labels: |
+            org.opencontainers.image.title=gitopssets-cli
+            org.opencontainers.image.source=https://github.com/weaveworks/gitopssets-controller
+            org.opencontainers.image.version=${{ inputs.release_tag }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: VERSION=${{ inputs.release_tag }}
+
+      - name: Build gitopssets-cli release binaries
+        run: make cli-release
+        env:
+          VERSION: ${{ inputs.release_tag }}
+
+      - name: Upload CLI binaries
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: dist/cli/*
