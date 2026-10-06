@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -368,6 +369,52 @@ func TestGenerate_errors(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateDoesNotCallEndpointWhenTLSConfigFails(t *testing.T) {
+	calls := 0
+	factory := func(_ *tls.Config) *http.Client {
+		calls++
+		return &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			t.Fatal("request was sent")
+			return nil, nil
+		})}
+	}
+	gen := NewGenerator(logr.Discard(), newFakeClient(t), factory)
+	_, err := gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
+		APIClient: &templatesv1.APIClientGenerator{
+			Endpoint:  "https://example.com/private",
+			SecretRef: &templatesv1.LocalObjectReference{Name: "missing-ca"},
+		},
+	}, &templatesv1.GitOpsSet{ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "default"}})
+	if err == nil || !strings.Contains(err.Error(), "missing-ca") {
+		t.Fatalf("error = %v, want a missing secret error", err)
+	}
+	if calls != 0 {
+		t.Fatalf("client factory calls = %d, want 0", calls)
+	}
+
+	invalid := newTestSecret(func(s *corev1.Secret) {
+		s.Name = "bad-ca"
+		s.Data = map[string][]byte{"caFile": []byte("not a certificate")}
+	})
+	gen = NewGenerator(logr.Discard(), newFakeClient(t, invalid), factory)
+	_, err = gen.Generate(t.Context(), &templatesv1.GitOpsSetGenerator{
+		APIClient: &templatesv1.APIClientGenerator{
+			Endpoint:  "https://example.com/private",
+			SecretRef: &templatesv1.LocalObjectReference{Name: "bad-ca"},
+		},
+	}, &templatesv1.GitOpsSet{ObjectMeta: metav1.ObjectMeta{Name: "set", Namespace: "default"}})
+	if err == nil || !strings.Contains(err.Error(), "bad-ca") {
+		t.Fatalf("error = %v, want an invalid CA error", err)
+	}
+	if calls != 0 {
+		t.Fatalf("client factory calls = %d, want 0", calls)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestAPIClientGenerator_GetInterval(t *testing.T) {
 	interval := time.Minute * 10

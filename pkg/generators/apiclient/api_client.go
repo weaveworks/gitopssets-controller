@@ -82,6 +82,7 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 	tlsConfig, err := g.createTLSConfig(ctx, sg.APIClient, gsg.GetNamespace())
 	if err != nil {
 		g.Logger.Error(err, "failed to configure api", "endpoint", sg.APIClient.Endpoint)
+		return nil, err
 	}
 
 	client := g.ClientFactory(tlsConfig)
