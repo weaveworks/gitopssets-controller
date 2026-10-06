@@ -665,31 +665,53 @@ func indexConfig(kind string) func(o client.Object) []string {
 			panic(fmt.Sprintf("Expected a GitOpsSet, got %T", o))
 		}
 
-		referencedResources := []*templatesv1.ConfigGenerator{}
-		for _, gen := range ks.Spec.Generators {
-			if gen.Config != nil && gen.Config.Kind == kind {
-				referencedResources = append(referencedResources, gen.Config)
-			}
-			if gen.Matrix != nil && gen.Matrix.Generators != nil {
-				for _, matrixGen := range gen.Matrix.Generators {
-					if matrixGen.Config != nil && matrixGen.Config.Kind == kind {
-						referencedResources = append(referencedResources, matrixGen.Config)
-					}
-				}
-			}
-		}
-
-		if len(referencedResources) == 0 {
-			return nil
-		}
-
-		referencedNames := []string{}
-		for _, grg := range referencedResources {
-			referencedNames = append(referencedNames, fmt.Sprintf("%s/%s", ks.GetNamespace(), grg.Name))
-		}
-
-		return referencedNames
+		return referencedConfigNames(ks, kind)
 	}
+}
+
+func referencedConfigNames(ks *templatesv1.GitOpsSet, kind string) []string {
+	var names []string
+	add := func(name string) {
+		if name == "" {
+			return
+		}
+		names = append(names, fmt.Sprintf("%s/%s", ks.GetNamespace(), name))
+	}
+	considerConfig := func(cfg *templatesv1.ConfigGenerator) {
+		if cfg != nil && cfg.Kind == kind {
+			add(cfg.Name)
+		}
+	}
+	considerPullRequest := func(pr *templatesv1.PullRequestGenerator) {
+		if kind == "Secret" && pr != nil && pr.SecretRef != nil {
+			add(pr.SecretRef.Name)
+		}
+	}
+	considerAPI := func(ac *templatesv1.APIClientGenerator) {
+		if ac == nil {
+			return
+		}
+		if kind == "Secret" && ac.SecretRef != nil {
+			add(ac.SecretRef.Name)
+		}
+		if ac.HeadersRef != nil && ac.HeadersRef.Kind == kind {
+			add(ac.HeadersRef.Name)
+		}
+	}
+	for _, gen := range ks.Spec.Generators {
+		considerConfig(gen.Config)
+		considerPullRequest(gen.PullRequests)
+		considerAPI(gen.APIClient)
+		if gen.Matrix == nil {
+			continue
+		}
+		for _, nested := range gen.Matrix.Generators {
+			considerConfig(nested.Config)
+			considerPullRequest(nested.PullRequests)
+			considerAPI(nested.APIClient)
+		}
+	}
+	return names
 }
 
 func indexImagePolicies(o client.Object) []string {

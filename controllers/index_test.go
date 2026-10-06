@@ -29,6 +29,11 @@ func TestIndexesIncludeMatrixGenerators(t *testing.T) {
 						{OCIRepository: &templatesv1.OCIRepositoryGenerator{RepositoryRef: "charts"}},
 						{Config: &templatesv1.ConfigGenerator{Kind: "Secret", Name: "creds"}},
 						{Config: &templatesv1.ConfigGenerator{Kind: "ConfigMap", Name: "settings"}},
+						{PullRequests: &templatesv1.PullRequestGenerator{SecretRef: &templatesv1.LocalObjectReference{Name: "scm-token"}}},
+						{APIClient: &templatesv1.APIClientGenerator{
+							SecretRef:  &templatesv1.LocalObjectReference{Name: "api-ca"},
+							HeadersRef: &templatesv1.HeadersReference{Kind: "ConfigMap", Name: "api-headers"},
+						}},
 						{ImagePolicy: &templatesv1.ImagePolicyGenerator{PolicyRef: "app-policy"}},
 					},
 				},
@@ -38,11 +43,27 @@ func TestIndexesIncludeMatrixGenerators(t *testing.T) {
 
 	assertKeys(t, indexGitRepositories(set), "demo/app", "demo/platform")
 	assertKeys(t, indexOCIRepositories(set), "demo/charts")
-	assertKeys(t, indexConfig("Secret")(set), "demo/creds")
-	assertKeys(t, indexConfig("ConfigMap")(set), "demo/settings")
+	assertKeys(t, indexConfig("Secret")(set), "demo/creds", "demo/scm-token", "demo/api-ca")
+	assertKeys(t, indexConfig("ConfigMap")(set), "demo/settings", "demo/api-headers")
 	assertKeys(t, indexImagePolicies(set), "demo/app-policy")
 	if indexGitRepositories(&templatesv1.GitOpsSet{}) != nil {
 		t.Fatal("empty set indexed a git repository")
+	}
+
+	direct := &templatesv1.GitOpsSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "direct", Namespace: "demo"},
+		Spec: templatesv1.GitOpsSetSpec{
+			Generators: []templatesv1.GitOpsSetGenerator{{
+				PullRequests: &templatesv1.PullRequestGenerator{SecretRef: &templatesv1.LocalObjectReference{Name: "github"}},
+				APIClient: &templatesv1.APIClientGenerator{
+					HeadersRef: &templatesv1.HeadersReference{Kind: "Secret", Name: "authz"},
+				},
+			}},
+		},
+	}
+	assertKeys(t, indexConfig("Secret")(direct), "demo/github", "demo/authz")
+	if got := indexConfig("ConfigMap")(direct); got != nil {
+		t.Fatalf("configmaps = %v", got)
 	}
 }
 
