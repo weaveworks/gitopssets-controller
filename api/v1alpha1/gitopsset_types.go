@@ -153,6 +153,12 @@ type APIClientGenerator struct {
 	// Reference to Secret in same namespace with a field "caFile" which
 	// provides the Certificate Authority to trust when making API calls.
 	SecretRef *LocalObjectReference `json:"secretRef,omitempty"`
+
+	// AllowClusterNetwork permits loopback and in-cluster DNS names such as
+	// *.svc and *.cluster.local. Link-local, unspecified, and multicast
+	// addresses are refused even when this is true.
+	// +optional
+	AllowClusterNetwork bool `json:"allowClusterNetwork,omitempty"`
 }
 
 // HeadersReference references either a Secret or ConfigMap to be used for

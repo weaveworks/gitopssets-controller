@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,11 @@ import (
 	"github.com/gitops-tools/gitopssets-controller/pkg/generators"
 	"github.com/gitops-tools/gitopssets-controller/test"
 )
+
+func TestMain(m *testing.M) {
+	enforceAddressPolicy = false
+	os.Exit(m.Run())
+}
 
 var _ generators.Generator = (*APIClientGenerator)(nil)
 

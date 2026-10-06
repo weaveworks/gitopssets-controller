@@ -75,6 +75,12 @@ spec:
                         APIClientGenerator defines a generator that queries an API endpoint and uses
                         that to generate data.
                       properties:
+                        allowClusterNetwork:
+                          description: |-
+                            AllowClusterNetwork permits loopback and in-cluster DNS names such as
+                            *.svc and *.cluster.local. Link-local, unspecified, and multicast
+                            addresses are refused even when this is true.
+                          type: boolean
                         body:
                           description: |-
                             Body is set as the body in a POST request.
@@ -296,6 +302,12 @@ spec:
                                   APIClientGenerator defines a generator that queries an API endpoint and uses
                                   that to generate data.
                                 properties:
+                                  allowClusterNetwork:
+                                    description: |-
+                                      AllowClusterNetwork permits loopback and in-cluster DNS names such as
+                                      *.svc and *.cluster.local. Link-local, unspecified, and multicast
+                                      addresses are refused even when this is true.
+                                    type: boolean
                                   body:
                                     description: |-
                                       Body is set as the body in a POST request.

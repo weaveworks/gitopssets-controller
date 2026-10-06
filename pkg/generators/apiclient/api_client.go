@@ -105,6 +105,9 @@ func (g *APIClientGenerator) Generate(ctx context.Context, sg *templatesv1.GitOp
 	}
 
 	client := g.ClientFactory(tlsConfig)
+	if enforceAddressPolicy {
+		applyAddressPolicy(client, sg.APIClient.AllowClusterNetwork)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -164,6 +167,11 @@ func (g *APIClientGenerator) createRequest(ctx context.Context, ac *templatesv1.
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, fmt.Errorf("unsupported URL scheme %q for endpoint %s", u.Scheme, ac.Endpoint)
+	}
+	if enforceAddressPolicy {
+		if err := validateEndpointAddress(ctx, u, ac.AllowClusterNetwork); err != nil {
+			return nil, err
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, ac.Endpoint, body)
