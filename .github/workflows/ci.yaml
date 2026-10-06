@@ -268,7 +268,7 @@ jobs:
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
-            release.yaml
+            gitopssets-install.yaml
             dist/cli/*
 
   # Backfill an existing tag. v0.18.0 was cut before CLI publishing existed.

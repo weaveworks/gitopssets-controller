@@ -68,7 +68,7 @@ IMG=<user/repo>:$(git rev-parse --short HEAD) make manifests generate docker-bui
 This release file can be easily applied to a cluster:
 
 ```sh
-kubectl apply -f release.yaml
+kubectl apply -f gitopssets-install.yaml
 ```
 
 ### For development purposes

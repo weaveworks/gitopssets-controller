@@ -141,7 +141,7 @@ make deploy IMG=my-registry/gitopssets-controller:tag
 
 # Generate release manifest
 make release IMG=my-registry/gitopssets-controller:tag
-# Creates release.yaml file for cluster deployment
+# Creates gitopssets-install.yaml for cluster deployment
 
 # Clean up
 make undeploy

@@ -135,7 +135,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 .PHONY: release
 release: manifests kustomize ## Generate a release file
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > release.yaml
+	$(KUSTOMIZE) build config/default > gitopssets-install.yaml
 
 # Platforms attached to a GitHub release. The module replace directive means
 # `go install ...@latest` does not build this CLI, so the release publishes binaries.
