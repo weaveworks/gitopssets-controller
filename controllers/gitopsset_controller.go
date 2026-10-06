@@ -82,7 +82,17 @@ func (r *GitOpsSetReconciler) event(obj *templatesv1.GitOpsSet, severity, msg st
 		eventType = corev1.EventTypeWarning
 	}
 
-	r.EventRecorder.Eventf(obj, nil, eventType, reason, "", msg, args...)
+	r.EventRecorder.Eventf(obj, nil, eventType, reason, "", "%s", truncateEventMessage(fmt.Sprintf(msg, args...)))
+}
+
+const maxEventMessageLength = 1024
+
+func truncateEventMessage(msg string) string {
+	const suffix = "...(truncated)"
+	if len(msg) <= maxEventMessageLength {
+		return msg
+	}
+	return msg[:maxEventMessageLength-len(suffix)] + suffix
 }
 
 //+kubebuilder:rbac:groups=sets.gitops.pro,resources=gitopssets,verbs=get;list;watch;create;update;patch;delete
@@ -133,8 +143,8 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		// Log and emit success event.
 		if r.EventRecorder != nil && templatesv1.GetGitOpsSetReadiness(&gitOpsSet) == metav1.ConditionTrue {
-			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s",
-				time.Since(reconcileStart).String())
+			r.event(&gitOpsSet, eventv1.EventSeverityInfo, "Reconciliation finished in %s: %s",
+				time.Since(reconcileStart).String(), conditions.GetMessage(&gitOpsSet, fluxMeta.ReadyCondition))
 		}
 	}()
 
@@ -187,7 +197,7 @@ func (r *GitOpsSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err := r.patchStatus(ctx, req, gitOpsSet.Status); err != nil {
 			logger.Error(err, "failed to reconcile")
 		}
-		r.event(&gitOpsSet, eventv1.EventSeverityError, "Reconciliation failed after %s", time.Since(reconcileStart).String())
+		r.event(&gitOpsSet, eventv1.EventSeverityError, "Reconciliation failed after %s: %s", time.Since(reconcileStart).String(), err.Error())
 
 		return ctrl.Result{}, err
 	}
