@@ -193,16 +193,14 @@ func renderTemplateParams(mapper meta.RESTMapper, index int, tmpl templatesv1.Gi
 				return nil, fmt.Errorf("%s is cluster-scoped and cannot set namespace %q", uns.GetKind(), uns.GetNamespace())
 			}
 
-			// Add source labels
-			labels := map[string]string{
-				"sets.gitops.pro/name":      gs.GetName(),
-				"sets.gitops.pro/namespace": gs.GetNamespace(),
+			// Ownership labels are controller-managed so another GitOpsSet cannot
+			// claim an object by rendering the same keys.
+			labels := map[string]string{}
+			for key, value := range uns.GetLabels() {
+				labels[key] = value
 			}
-
-			renderedLabels := uns.GetLabels()
-			if err := mergo.Merge(&labels, renderedLabels, mergo.WithOverride); err != nil {
-				return nil, fmt.Errorf("failed to merge existing labels to default labels: %w", err)
-			}
+			labels["sets.gitops.pro/name"] = gs.GetName()
+			labels["sets.gitops.pro/namespace"] = gs.GetNamespace()
 			uns.SetLabels(labels)
 
 			objects = append(objects, uns)

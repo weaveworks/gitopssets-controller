@@ -306,10 +306,10 @@ func TestRender(t *testing.T) {
 			want: []*unstructured.Unstructured{
 				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-dev-demo1"), setClusterIP("192.168.50.50"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-dev"}),
-					addLabels[*corev1.Service](map[string]string{"sets.gitops.pro/name": "test-gitops-set", "sets.gitops.pro/namespace": "new-ns"}))),
+					addLabels[*corev1.Service](map[string]string{"sets.gitops.pro/name": "test-gitops-set", "sets.gitops.pro/namespace": testNS}))),
 				test.ToUnstructured(t, makeTestService(nsn(testNS, "engineering-prod-demo1"), setClusterIP("192.168.100.20"),
 					addAnnotations(map[string]string{"app.kubernetes.io/instance": "engineering-prod"}),
-					addLabels[*corev1.Service](map[string]string{"sets.gitops.pro/name": "test-gitops-set", "sets.gitops.pro/namespace": "new-ns"}))),
+					addLabels[*corev1.Service](map[string]string{"sets.gitops.pro/name": "test-gitops-set", "sets.gitops.pro/namespace": testNS}))),
 			},
 		},
 		{

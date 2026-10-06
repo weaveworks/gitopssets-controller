@@ -278,12 +278,15 @@ func (r *GitOpsSetReconciler) renderAndReconcile(ctx context.Context, logger log
 		}
 
 		if err := k8sClient.Create(ctx, newResource); err != nil {
-			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to create Resource: %w", err))
 			if apierrors.IsAlreadyExists(err) {
-				if err := logResourceMessage(logger, "resource already exists", newResource); err != nil {
+				if err := r.adoptExistingResource(ctx, k8sClient, gitOpsSet, ref, newResource); err != nil {
 					inventoryErr = errors.Join(inventoryErr, err)
+					continue
 				}
+				entries.Insert(ref)
+				continue
 			}
+			inventoryErr = errors.Join(inventoryErr, fmt.Errorf("failed to create Resource: %w", err))
 			continue
 		}
 
@@ -704,6 +707,41 @@ func unstructuredFromResourceRef(ref templatesv1.ResourceRef) (*unstructured.Uns
 	u.SetNamespace(objMeta.Namespace)
 
 	return &u, nil
+}
+
+const (
+	gitOpsSetNameLabel      = "sets.gitops.pro/name"
+	gitOpsSetNamespaceLabel = "sets.gitops.pro/namespace"
+)
+
+func (r *GitOpsSetReconciler) adoptExistingResource(ctx context.Context, k8sClient client.Client, gitOpsSet *templatesv1.GitOpsSet, ref templatesv1.ResourceRef, newResource *unstructured.Unstructured) error {
+	existing := &unstructured.Unstructured{}
+	existing.SetGroupVersionKind(newResource.GroupVersionKind())
+	if err := k8sClient.Get(ctx, client.ObjectKeyFromObject(newResource), existing); err != nil {
+		return fmt.Errorf("failed to load existing Resource: %w", err)
+	}
+	if owner, namespace, ok := ownedByGitOpsSet(existing.GetLabels()); ok {
+		if owner != gitOpsSet.GetName() || namespace != gitOpsSet.GetNamespace() {
+			return fmt.Errorf("%s is owned by GitOpsSet %s/%s", ref.ID, namespace, owner)
+		}
+	}
+	updated := copyUnstructuredContent(existing, newResource)
+	if err := k8sClient.Patch(ctx, updated, client.MergeFrom(existing)); err != nil {
+		return fmt.Errorf("failed to adopt Resource: %w", err)
+	}
+	return nil
+}
+
+func ownedByGitOpsSet(labels map[string]string) (name, namespace string, ok bool) {
+	if len(labels) == 0 {
+		return "", "", false
+	}
+	name, nameOK := labels[gitOpsSetNameLabel]
+	namespace, namespaceOK := labels[gitOpsSetNamespaceLabel]
+	if !nameOK && !namespaceOK {
+		return "", "", false
+	}
+	return name, namespace, true
 }
 
 func copyUnstructuredContent(existing, newValue *unstructured.Unstructured) *unstructured.Unstructured {
