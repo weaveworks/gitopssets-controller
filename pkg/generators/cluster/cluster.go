@@ -46,6 +46,11 @@ func (g *ClusterGenerator) Generate(ctx context.Context, sg *templatesv1.GitOpsS
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert selector: %w", err)
 	}
+	// An empty selector matches nothing. Callers that want every cluster must
+	// set an explicit selector. This matches the CRD comment and the watch mapper.
+	if selector.Empty() {
+		return nil, nil
+	}
 
 	listOptions := client.ListOptions{LabelSelector: selector}
 

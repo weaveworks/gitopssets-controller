@@ -34,7 +34,7 @@ func TestClusterGenerator_Generate(t *testing.T) {
 			wantParams: nil,
 		},
 		{
-			name: "generator with no label selector returns all clusters",
+			name: "generator with no label selector matches no clusters",
 			sg: &templatesv1.GitOpsSetGenerator{
 				Cluster: &templatesv1.ClusterGenerator{},
 			},
@@ -58,24 +58,7 @@ func TestClusterGenerator_Generate(t *testing.T) {
 					Spec: clustersv1.GitopsClusterSpec{},
 				},
 			},
-			wantParams: []map[string]any{
-				{
-					"ClusterAnnotations": map[string]any{},
-					"ClusterLabels": map[string]any{
-						"test1": "value",
-					},
-					"ClusterName":      "cluster1",
-					"ClusterNamespace": "ns1",
-				},
-				{
-					"ClusterAnnotations": map[string]any{},
-					"ClusterLabels": map[string]any{
-						"test2": "value",
-					},
-					"ClusterName":      "cluster2",
-					"ClusterNamespace": "ns2",
-				},
-			},
+			wantParams: nil,
 		},
 		{
 			name: "label selector filtering",
