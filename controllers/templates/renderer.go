@@ -179,6 +179,9 @@ func renderTemplateParams(mapper meta.RESTMapper, index int, tmpl templatesv1.Gi
 				return nil, fmt.Errorf("failed convert parsed template: %w", err)
 			}
 			delete(unstructuredMap, "status")
+			if metadata, ok := unstructuredMap["metadata"].(map[string]any); ok && metadata["creationTimestamp"] == nil {
+				delete(metadata, "creationTimestamp")
+			}
 			uns := &unstructured.Unstructured{Object: unstructuredMap}
 
 			namespaced, err := objectIsNamespaced(mapper, uns)
